@@ -2,11 +2,11 @@ import "dotenv/config";
 import cors from "cors";
 import express from "express";
 import multer from "multer";
-import { chunkText, countWords, normalizeWhitespace } from "./chunking";
-import { analyzeWithOpenRouter } from "./openrouterAi";
-import { detectAiSignals, scoreCandidate, summarizeReport } from "./scoring";
-import { extractTextFromUpload } from "./textExtraction";
-import { searchWebCandidates } from "./webSearch";
+import { chunkText, countWords, normalizeWhitespace } from "./chunking.js";
+import { analyzeWithOpenRouter } from "./openrouterAi.js";
+import { detectAiSignals, scoreCandidate, summarizeReport } from "./scoring.js";
+import { extractTextFromUpload } from "./textExtraction.js";
+import { searchWebCandidates } from "./webSearch.js";
 import type { LlmOpinionRequest, PlagiarismMatch, ScanReport, ScanRequest, ScanSettings } from "../shared/types";
 
 export const app = express();

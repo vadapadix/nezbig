@@ -1,5 +1,5 @@
 import mammoth from "mammoth";
-import { countWords, normalizeWhitespace } from "./chunking";
+import { countWords, normalizeWhitespace } from "./chunking.js";
 import type { UploadedText } from "../shared/types";
 
 const TEXT_EXTENSIONS = new Set([".txt", ".md", ".markdown", ".csv", ".json", ".rtf"]);

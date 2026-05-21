@@ -1,4 +1,4 @@
-import { normalizeWhitespace } from "./chunking";
+import { normalizeWhitespace } from "./chunking.js";
 import type { AiSignal, LlmOpinion } from "../shared/types";
 
 type LocalAiResult = {

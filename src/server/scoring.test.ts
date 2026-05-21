@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectAiSignals, scoreCandidate } from "./scoring";
+import { detectAiSignals, scoreCandidate } from "./scoring.js";
 
 describe("scoreCandidate", () => {
   it("gives a high score to overlapping source pages", () => {
