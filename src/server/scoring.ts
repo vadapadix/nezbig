@@ -1,5 +1,5 @@
 import { normalizeWhitespace } from "./chunking.js";
-import type { AiSignal, PlagiarismMatch, SearchCandidate } from "../shared/types";
+import type { AiSignal, PlagiarismMatch, SearchCandidate } from "../shared/types.js";
 
 type SignalDraft = AiSignal & {
   weight: number;

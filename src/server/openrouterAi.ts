@@ -1,5 +1,5 @@
 import { normalizeWhitespace } from "./chunking.js";
-import type { AiSignal, LlmOpinion } from "../shared/types";
+import type { AiSignal, LlmOpinion } from "../shared/types.js";
 
 type LocalAiResult = {
   probability: number;

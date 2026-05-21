@@ -1,3 +1,3 @@
-import { app } from "../src/server/app.js";
+import { app } from "../.vercel-server/server/app.js";
 
 export default app;

@@ -7,7 +7,7 @@ import { analyzeWithOpenRouter } from "./openrouterAi.js";
 import { detectAiSignals, scoreCandidate, summarizeReport } from "./scoring.js";
 import { extractTextFromUpload } from "./textExtraction.js";
 import { searchWebCandidates } from "./webSearch.js";
-import type { LlmOpinionRequest, PlagiarismMatch, ScanReport, ScanRequest, ScanSettings } from "../shared/types";
+import type { LlmOpinionRequest, PlagiarismMatch, ScanReport, ScanRequest, ScanSettings } from "../shared/types.js";
 
 export const app = express();
 const upload = multer({

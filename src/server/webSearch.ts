@@ -1,6 +1,6 @@
 import * as cheerio from "cheerio";
 import { excerptForSearch, normalizeWhitespace } from "./chunking.js";
-import type { SearchCandidate } from "../shared/types";
+import type { SearchCandidate } from "../shared/types.js";
 
 const SEARCH_TIMEOUT_MS = 9000;
 const PAGE_TIMEOUT_MS = 8500;
