@@ -5,12 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently -k \"npm:dev:server\" \"npm:dev:client\"",
-    "dev:client": "vite --host 127.0.0.1",
+    "dev:client": "vite --host 127.0.0.1 --configLoader runner",
     "dev:server": "tsx watch src/server/index.ts",
-    "build": "npm run build:server && tsc --noEmit && vite build",
+    "build": "npm run build:server && tsc --noEmit && vite build --configLoader runner",
     "build:server": "tsc -p tsconfig.server.json",
-    "test": "vitest run",
-    "preview": "vite preview --host 127.0.0.1"
+    "test": "vitest run --configLoader runner",
+    "preview": "vite preview --host 127.0.0.1 --configLoader runner"
   },
   "dependencies": {
     "@napi-rs/canvas": "^0.1.80",

@@ -37,6 +37,8 @@ export type PlagiarismMatch = SearchCandidate & {
   score: number;
   overlapPercent: number;
   ngramOverlapPercent: number;
+  hashOverlapPercent: number;
+  fullTextRank: number;
   longestRun: number;
   confidence: "snippet" | "page";
   excerpt: string;
@@ -61,6 +63,8 @@ export type ScanReport = {
   aiProvider: "local" | "openrouter";
   aiModel?: string;
   aiNote?: string;
+  scanNotes?: string[];
+  skippedTitleWords?: number;
   matches: PlagiarismMatch[];
   aiSignals: AiSignal[];
   summary: string;

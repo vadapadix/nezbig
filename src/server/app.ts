@@ -2,7 +2,8 @@ import "dotenv/config";
 import cors from "cors";
 import express from "express";
 import multer from "multer";
-import { chunkText, countWords, normalizeWhitespace } from "./chunking.js";
+import { chunkText, countWords } from "./chunking.js";
+import { prepareDocumentText } from "./documentPreprocess.js";
 import { analyzeWithOpenRouter } from "./openrouterAi.js";
 import { detectAiSignals, scoreCandidate, summarizeReport } from "./scoring.js";
 import { extractTextFromUpload } from "./textExtraction.js";
@@ -51,7 +52,8 @@ function uniqueMatches(matches: PlagiarismMatch[]): PlagiarismMatch[] {
 }
 
 async function runScan(request: ScanRequest): Promise<ScanReport> {
-  const text = normalizeWhitespace(request.text);
+  const prepared = prepareDocumentText(request.text);
+  const text = prepared.text;
   if (text.length < 120) {
     throw new Error("Додайте щонайменше 120 символів тексту для надійної перевірки.");
   }
@@ -97,6 +99,8 @@ async function runScan(request: ScanRequest): Promise<ScanReport> {
     aiProvider: "local",
     aiModel: undefined,
     aiNote: "Базовий звіт згенеровано локально. AI-думка підвантажується окремо після звіту.",
+    scanNotes: prepared.notes,
+    skippedTitleWords: prepared.skippedTitleWords,
     matches,
     aiSignals: localAi.signals,
     summary: summarizeReport(plagiarismScore, localAi.probability, matches)
@@ -133,7 +137,7 @@ app.post("/api/scan", async (request, response) => {
 app.post("/api/ai-opinion", async (request, response) => {
   try {
     const body = request.body as LlmOpinionRequest;
-    const text = normalizeWhitespace(body.text);
+    const text = prepareDocumentText(body.text).text;
     if (text.length < 120) {
       response.status(400).json({ error: "Додайте щонайменше 120 символів тексту для AI-думки." });
       return;

@@ -513,6 +513,7 @@ button:disabled {
 .report-header {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
+  gap: 18px;
 }
 
 .report-header p {
@@ -520,9 +521,28 @@ button:disabled {
   color: var(--muted);
 }
 
+.report-actions {
+  display: grid;
+  justify-items: end;
+  gap: 10px;
+}
+
 time {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
+}
+
+.secondary-button {
+  min-height: 42px;
+  border: 1px solid rgba(46, 196, 182, 0.48);
+  background: #fffdf7;
+  color: var(--graphite);
+  padding: 0.62rem 0.9rem;
+}
+
+.secondary-button:hover,
+.secondary-button:focus-visible {
+  background: var(--accent-soft);
 }
 
 .metrics {
@@ -547,6 +567,29 @@ dt {
 .metrics strong {
   font-size: clamp(2rem, 5vw, 4.4rem);
   line-height: 0.95;
+}
+
+.scan-notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: -6px 0 24px;
+}
+
+.scan-notes strong,
+.scan-notes span {
+  border: 1px solid rgba(46, 196, 182, 0.24);
+  border-radius: 999px;
+  background: rgba(46, 196, 182, 0.1);
+  color: var(--graphite);
+  font-size: 0.9rem;
+  line-height: 1.3;
+  padding: 0.48rem 0.72rem;
+}
+
+.scan-notes span {
+  color: var(--muted);
 }
 
 .report-grid {
@@ -633,7 +676,7 @@ dt {
 
 dl {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   margin: 14px 0 0;
 }

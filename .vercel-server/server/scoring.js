@@ -174,11 +174,84 @@ function looksLikePlaceholderText(text) {
     const normalized = text.toLowerCase();
     return /lorem ipsum|consectetur adipiscing|suspendisse potenti/.test(normalized);
 }
+function hasAcademicStructure(text) {
+    return /(?<![\p{L}\p{N}_])(зміст|вступ|розділ\s+(?:[0-9]+|[ivx]+)|висновки|список\s+використаних\s+джерел)(?![\p{L}\p{N}_])/iu.test(text);
+}
 function sourceForCandidate(candidate) {
     const pageText = candidate.sourceText?.trim();
     if (pageText && pageText.split(/\s+/).length >= 18)
         return pageText;
     return `${candidate.title} ${candidate.snippet}`;
+}
+function stableHash(input) {
+    let hash = 2166136261;
+    for (let index = 0; index < input.length; index += 1) {
+        hash ^= input.charCodeAt(index);
+        hash = Math.imul(hash, 16777619);
+    }
+    return hash >>> 0;
+}
+function hashTree(tokens, size = 5) {
+    const leaves = [];
+    for (let index = 0; index <= tokens.length - size; index += 1) {
+        leaves.push(stableHash(tokens.slice(index, index + size).join(" ")));
+    }
+    const hashes = new Set(leaves);
+    let level = leaves;
+    while (level.length > 1) {
+        const next = [];
+        for (let index = 0; index < level.length; index += 2) {
+            const left = level[index];
+            const right = level[index + 1] ?? left;
+            next.push(stableHash(`${left}:${right}`));
+        }
+        for (const hash of next)
+            hashes.add(hash);
+        level = next;
+    }
+    return hashes;
+}
+function setOverlapPercent(source, candidate) {
+    if (source.size === 0)
+        return 0;
+    let overlap = 0;
+    for (const hash of source) {
+        if (candidate.has(hash))
+            overlap += 1;
+    }
+    return overlap / source.size;
+}
+class FullTextIndex {
+    tokenPositions = new Map();
+    constructor(tokens) {
+        tokens.forEach((token, index) => {
+            const positions = this.tokenPositions.get(token) ?? [];
+            positions.push(index);
+            this.tokenPositions.set(token, positions);
+        });
+    }
+    rank(queryTokens) {
+        const uniqueQuery = [...new Set(queryTokens)];
+        if (uniqueQuery.length === 0)
+            return 0;
+        let hits = 0;
+        let proximityBonus = 0;
+        let lastPosition;
+        for (const token of uniqueQuery) {
+            const positions = this.tokenPositions.get(token);
+            if (!positions?.length)
+                continue;
+            hits += 1;
+            const firstPosition = positions[0];
+            if (lastPosition !== undefined) {
+                const distance = Math.abs(firstPosition - lastPosition);
+                if (distance <= 18)
+                    proximityBonus += 1;
+            }
+            lastPosition = firstPosition;
+        }
+        return Math.min(1, hits / uniqueQuery.length + (proximityBonus / Math.max(1, uniqueQuery.length - 1)) * 0.22);
+    }
 }
 export function scoreCandidate(chunkText, candidate, chunkIndex) {
     const sourceTokens = tokenize(chunkText);
@@ -186,22 +259,27 @@ export function scoreCandidate(chunkText, candidate, chunkIndex) {
     const candidateText = sourceForCandidate(candidate);
     const candidateTokens = tokenize(candidateText).slice(0, 8000);
     const candidateRunTokens = tokenize(candidateText, true).slice(0, 8000);
+    const candidateIndex = new FullTextIndex(candidateTokens);
     const candidateSet = new Set(candidateTokens);
     const overlapCount = sourceTokens.filter((token) => candidateSet.has(token)).length;
     const overlapPercent = sourceTokens.length === 0 ? 0 : overlapCount / sourceTokens.length;
     const threeGramOverlap = overlapRatio(buildNgrams(sourceTokens, 3), buildNgrams(candidateTokens, 3));
     const fiveGramOverlap = overlapRatio(buildNgrams(sourceRunTokens, 5), buildNgrams(candidateRunTokens, 5));
+    const hashOverlap = setOverlapPercent(hashTree(sourceRunTokens), hashTree(candidateRunTokens));
+    const fullTextRank = candidateIndex.rank(sourceTokens);
     const longestRun = longestCommonRun(sourceRunTokens, candidateRunTokens);
     const runScore = Math.min(1, longestRun / 18);
     const phraseScore = Math.max(threeGramOverlap * 0.72, fiveGramOverlap);
     const pageBonus = candidate.sourceText ? 1 : 0.76;
-    const score = clampScore((overlapPercent * 0.26 + phraseScore * 0.46 + runScore * 0.28) * 100 * pageBonus);
+    const score = clampScore((overlapPercent * 0.2 + phraseScore * 0.32 + runScore * 0.22 + hashOverlap * 0.16 + fullTextRank * 0.1) * 100 * pageBonus);
     return {
         ...candidate,
         chunkIndex,
         score,
         overlapPercent: clampScore(overlapPercent * 100),
         ngramOverlapPercent: clampScore(phraseScore * 100),
+        hashOverlapPercent: clampScore(hashOverlap * 100),
+        fullTextRank: clampScore(fullTextRank * 100),
         longestRun,
         confidence: candidate.sourceText ? "page" : "snippet",
         excerpt: normalizeWhitespace(chunkText).split(" ").slice(0, 48).join(" ")
@@ -245,7 +323,7 @@ function ngramRepetition(tokens) {
     const score = clampScore((repeated.reduce((sum, [, count]) => sum + count - 1, 0) / Math.max(1, tokens.length / 120)) * 55);
     return { score, evidence: repeated.map(([gram, count]) => `${gram} (${count}x)`).slice(0, 4) };
 }
-function safeguardScore(normalized, wordCount, placeholderText) {
+function safeguardScore(normalized, wordCount, placeholderText, academicStructure) {
     const citations = countRegexMatches(normalized, /\[[0-9]{1,3}\]|\([A-ZА-ЯІЇЄҐ][\p{L}'-]+,\s*20[0-9]{2}\)|https?:\/\/\S+|doi:\s*\S+/giu);
     const numbers = countRegexMatches(normalized, /\b\d+(?:[.,]\d+)?\s*(?:%|грн|uah|usd|км|м|року|р\.|рік|years?)?\b/giu);
     const firstPerson = countRegexMatches(normalized, /\b(?:я|мені|мою|моє|ми|наш|наша|i|my|we|our)\b/giu);
@@ -256,9 +334,10 @@ function safeguardScore(normalized, wordCount, placeholderText) {
         firstPerson.length >= 2 ? `${firstPerson.length} маркерів авторської позиції` : "",
         quotes.length ? `${quotes.length} довгих цитат` : "",
         wordCount < 180 ? "короткий текст: нижча надійність AI-оцінки" : "",
-        placeholderText ? "lorem ipsum / шаблонний наповнювач" : ""
+        placeholderText ? "lorem ipsum / шаблонний наповнювач" : "",
+        academicStructure ? "академічна структура: вступ, розділи або висновки не вважаються AI-ознакою" : ""
     ].filter(Boolean);
-    const score = clampScore(citations.length * 10 + Math.min(18, numbers.length * 2) + Math.min(14, firstPerson.length * 3) + quotes.length * 8 + (wordCount < 180 ? 16 : 0) + (placeholderText ? 80 : 0));
+    const score = clampScore(citations.length * 10 + Math.min(18, numbers.length * 2) + Math.min(14, firstPerson.length * 3) + quotes.length * 8 + (wordCount < 180 ? 16 : 0) + (placeholderText ? 80 : 0) + (academicStructure ? 22 : 0));
     return { score, evidence };
 }
 export function detectAiSignals(text) {
@@ -275,15 +354,16 @@ export function detectAiSignals(text) {
     const transitionDensity = words.filter((word) => TRANSITIONS.has(word)).length / Math.max(1, wordCount);
     const hedgeDensity = words.filter((word) => HEDGES.has(word)).length / Math.max(1, wordCount);
     const placeholderText = looksLikePlaceholderText(normalized);
+    const academicStructure = hasAcademicStructure(normalized);
     const repeatedStarts = sentenceStartRepetition(sentences);
     const repeatedNgrams = ngramRepetition(contentWords);
-    const safeguards = safeguardScore(normalized, wordCount, placeholderText);
+    const safeguards = safeguardScore(normalized, wordCount, placeholderText, academicStructure);
     const rhythmScore = clampScore((1 - Math.min(1, sentenceCv / 0.58)) * 100 * (sentences.length >= 5 ? 1 : 0.55));
     const lexicalScore = clampScore(Math.max(0, 0.6 - uniqueRatio) * 170 + repeatedNgrams.score * 0.28);
     const transitionScore = clampScore(transitionDensity * 3100);
     const hedgeScore = clampScore(hedgeDensity * 3300);
-    const punctuationTypes = new Set((normalized.match(/[;:!?()[\]—-]/g) ?? []).map((value) => value));
-    const punctuationScore = clampScore((sentences.length >= 6 && punctuationTypes.size <= 2 ? 42 : 0) + (normalized.match(/—/g)?.length ?? 0) * 9);
+    const punctuationTypes = new Set((normalized.replace(/--|—|–/g, "").match(/[;:!?()[\]]/g) ?? []).map((value) => value));
+    const punctuationScore = clampScore(sentences.length >= 8 && punctuationTypes.size <= 1 ? 28 : 0);
     const patternBased = patternSignals(lower, wordCount);
     const signalDrafts = [
         {
@@ -334,7 +414,7 @@ export function detectAiSignals(text) {
             label: "Одноманітна пунктуація",
             score: punctuationScore,
             category: "structure",
-            detail: punctuationScore >= 45 ? "Пунктуація надто рівна або з типовими AI-тире." : "Пунктуаційний малюнок не виглядає шаблонним.",
+            detail: punctuationScore >= 45 ? "Пунктуація надто рівна за різними реченнями." : "Пунктуаційний малюнок не виглядає шаблонним; тире й подвійні дефіси не рахуються як AI-ознака.",
             evidence: punctuationTypes.size ? [`${punctuationTypes.size} типів пунктуаційних маркерів`] : [],
             weight: 0.46
         },

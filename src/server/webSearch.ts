@@ -1,10 +1,13 @@
 import * as cheerio from "cheerio";
 import { excerptForSearch, normalizeWhitespace } from "./chunking.js";
+import { MemoryTtlCache } from "./searchCache.js";
 import type { SearchCandidate } from "../shared/types.js";
 
 const SEARCH_TIMEOUT_MS = 9000;
 const PAGE_TIMEOUT_MS = 8500;
 const MAX_PAGE_CHARS = 120_000;
+const searchCache = new MemoryTtlCache<SearchCandidate[]>(1000 * 60 * 30, 500);
+const pageCache = new MemoryTtlCache<string | undefined>(1000 * 60 * 60, 500);
 
 function decodeDuckDuckGoUrl(href: string): string {
   try {
@@ -52,6 +55,10 @@ function buildQueries(chunkText: string, deep: boolean): string[] {
 }
 
 async function searchDuckDuckGo(query: string, maxResults: number): Promise<SearchCandidate[]> {
+  const cacheKey = `${query}::${maxResults}`;
+  const cached = searchCache.get(cacheKey);
+  if (cached) return cached;
+
   const url = new URL("https://duckduckgo.com/html/");
   url.searchParams.set("q", query);
 
@@ -87,10 +94,15 @@ async function searchDuckDuckGo(query: string, maxResults: number): Promise<Sear
     }
   });
 
-  return candidates.slice(0, maxResults);
+  const results = candidates.slice(0, maxResults);
+  searchCache.set(cacheKey, results);
+  return results;
 }
 
 async function fetchReadablePageText(url: string): Promise<string | undefined> {
+  const cached = pageCache.get(url);
+  if (cached !== undefined) return cached;
+
   try {
     const parsed = new URL(url);
     if (!["http:", "https:"].includes(parsed.protocol)) return undefined;
@@ -104,18 +116,31 @@ async function fetchReadablePageText(url: string): Promise<string | undefined> {
       }
     });
 
-    if (!response.ok) return undefined;
+    if (!response.ok) {
+      pageCache.set(url, undefined);
+      return undefined;
+    }
     const contentType = response.headers.get("content-type") ?? "";
-    if (!/text\/html|text\/plain|application\/xhtml\+xml/i.test(contentType)) return undefined;
+    if (!/text\/html|text\/plain|application\/xhtml\+xml/i.test(contentType)) {
+      pageCache.set(url, undefined);
+      return undefined;
+    }
 
     const raw = (await response.text()).slice(0, MAX_PAGE_CHARS);
-    if (/text\/plain/i.test(contentType)) return normalizeWhitespace(raw).slice(0, MAX_PAGE_CHARS);
+    if (/text\/plain/i.test(contentType)) {
+      const plain = normalizeWhitespace(raw).slice(0, MAX_PAGE_CHARS);
+      pageCache.set(url, plain);
+      return plain;
+    }
 
     const $ = cheerio.load(raw);
     $("script, style, noscript, svg, iframe, nav, header, footer, form").remove();
     const text = normalizeWhitespace($("article, main, body").text());
-    return text.length > 160 ? text.slice(0, MAX_PAGE_CHARS) : undefined;
+    const readable = text.length > 160 ? text.slice(0, MAX_PAGE_CHARS) : undefined;
+    pageCache.set(url, readable);
+    return readable;
   } catch {
+    pageCache.set(url, undefined);
     return undefined;
   }
 }

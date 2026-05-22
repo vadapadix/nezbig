@@ -53,4 +53,23 @@ describe("detectAiSignals", () => {
 
     expect(result.probability).toBeLessThan(38);
   });
+
+  it("does not flag course-work structure headings as robotic structure", () => {
+    const result = detectAiSignals(
+      "ЗМІСТ. ВСТУП. Актуальність теми полягає у дослідженні практичних підходів до академічної доброчесності. РОЗДІЛ 1. Теоретичні засади питання. У цьому розділі наведено огляд джерел, визначено поняття та описано методику аналізу. РОЗДІЛ 2. Практична частина. ВИСНОВКИ. Отримані результати узагальнюють основні положення роботи."
+    );
+
+    expect(result.signals.at(-1)?.evidence?.join(" ")).toMatch(/академічна структура/i);
+    expect(result.probability).toBeLessThan(45);
+  });
+
+  it("does not treat double hyphens as an AI punctuation signal", () => {
+    const result = detectAiSignals(
+      "Перший аргумент -- це контекст дослідження. Другий аргумент -- це джерельна база. Третій аргумент -- це обмеження методу. Четвертий аргумент -- це практична користь. П'ятий аргумент -- це перевірка висновків. Шостий аргумент -- це повторне читання матеріалу. Сьомий аргумент -- це зіставлення даних. Восьмий аргумент -- це підсумок."
+    );
+    const punctuationSignal = result.signals.find((signal) => signal.label === "Одноманітна пунктуація");
+
+    expect(punctuationSignal?.score).toBeLessThanOrEqual(28);
+    expect(punctuationSignal?.detail).toMatch(/подвійні дефіси/i);
+  });
 });

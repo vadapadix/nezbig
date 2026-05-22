@@ -50,6 +50,153 @@ function confidenceLabel(value: "snippet" | "page"): string {
   return value === "page" ? "сторінку прочитано" : "лише уривок пошуку";
 }
 
+function wrapCanvasText(context: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number): number {
+  const words = text.split(/\s+/).filter(Boolean);
+  let line = "";
+  let currentY = y;
+
+  for (const word of words) {
+    const nextLine = line ? `${line} ${word}` : word;
+    if (context.measureText(nextLine).width > maxWidth && line) {
+      context.fillText(line, x, currentY);
+      line = word;
+      currentY += lineHeight;
+    } else {
+      line = nextLine;
+    }
+  }
+
+  if (line) {
+    context.fillText(line, x, currentY);
+    currentY += lineHeight;
+  }
+
+  return currentY;
+}
+
+function downloadReportPng(report: ScanReport): void {
+  const canvas = document.createElement("canvas");
+  const width = 1400;
+  const height = 1800;
+  const scale = window.devicePixelRatio || 1;
+  canvas.width = width * scale;
+  canvas.height = height * scale;
+  canvas.style.width = `${width}px`;
+  canvas.style.height = `${height}px`;
+
+  const context = canvas.getContext("2d");
+  if (!context) return;
+
+  context.scale(scale, scale);
+  context.fillStyle = "#fbf7ed";
+  context.fillRect(0, 0, width, height);
+  context.fillStyle = "#0f211e";
+  context.fillRect(0, 0, width, 210);
+
+  context.fillStyle = "#2ec4b6";
+  context.font = "700 22px Georgia, serif";
+  context.fillText("ЗВІТ НЕЗБІГ", 70, 72);
+  context.fillStyle = "#fff8ed";
+  context.font = "700 48px Georgia, serif";
+  const titleY = wrapCanvasText(context, report.fileName, 70, 132, 920, 56);
+  context.font = "400 24px Georgia, serif";
+  context.fillText(new Intl.DateTimeFormat("uk-UA", { dateStyle: "medium", timeStyle: "short" }).format(new Date(report.checkedAt)), 1050, 72);
+
+  let y = Math.max(260, titleY + 48);
+  const cardWidth = 380;
+  const cards = [
+    ["Плагіат", `${report.plagiarismScore}%`, `${riskLabel(report.plagiarismScore)} ризик`],
+    ["AI-аналіз", `${report.aiProbability}%`, `${riskLabel(report.aiProbability)} рівень`],
+    ["Фрагменти", formatNumber(report.chunksChecked), `${formatNumber(report.wordCount)} слів`]
+  ];
+
+  for (const [index, card] of cards.entries()) {
+    const x = 70 + index * (cardWidth + 35);
+    context.fillStyle = "#fffdf7";
+    context.strokeStyle = "#ddd6c8";
+    context.lineWidth = 2;
+    context.beginPath();
+    context.roundRect(x, y, cardWidth, 170, 14);
+    context.fill();
+    context.stroke();
+    context.fillStyle = "#66716f";
+    context.font = "700 24px Georgia, serif";
+    context.fillText(card[0], x + 28, y + 48);
+    context.fillStyle = "#101817";
+    context.font = "800 70px Georgia, serif";
+    context.fillText(card[1], x + 28, y + 116);
+    context.fillStyle = "#66716f";
+    context.font = "400 22px Georgia, serif";
+    context.fillText(card[2], x + 28, y + 148);
+  }
+
+  y += 225;
+  context.fillStyle = "#101817";
+  context.font = "800 28px Georgia, serif";
+  context.fillText("Підсумок", 70, y);
+  context.fillStyle = "#505c59";
+  context.font = "400 24px Georgia, serif";
+  y = wrapCanvasText(context, report.summary, 70, y + 42, 1220, 34) + 22;
+
+  if (report.scanNotes?.length) {
+    context.fillStyle = "#101817";
+    context.font = "800 26px Georgia, serif";
+    context.fillText("Примітки перевірки", 70, y);
+    context.fillStyle = "#505c59";
+    context.font = "400 22px Georgia, serif";
+    y += 38;
+    for (const note of report.scanNotes.slice(0, 4)) {
+      y = wrapCanvasText(context, `- ${note}`, 90, y, 1180, 30);
+    }
+    y += 18;
+  }
+
+  context.fillStyle = "#101817";
+  context.font = "800 28px Georgia, serif";
+  context.fillText("Ймовірні джерела", 70, y);
+  y += 46;
+  context.font = "400 22px Georgia, serif";
+  context.fillStyle = "#505c59";
+
+  const matches = report.matches.slice(0, 5);
+  if (matches.length === 0) {
+    y = wrapCanvasText(context, "Сильних збігів у відкритих вебджерелах не знайдено.", 70, y, 1220, 32) + 26;
+  } else {
+    for (const match of matches) {
+      context.fillStyle = "#101817";
+      context.font = "800 24px Georgia, serif";
+      y = wrapCanvasText(context, `${match.score}% - ${match.title}`, 70, y, 1220, 32);
+      context.fillStyle = "#505c59";
+      context.font = "400 21px Georgia, serif";
+      y = wrapCanvasText(context, `${match.url} | слова ${match.overlapPercent}%, хеші ${match.hashOverlapPercent}%, full-text ${match.fullTextRank}%`, 90, y + 6, 1180, 29);
+      y += 18;
+    }
+  }
+
+  context.fillStyle = "#101817";
+  context.font = "800 28px Georgia, serif";
+  context.fillText("AI-сигнали", 70, y);
+  y += 44;
+  for (const signal of report.aiSignals.slice(0, 5)) {
+    context.fillStyle = "#101817";
+    context.font = "800 23px Georgia, serif";
+    context.fillText(`${signal.label}: ${signal.score}%`, 70, y);
+    context.fillStyle = "#505c59";
+    context.font = "400 21px Georgia, serif";
+    y = wrapCanvasText(context, signal.detail, 90, y + 32, 1180, 29) + 16;
+  }
+
+  canvas.toBlob((blob) => {
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `nezbig-report-${new Date(report.checkedAt).toISOString().slice(0, 10)}.png`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }, "image/png");
+}
+
 export default function App() {
   const [text, setText] = useState("");
   const [fileName, setFileName] = useState("Вставлений текст");
@@ -300,7 +447,12 @@ export default function App() {
                 <h2 id="report-title">{report.fileName}</h2>
                 <p>{report.summary}</p>
               </div>
-              <time dateTime={report.checkedAt}>{new Intl.DateTimeFormat("uk-UA", { dateStyle: "medium", timeStyle: "short" }).format(new Date(report.checkedAt))}</time>
+              <div className="report-actions">
+                <time dateTime={report.checkedAt}>{new Intl.DateTimeFormat("uk-UA", { dateStyle: "medium", timeStyle: "short" }).format(new Date(report.checkedAt))}</time>
+                <button type="button" className="secondary-button" onClick={() => downloadReportPng(report)}>
+                  Завантажити PNG
+                </button>
+              </div>
             </div>
 
             <div className="metrics">
@@ -322,6 +474,15 @@ export default function App() {
                 <small>{formatNumber(report.wordCount)} слів</small>
               </article>
             </div>
+
+            {report.scanNotes && report.scanNotes.length > 0 ? (
+              <div className="scan-notes" aria-label="Примітки перевірки">
+                {report.skippedTitleWords ? <strong>Титулку пропущено: {formatNumber(report.skippedTitleWords)} слів</strong> : null}
+                {report.scanNotes.map((note) => (
+                  <span key={note}>{note}</span>
+                ))}
+              </div>
+            ) : null}
 
             <div className="report-grid">
               <section aria-labelledby="matches-title">
@@ -352,6 +513,14 @@ export default function App() {
                           <div>
                             <dt>Довгий збіг</dt>
                             <dd>{match.longestRun} слів</dd>
+                          </div>
+                          <div>
+                            <dt>Хеші</dt>
+                            <dd>{match.hashOverlapPercent}%</dd>
+                          </div>
+                          <div>
+                            <dt>Full-text</dt>
+                            <dd>{match.fullTextRank}%</dd>
                           </div>
                           <div>
                             <dt>Доказ</dt>
