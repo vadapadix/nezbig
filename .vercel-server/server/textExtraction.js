@@ -1,6 +1,10 @@
+import { createRequire } from "node:module";
+import { pathToFileURL } from "node:url";
 import mammoth from "mammoth";
 import { countWords, normalizeWhitespace } from "./chunking.js";
 const TEXT_EXTENSIONS = new Set([".txt", ".md", ".markdown", ".csv", ".json", ".rtf"]);
+const require = createRequire(import.meta.url);
+const pdfWorkerUrl = pathToFileURL(require.resolve("pdfjs-dist/legacy/build/pdf.worker.mjs")).href;
 function extensionOf(fileName) {
     const dot = fileName.lastIndexOf(".");
     return dot === -1 ? "" : fileName.slice(dot).toLowerCase();
@@ -25,7 +29,10 @@ async function loadPdfParser() {
         globals.ImageData ??= canvas.ImageData;
         globals.Path2D ??= canvas.Path2D;
     }
-    return import("pdf-parse");
+    await import("pdfjs-dist/legacy/build/pdf.worker.mjs");
+    const pdfParse = await import("pdf-parse");
+    pdfParse.PDFParse.setWorker(pdfWorkerUrl);
+    return pdfParse;
 }
 export async function extractTextFromUpload(file) {
     const fileName = decodeUploadFileName(file.originalname);
