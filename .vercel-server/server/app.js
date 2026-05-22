@@ -36,6 +36,19 @@ function thresholdFor(settings) {
         return 24;
     return 32;
 }
+async function mapWithConcurrency(items, concurrency, worker) {
+    const results = new Array(items.length);
+    let cursor = 0;
+    async function runWorker() {
+        while (cursor < items.length) {
+            const index = cursor;
+            cursor += 1;
+            results[index] = await worker(items[index]);
+        }
+    }
+    await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => runWorker()));
+    return results;
+}
 function uniqueMatches(matches) {
     const bestByUrl = new Map();
     for (const match of matches) {
@@ -54,16 +67,23 @@ async function runScan(request) {
     }
     const settings = sanitizeSettings(request.settings);
     const chunks = chunkText(text, settings.chunkWords, settings.overlapWords, settings.maxChunks);
-    const allMatches = [];
-    for (const chunk of chunks) {
+    const longDocumentMode = countWords(text) > 2000 || chunks.length > 18;
+    const searchLimit = settings.sensitivity === "deep" ? (longDocumentMode ? 8 : 12) : longDocumentMode ? 5 : 8;
+    const concurrency = settings.sensitivity === "deep" ? 3 : 4;
+    const matchedByChunk = await mapWithConcurrency(chunks, concurrency, async (chunk) => {
         try {
-            const candidates = await searchWebCandidates(chunk.text, settings.sensitivity === "deep" ? 12 : 8, settings.sensitivity === "deep");
-            allMatches.push(...candidates.map((candidate) => scoreCandidate(chunk.text, candidate, chunk.index)));
+            const candidates = await searchWebCandidates(chunk.text, searchLimit, settings.sensitivity === "deep", {
+                hydrateLimit: longDocumentMode ? 2 : undefined,
+                queryLimit: longDocumentMode ? 2 : undefined
+            });
+            return candidates.map((candidate) => scoreCandidate(chunk.text, candidate, chunk.index));
         }
         catch (error) {
             console.warn(error);
+            return [];
         }
-    }
+    });
+    const allMatches = matchedByChunk.flat();
     const matches = uniqueMatches(allMatches)
         .filter((match) => match.score >= thresholdFor(settings) || match.longestRun >= 10)
         .sort((a, b) => b.score - a.score || b.longestRun - a.longestRun)
@@ -76,6 +96,10 @@ async function runScan(request) {
             return sum + match.score * weight;
         }, 0) / weightedTop.reduce((sum, _match, index) => sum + Math.max(0.35, 1 - index * 0.08), 0));
     const localAi = detectAiSignals(text);
+    const scanNotes = [...prepared.notes];
+    if (longDocumentMode) {
+        scanNotes.push("Для довгого тексту застосовано прискорений вебпошук: усі фрагменти перевіряються, але зайві сторінки не дочитуються повністю.");
+    }
     return {
         id: crypto.randomUUID(),
         fileName: request.fileName || "Вставлений текст",
@@ -87,7 +111,7 @@ async function runScan(request) {
         aiProvider: "local",
         aiModel: undefined,
         aiNote: "Базовий звіт згенеровано локально. AI-думка підвантажується окремо після звіту.",
-        scanNotes: prepared.notes,
+        scanNotes,
         skippedTitleWords: prepared.skippedTitleWords,
         matches,
         aiSignals: localAi.signals,

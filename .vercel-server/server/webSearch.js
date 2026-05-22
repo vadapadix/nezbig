@@ -128,11 +128,15 @@ async function fetchReadablePageText(url) {
         return undefined;
     }
 }
-export async function searchWebCandidates(chunkText, maxResults = 5, deep = false) {
+export async function searchWebCandidates(chunkText, maxResults = 5, deep = false, profile = {}) {
     const perQuery = deep ? 7 : maxResults;
-    const searches = await Promise.allSettled(buildQueries(chunkText, deep).map((query) => searchDuckDuckGo(query, perQuery)));
+    const queries = buildQueries(chunkText, deep).slice(0, profile.queryLimit ?? (deep ? 4 : 3));
+    const searches = await Promise.allSettled(queries.map((query) => searchDuckDuckGo(query, perQuery)));
     const candidates = dedupeByUrl(searches.flatMap((result) => (result.status === "fulfilled" ? result.value : []))).slice(0, deep ? 14 : 8);
-    const hydrated = await Promise.all(candidates.map(async (candidate) => {
+    const hydrateLimit = Math.min(candidates.length, profile.hydrateLimit ?? candidates.length);
+    const hydrated = await Promise.all(candidates.map(async (candidate, index) => {
+        if (index >= hydrateLimit)
+            return candidate;
         const sourceText = await fetchReadablePageText(candidate.url);
         return {
             ...candidate,

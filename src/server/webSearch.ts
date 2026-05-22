@@ -9,6 +9,11 @@ const MAX_PAGE_CHARS = 120_000;
 const searchCache = new MemoryTtlCache<SearchCandidate[]>(1000 * 60 * 30, 500);
 const pageCache = new MemoryTtlCache<string | undefined>(1000 * 60 * 60, 500);
 
+export type SearchProfile = {
+  hydrateLimit?: number;
+  queryLimit?: number;
+};
+
 function decodeDuckDuckGoUrl(href: string): string {
   try {
     const url = new URL(href, "https://duckduckgo.com");
@@ -145,13 +150,16 @@ async function fetchReadablePageText(url: string): Promise<string | undefined> {
   }
 }
 
-export async function searchWebCandidates(chunkText: string, maxResults = 5, deep = false): Promise<SearchCandidate[]> {
+export async function searchWebCandidates(chunkText: string, maxResults = 5, deep = false, profile: SearchProfile = {}): Promise<SearchCandidate[]> {
   const perQuery = deep ? 7 : maxResults;
-  const searches = await Promise.allSettled(buildQueries(chunkText, deep).map((query) => searchDuckDuckGo(query, perQuery)));
+  const queries = buildQueries(chunkText, deep).slice(0, profile.queryLimit ?? (deep ? 4 : 3));
+  const searches = await Promise.allSettled(queries.map((query) => searchDuckDuckGo(query, perQuery)));
   const candidates = dedupeByUrl(searches.flatMap((result) => (result.status === "fulfilled" ? result.value : []))).slice(0, deep ? 14 : 8);
+  const hydrateLimit = Math.min(candidates.length, profile.hydrateLimit ?? candidates.length);
 
   const hydrated = await Promise.all(
-    candidates.map(async (candidate) => {
+    candidates.map(async (candidate, index) => {
+      if (index >= hydrateLimit) return candidate;
       const sourceText = await fetchReadablePageText(candidate.url);
       return {
         ...candidate,

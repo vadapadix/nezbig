@@ -21,11 +21,11 @@ const scanModes: Array<{
 
 function recommendSettings(wordCount: number, sensitivity: ScanSettings["sensitivity"]): ScanSettings {
   const words = Math.max(0, wordCount);
-  const chunkWords = sensitivity === "quick" ? 110 : sensitivity === "deep" ? (words > 3500 ? 170 : 145) : words > 2500 ? 140 : 120;
-  const overlapWords = sensitivity === "quick" ? 18 : sensitivity === "deep" ? 42 : 32;
+  const chunkWords = sensitivity === "quick" ? (words > 2000 ? 150 : 110) : sensitivity === "deep" ? (words > 3500 ? 220 : 160) : words > 2000 ? 180 : 120;
+  const overlapWords = sensitivity === "quick" ? 18 : sensitivity === "deep" ? 46 : words > 2000 ? 36 : 32;
   const usableStep = Math.max(40, chunkWords - overlapWords);
   const estimatedChunks = Math.max(1, Math.ceil(words / usableStep));
-  const cap = sensitivity === "quick" ? 8 : sensitivity === "deep" ? 48 : 18;
+  const cap = sensitivity === "quick" ? (words > 2000 ? 24 : 8) : sensitivity === "deep" ? 80 : words > 2000 ? 80 : 18;
   const floor = sensitivity === "quick" ? 4 : sensitivity === "deep" ? 18 : 8;
 
   return {
@@ -34,6 +34,23 @@ function recommendSettings(wordCount: number, sensitivity: ScanSettings["sensiti
     overlapWords,
     maxChunks: words === 0 ? (sensitivity === "quick" ? 8 : sensitivity === "deep" ? 40 : 14) : Math.min(cap, Math.max(floor, estimatedChunks))
   };
+}
+
+function estimateScanSeconds(settings: ScanSettings, wordCount: number): number {
+  if (wordCount <= 0) return 0;
+  const longMode = wordCount > 2000 || settings.maxChunks > 18;
+  const concurrency = settings.sensitivity === "deep" ? 3 : 4;
+  const secondsPerWave = settings.sensitivity === "quick" ? 9 : settings.sensitivity === "deep" ? (longMode ? 17 : 24) : longMode ? 13 : 18;
+  const waves = Math.max(1, Math.ceil(settings.maxChunks / concurrency));
+  return Math.max(18, Math.round(8 + waves * secondsPerWave));
+}
+
+function formatDuration(seconds: number): string {
+  if (seconds <= 0) return "після додавання тексту";
+  if (seconds < 60) return `~${seconds} с`;
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+  return rest > 0 ? `~${minutes} хв ${rest} с` : `~${minutes} хв`;
 }
 
 function formatNumber(value: number): string {
@@ -94,12 +111,12 @@ function downloadReportPng(report: ScanReport): void {
   context.fillRect(0, 0, width, 210);
 
   context.fillStyle = "#2ec4b6";
-  context.font = "700 22px Georgia, serif";
+  context.font = "700 22px Actay, sans-serif";
   context.fillText("ЗВІТ НЕЗБІГ", 70, 72);
   context.fillStyle = "#fff8ed";
-  context.font = "700 48px Georgia, serif";
+  context.font = "700 48px 'Actay Wide', Actay, sans-serif";
   const titleY = wrapCanvasText(context, report.fileName, 70, 132, 920, 56);
-  context.font = "400 24px Georgia, serif";
+  context.font = "400 24px Actay, sans-serif";
   context.fillText(new Intl.DateTimeFormat("uk-UA", { dateStyle: "medium", timeStyle: "short" }).format(new Date(report.checkedAt)), 1050, 72);
 
   let y = Math.max(260, titleY + 48);
@@ -120,30 +137,30 @@ function downloadReportPng(report: ScanReport): void {
     context.fill();
     context.stroke();
     context.fillStyle = "#66716f";
-    context.font = "700 24px Georgia, serif";
+    context.font = "700 24px Actay, sans-serif";
     context.fillText(card[0], x + 28, y + 48);
     context.fillStyle = "#101817";
-    context.font = "800 70px Georgia, serif";
+    context.font = "800 70px 'Actay Wide', Actay, sans-serif";
     context.fillText(card[1], x + 28, y + 116);
     context.fillStyle = "#66716f";
-    context.font = "400 22px Georgia, serif";
+    context.font = "400 22px Actay, sans-serif";
     context.fillText(card[2], x + 28, y + 148);
   }
 
   y += 225;
   context.fillStyle = "#101817";
-  context.font = "800 28px Georgia, serif";
+  context.font = "800 28px 'Actay Wide', Actay, sans-serif";
   context.fillText("Підсумок", 70, y);
   context.fillStyle = "#505c59";
-  context.font = "400 24px Georgia, serif";
+  context.font = "400 24px Actay, sans-serif";
   y = wrapCanvasText(context, report.summary, 70, y + 42, 1220, 34) + 22;
 
   if (report.scanNotes?.length) {
     context.fillStyle = "#101817";
-    context.font = "800 26px Georgia, serif";
+    context.font = "800 26px 'Actay Wide', Actay, sans-serif";
     context.fillText("Примітки перевірки", 70, y);
     context.fillStyle = "#505c59";
-    context.font = "400 22px Georgia, serif";
+    context.font = "400 22px Actay, sans-serif";
     y += 38;
     for (const note of report.scanNotes.slice(0, 4)) {
       y = wrapCanvasText(context, `- ${note}`, 90, y, 1180, 30);
@@ -152,10 +169,10 @@ function downloadReportPng(report: ScanReport): void {
   }
 
   context.fillStyle = "#101817";
-  context.font = "800 28px Georgia, serif";
+  context.font = "800 28px 'Actay Wide', Actay, sans-serif";
   context.fillText("Ймовірні джерела", 70, y);
   y += 46;
-  context.font = "400 22px Georgia, serif";
+  context.font = "400 22px Actay, sans-serif";
   context.fillStyle = "#505c59";
 
   const matches = report.matches.slice(0, 5);
@@ -164,25 +181,25 @@ function downloadReportPng(report: ScanReport): void {
   } else {
     for (const match of matches) {
       context.fillStyle = "#101817";
-      context.font = "800 24px Georgia, serif";
+      context.font = "800 24px Actay, sans-serif";
       y = wrapCanvasText(context, `${match.score}% - ${match.title}`, 70, y, 1220, 32);
       context.fillStyle = "#505c59";
-      context.font = "400 21px Georgia, serif";
+      context.font = "400 21px Actay, sans-serif";
       y = wrapCanvasText(context, `${match.url} | слова ${match.overlapPercent}%, хеші ${match.hashOverlapPercent}%, full-text ${match.fullTextRank}%`, 90, y + 6, 1180, 29);
       y += 18;
     }
   }
 
   context.fillStyle = "#101817";
-  context.font = "800 28px Georgia, serif";
+  context.font = "800 28px 'Actay Wide', Actay, sans-serif";
   context.fillText("AI-сигнали", 70, y);
   y += 44;
   for (const signal of report.aiSignals.slice(0, 5)) {
     context.fillStyle = "#101817";
-    context.font = "800 23px Georgia, serif";
+    context.font = "800 23px Actay, sans-serif";
     context.fillText(`${signal.label}: ${signal.score}%`, 70, y);
     context.fillStyle = "#505c59";
-    context.font = "400 21px Georgia, serif";
+    context.font = "400 21px Actay, sans-serif";
     y = wrapCanvasText(context, signal.detail, 90, y + 32, 1180, 29) + 16;
   }
 
@@ -210,6 +227,7 @@ export default function App() {
   const canScan = text.trim().length >= 120 && !busy;
   const coverageWords = Math.min(wordCount, settings.maxChunks * Math.max(1, settings.chunkWords - settings.overlapWords) + settings.overlapWords);
   const settingsMode = scanModes.find((mode) => mode.value === settings.sensitivity) ?? scanModes[1];
+  const estimatedScanSeconds = useMemo(() => estimateScanSeconds(settings, wordCount), [settings, wordCount]);
 
   useEffect(() => {
     setSettings((current) => {
@@ -256,16 +274,17 @@ export default function App() {
       return;
     }
 
+    const scanSettings = recommendSettings(wordCount, settings.sensitivity);
     setBusy(true);
     setLlmBusy(false);
     setReport(null);
-    setMessage("Шукаю збіги, відкриваю сторінки джерел і рахую локальні AI-сигнали...");
+    setMessage(`Шукаю збіги, відкриваю сторінки джерел і рахую локальні AI-сигнали. Орієнтовно: ${formatDuration(estimateScanSeconds(scanSettings, wordCount))}.`);
 
     try {
       const response = await fetch("/api/scan", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ text, fileName, settings: recommendSettings(wordCount, settings.sensitivity) })
+        body: JSON.stringify({ text, fileName, settings: scanSettings })
       });
       const payload = (await response.json()) as ScanReport | { error: string };
       if (!response.ok || "error" in payload) throw new Error("error" in payload ? payload.error : "Перевірка не вдалася.");
@@ -408,7 +427,7 @@ export default function App() {
               </div>
               <p>
                 {wordCount > 0
-                  ? `Автопідбір: ${settingsMode.label.toLowerCase()}, приблизне покриття ${formatNumber(coverageWords)} з ${formatNumber(wordCount)} слів.`
+                  ? `Автопідбір: ${settingsMode.label.toLowerCase()}, покриття ${formatNumber(coverageWords)} з ${formatNumber(wordCount)} слів, час ${formatDuration(estimatedScanSeconds)}.`
                   : "Додайте текст або файл, і параметри підлаштуються автоматично."}
               </p>
             </div>
@@ -430,6 +449,7 @@ export default function App() {
             <div className="loader-orbit" aria-hidden="true" />
             <div>
               <h2>{busy ? "Готуємо звіт" : "AI-думка аналізує текст"}</h2>
+              <p className="loading-estimate">{busy ? `Орієнтовний час: ${formatDuration(estimatedScanSeconds)}` : "AI-думка може відповідати довше за локальний звіт."}</p>
               <ol>
                 <li className={busy ? "step-active" : "step-done"}>Нарізаємо текст на фрагменти</li>
                 <li className={busy ? "step-active" : llmBusy ? "step-done" : ""}>Шукаємо збіги у відкритих джерелах</li>

@@ -1,6 +1,38 @@
+@font-face {
+  font-family: "Actay";
+  src: url("../../docs/brand/Actay-Regular.otf") format("opentype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Actay";
+  src: url("../../docs/brand/Actay-RegularItalic.otf") format("opentype");
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Actay Wide";
+  src: url("../../docs/brand/ActayWide-Bold.otf") format("opentype");
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Actay";
+  src: url("../../docs/brand/ActayWide-Bold.otf") format("opentype");
+  font-style: normal;
+  font-weight: 700 900;
+  font-display: swap;
+}
+
 :root {
   color-scheme: light;
-  font-family: "Aptos", "Segoe UI", sans-serif;
+  font-family: "Actay", "Segoe UI", sans-serif;
   background: #ebe4d4;
   color: #111817;
   font-synthesis: none;
@@ -141,9 +173,9 @@ p {
 
 h1 {
   margin-bottom: 6px;
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: "Actay Wide", "Actay", sans-serif;
   font-size: clamp(3.8rem, 8.8vw, 7.4rem);
-  line-height: 0.88;
+  line-height: 0.92;
   letter-spacing: 0;
 }
 
@@ -475,6 +507,12 @@ button:disabled {
 .loading-panel h2 {
   margin-bottom: 8px;
   font-size: 1.15rem;
+}
+
+.loading-estimate {
+  margin: -2px 0 10px;
+  color: var(--muted);
+  line-height: 1.4;
 }
 
 .loading-panel ol {
