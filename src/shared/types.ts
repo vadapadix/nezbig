@@ -2,7 +2,7 @@ export type ScanSettings = {
   maxChunks: number;
   chunkWords: number;
   overlapWords: number;
-  sensitivity: "balanced" | "strict" | "deep";
+  sensitivity: "quick" | "balanced" | "deep";
 };
 
 export type UploadedText = {

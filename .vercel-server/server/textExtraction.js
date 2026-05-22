@@ -5,8 +5,31 @@ function extensionOf(fileName) {
     const dot = fileName.lastIndexOf(".");
     return dot === -1 ? "" : fileName.slice(dot).toLowerCase();
 }
+export function decodeUploadFileName(fileName) {
+    const hasMojibake = /[ÐÑÒÃÂ][\u0080-\u00ff]?|�/.test(fileName);
+    if (!hasMojibake)
+        return fileName;
+    try {
+        return Buffer.from(fileName, "latin1").toString("utf8");
+    }
+    catch {
+        return fileName;
+    }
+}
+async function loadPdfParser() {
+    const globals = globalThis;
+    if (!globals.DOMMatrix || !globals.DOMPoint || !globals.ImageData || !globals.Path2D) {
+        const canvas = await import("@napi-rs/canvas");
+        globals.DOMMatrix ??= canvas.DOMMatrix;
+        globals.DOMPoint ??= canvas.DOMPoint;
+        globals.ImageData ??= canvas.ImageData;
+        globals.Path2D ??= canvas.Path2D;
+    }
+    return import("pdf-parse");
+}
 export async function extractTextFromUpload(file) {
-    const ext = extensionOf(file.originalname);
+    const fileName = decodeUploadFileName(file.originalname);
+    const ext = extensionOf(fileName);
     let text = "";
     if (TEXT_EXTENSIONS.has(ext) || file.mimetype.startsWith("text/")) {
         text = file.buffer.toString("utf8");
@@ -16,7 +39,7 @@ export async function extractTextFromUpload(file) {
         text = result.value;
     }
     else if (ext === ".pdf") {
-        const { PDFParse } = await import("pdf-parse");
+        const { PDFParse } = await loadPdfParser();
         const parser = new PDFParse({ data: file.buffer });
         try {
             const result = await parser.getText();
@@ -35,7 +58,7 @@ export async function extractTextFromUpload(file) {
     }
     return {
         text: cleaned,
-        fileName: file.originalname,
+        fileName,
         wordCount: countWords(cleaned)
     };
 }

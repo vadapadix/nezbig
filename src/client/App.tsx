@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import nezbigLogo from "./assets/nezbig-mark.png";
 import type { LlmOpinion, ScanReport, ScanSettings, UploadedText } from "../shared/types";
 
@@ -8,6 +8,33 @@ const defaultSettings: ScanSettings = {
   overlapWords: 32,
   sensitivity: "balanced"
 };
+
+const scanModes: Array<{
+  value: ScanSettings["sensitivity"];
+  label: string;
+  detail: string;
+}> = [
+  { value: "quick", label: "Швидко", detail: "Короткий огляд, менше запитів." },
+  { value: "balanced", label: "Збалансовано", detail: "Оптимально для есе й рефератів." },
+  { value: "deep", label: "Глибоко", detail: "Більше фрагментів, повільніше." }
+];
+
+function recommendSettings(wordCount: number, sensitivity: ScanSettings["sensitivity"]): ScanSettings {
+  const words = Math.max(0, wordCount);
+  const chunkWords = sensitivity === "quick" ? 110 : sensitivity === "deep" ? (words > 3500 ? 170 : 145) : words > 2500 ? 140 : 120;
+  const overlapWords = sensitivity === "quick" ? 18 : sensitivity === "deep" ? 42 : 32;
+  const usableStep = Math.max(40, chunkWords - overlapWords);
+  const estimatedChunks = Math.max(1, Math.ceil(words / usableStep));
+  const cap = sensitivity === "quick" ? 8 : sensitivity === "deep" ? 48 : 18;
+  const floor = sensitivity === "quick" ? 4 : sensitivity === "deep" ? 18 : 8;
+
+  return {
+    sensitivity,
+    chunkWords,
+    overlapWords,
+    maxChunks: words === 0 ? (sensitivity === "quick" ? 8 : sensitivity === "deep" ? 40 : 14) : Math.min(cap, Math.max(floor, estimatedChunks))
+  };
+}
 
 function formatNumber(value: number): string {
   return new Intl.NumberFormat("uk-UA").format(value);
@@ -34,6 +61,22 @@ export default function App() {
 
   const wordCount = useMemo(() => text.trim().split(/\s+/).filter(Boolean).length, [text]);
   const canScan = text.trim().length >= 120 && !busy;
+  const coverageWords = Math.min(wordCount, settings.maxChunks * Math.max(1, settings.chunkWords - settings.overlapWords) + settings.overlapWords);
+  const settingsMode = scanModes.find((mode) => mode.value === settings.sensitivity) ?? scanModes[1];
+
+  useEffect(() => {
+    setSettings((current) => {
+      const recommended = recommendSettings(wordCount, current.sensitivity);
+      if (
+        current.chunkWords === recommended.chunkWords &&
+        current.overlapWords === recommended.overlapWords &&
+        current.maxChunks === recommended.maxChunks
+      ) {
+        return current;
+      }
+      return recommended;
+    });
+  }, [wordCount]);
 
   async function handleFile(file: File | null) {
     if (!file) return;
@@ -75,7 +118,7 @@ export default function App() {
       const response = await fetch("/api/scan", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ text, fileName, settings })
+        body: JSON.stringify({ text, fileName, settings: recommendSettings(wordCount, settings.sensitivity) })
       });
       const payload = (await response.json()) as ScanReport | { error: string };
       if (!response.ok || "error" in payload) throw new Error("error" in payload ? payload.error : "Перевірка не вдалася.");
@@ -190,50 +233,38 @@ export default function App() {
 
           <aside className="control-panel" aria-labelledby="settings-title">
             <h2 id="settings-title">Параметри</h2>
-            <label htmlFor="sensitivity">Глибина пошуку</label>
-            <select
-              id="sensitivity"
-              name="sensitivity"
-              value={settings.sensitivity}
-              onChange={(event) => {
-                const sensitivity = event.target.value as ScanSettings["sensitivity"];
-                setSettings((current) => ({
-                  ...current,
-                  sensitivity,
-                  maxChunks: sensitivity === "deep" ? 48 : sensitivity === "strict" ? 28 : 14
-                }));
-              }}
-            >
-              <option value="balanced">Збалансована</option>
-              <option value="strict">Строга</option>
-              <option value="deep">Глибока</option>
-            </select>
+            <fieldset className="mode-picker">
+              <legend>Режим перевірки</legend>
+              {scanModes.map((mode) => (
+                <label key={mode.value} className={settings.sensitivity === mode.value ? "mode-option mode-option-active" : "mode-option"}>
+                  <input
+                    type="radio"
+                    name="sensitivity"
+                    value={mode.value}
+                    checked={settings.sensitivity === mode.value}
+                    onChange={() => setSettings(recommendSettings(wordCount, mode.value))}
+                  />
+                  <span>{mode.label}</span>
+                  <small>{mode.detail}</small>
+                </label>
+              ))}
+            </fieldset>
 
-            <label htmlFor="chunkWords">Слів у фрагменті</label>
-            <input
-              id="chunkWords"
-              name="chunkWords"
-              type="number"
-              min="70"
-              max="260"
-              inputMode="numeric"
-              autoComplete="off"
-              value={settings.chunkWords}
-              onChange={(event) => setSettings((current) => ({ ...current, chunkWords: Number(event.target.value) }))}
-            />
-
-            <label htmlFor="maxChunks">Фрагментів за перевірку</label>
-            <input
-              id="maxChunks"
-              name="maxChunks"
-              type="number"
-              min="1"
-              max="80"
-              inputMode="numeric"
-              autoComplete="off"
-              value={settings.maxChunks}
-              onChange={(event) => setSettings((current) => ({ ...current, maxChunks: Number(event.target.value) }))}
-            />
+            <div className="auto-settings" aria-label="Автоматичні параметри перевірки">
+              <div>
+                <span>Розмір фрагмента</span>
+                <strong>{settings.chunkWords} слів</strong>
+              </div>
+              <div>
+                <span>Глибина</span>
+                <strong>{settings.maxChunks} фрагм.</strong>
+              </div>
+              <p>
+                {wordCount > 0
+                  ? `Автопідбір: ${settingsMode.label.toLowerCase()}, приблизне покриття ${formatNumber(coverageWords)} з ${formatNumber(wordCount)} слів.`
+                  : "Додайте текст або файл, і параметри підлаштуються автоматично."}
+              </p>
+            </div>
 
             <div className="method-note">
               <strong>Метод</strong>
@@ -246,6 +277,20 @@ export default function App() {
             <p className="message" aria-live="polite">{message}</p>
           </aside>
         </form>
+
+        {busy || llmBusy ? (
+          <section className="loading-panel" aria-live="polite" aria-label="Стан перевірки">
+            <div className="loader-orbit" aria-hidden="true" />
+            <div>
+              <h2>{busy ? "Готуємо звіт" : "AI-думка аналізує текст"}</h2>
+              <ol>
+                <li className={busy ? "step-active" : "step-done"}>Нарізаємо текст на фрагменти</li>
+                <li className={busy ? "step-active" : llmBusy ? "step-done" : ""}>Шукаємо збіги у відкритих джерелах</li>
+                <li className={llmBusy ? "step-active" : ""}>Додаємо окрему AI-думку</li>
+              </ol>
+            </div>
+          </section>
+        ) : null}
 
         {report ? (
           <section className="report" aria-labelledby="report-title">

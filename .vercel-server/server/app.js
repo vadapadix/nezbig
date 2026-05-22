@@ -20,7 +20,7 @@ const defaultSettings = {
 };
 function sanitizeSettings(settings) {
     const sensitivity = settings?.sensitivity ?? defaultSettings.sensitivity;
-    const maxBySensitivity = sensitivity === "deep" ? 48 : sensitivity === "strict" ? 28 : 14;
+    const maxBySensitivity = sensitivity === "deep" ? 48 : sensitivity === "quick" ? 8 : 14;
     return {
         maxChunks: Math.min(Math.max(Number(settings?.maxChunks ?? maxBySensitivity), 1), 80),
         chunkWords: Math.min(Math.max(Number(settings?.chunkWords ?? defaultSettings.chunkWords), 70), 260),
@@ -29,8 +29,8 @@ function sanitizeSettings(settings) {
     };
 }
 function thresholdFor(settings) {
-    if (settings.sensitivity === "strict")
-        return 28;
+    if (settings.sensitivity === "quick")
+        return 38;
     if (settings.sensitivity === "deep")
         return 24;
     return 32;

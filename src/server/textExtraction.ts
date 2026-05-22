@@ -9,8 +9,34 @@ function extensionOf(fileName: string): string {
   return dot === -1 ? "" : fileName.slice(dot).toLowerCase();
 }
 
+export function decodeUploadFileName(fileName: string): string {
+  const hasMojibake = /[ÐÑÒÃÂ][\u0080-\u00ff]?|�/.test(fileName);
+  if (!hasMojibake) return fileName;
+
+  try {
+    return Buffer.from(fileName, "latin1").toString("utf8");
+  } catch {
+    return fileName;
+  }
+}
+
+async function loadPdfParser() {
+  const globals = globalThis as Record<string, unknown>;
+
+  if (!globals.DOMMatrix || !globals.DOMPoint || !globals.ImageData || !globals.Path2D) {
+    const canvas = await import("@napi-rs/canvas");
+    globals.DOMMatrix ??= canvas.DOMMatrix;
+    globals.DOMPoint ??= canvas.DOMPoint;
+    globals.ImageData ??= canvas.ImageData;
+    globals.Path2D ??= canvas.Path2D;
+  }
+
+  return import("pdf-parse");
+}
+
 export async function extractTextFromUpload(file: Express.Multer.File): Promise<UploadedText> {
-  const ext = extensionOf(file.originalname);
+  const fileName = decodeUploadFileName(file.originalname);
+  const ext = extensionOf(fileName);
   let text = "";
 
   if (TEXT_EXTENSIONS.has(ext) || file.mimetype.startsWith("text/")) {
@@ -19,7 +45,7 @@ export async function extractTextFromUpload(file: Express.Multer.File): Promise<
     const result = await mammoth.extractRawText({ buffer: file.buffer });
     text = result.value;
   } else if (ext === ".pdf") {
-    const { PDFParse } = await import("pdf-parse");
+    const { PDFParse } = await loadPdfParser();
     const parser = new PDFParse({ data: file.buffer });
     try {
       const result = await parser.getText();
@@ -38,7 +64,7 @@ export async function extractTextFromUpload(file: Express.Multer.File): Promise<
 
   return {
     text: cleaned,
-    fileName: file.originalname,
+    fileName,
     wordCount: countWords(cleaned)
   };
 }
