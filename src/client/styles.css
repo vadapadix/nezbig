@@ -669,6 +669,28 @@ dt {
   padding-left: 12px;
 }
 
+.opinion-panel {
+  display: grid;
+  gap: 6px;
+  border: 1px solid rgba(46, 196, 182, 0.26);
+  border-radius: 8px;
+  background: rgba(46, 196, 182, 0.08);
+  margin: 0 0 14px;
+  padding: 12px;
+}
+
+.opinion-panel strong {
+  color: var(--graphite);
+  font-size: 1.05rem;
+}
+
+.opinion-panel span,
+.opinion-panel p {
+  margin: 0;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
 .evidence-list {
   display: grid;
   gap: 6px;
@@ -689,6 +711,11 @@ dt {
 .signal {
   border-radius: 8px;
   padding: 16px;
+}
+
+.opinion-signal {
+  border-color: rgba(46, 196, 182, 0.34);
+  background: rgba(46, 196, 182, 0.08);
 }
 
 .match-score,

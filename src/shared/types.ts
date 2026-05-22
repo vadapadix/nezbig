@@ -28,6 +28,7 @@ export type SearchCandidate = {
   url: string;
   snippet: string;
   query?: string;
+  provider?: string;
   sourceText?: string;
   verifiedTextLength?: number;
 };
@@ -63,6 +64,10 @@ export type ScanReport = {
   aiProvider: "local" | "openrouter";
   aiModel?: string;
   aiNote?: string;
+  aiOpinionProbability?: number;
+  aiOpinionModel?: string;
+  aiOpinionNote?: string;
+  aiOpinionSignals?: AiSignal[];
   scanNotes?: string[];
   skippedTitleWords?: number;
   matches: PlagiarismMatch[];

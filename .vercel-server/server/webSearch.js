@@ -16,6 +16,9 @@ function decodeDuckDuckGoUrl(href) {
         return href;
     }
 }
+function cacheKey(provider, query, maxResults) {
+    return `${provider}::${query}::${maxResults}`;
+}
 function withTimeout(ms) {
     const controller = new AbortController();
     setTimeout(() => controller.abort(), ms).unref();
@@ -48,8 +51,8 @@ function buildQueries(chunkText, deep) {
     return [...new Set(queries)];
 }
 async function searchDuckDuckGo(query, maxResults) {
-    const cacheKey = `${query}::${maxResults}`;
-    const cached = searchCache.get(cacheKey);
+    const key = cacheKey("duckduckgo", query, maxResults);
+    const cached = searchCache.get(key);
     if (cached)
         return cached;
     const url = new URL("https://duckduckgo.com/html/");
@@ -77,12 +80,91 @@ async function searchDuckDuckGo(query, maxResults) {
                 title,
                 url: decodeDuckDuckGoUrl(href),
                 snippet,
-                query
+                query,
+                provider: "DuckDuckGo"
             });
         }
     });
     const results = candidates.slice(0, maxResults);
-    searchCache.set(cacheKey, results);
+    searchCache.set(key, results);
+    return results;
+}
+async function searchGoogleCustom(query, maxResults) {
+    const apiKey = process.env.GOOGLE_SEARCH_API_KEY?.trim();
+    const cx = process.env.GOOGLE_SEARCH_ENGINE_ID?.trim();
+    if (!apiKey || !cx)
+        return [];
+    const key = cacheKey("google", query, maxResults);
+    const cached = searchCache.get(key);
+    if (cached)
+        return cached;
+    const url = new URL("https://www.googleapis.com/customsearch/v1");
+    url.searchParams.set("key", apiKey);
+    url.searchParams.set("cx", cx);
+    url.searchParams.set("q", query);
+    url.searchParams.set("num", String(Math.min(10, maxResults)));
+    const response = await fetch(url, {
+        signal: withTimeout(SEARCH_TIMEOUT_MS),
+        headers: {
+            "user-agent": "Mozilla/5.0 Nezbig/1.0 (+local plagiarism checker)",
+            accept: "application/json"
+        }
+    });
+    if (!response.ok)
+        return [];
+    const payload = (await response.json());
+    const results = (payload.items ?? [])
+        .filter((item) => item.title && item.link && item.snippet)
+        .slice(0, maxResults)
+        .map((item) => ({
+        title: normalizeWhitespace(item.title ?? ""),
+        url: item.link ?? "",
+        snippet: normalizeWhitespace(item.snippet ?? ""),
+        query,
+        provider: "Google"
+    }));
+    searchCache.set(key, results);
+    return results;
+}
+async function searchSemanticScholar(query, maxResults) {
+    const key = cacheKey("semantic-scholar", query, maxResults);
+    const cached = searchCache.get(key);
+    if (cached)
+        return cached;
+    const plainQuery = query.replaceAll('"', "").trim();
+    if (plainQuery.length < 24)
+        return [];
+    const url = new URL("https://api.semanticscholar.org/graph/v1/paper/search");
+    url.searchParams.set("query", plainQuery);
+    url.searchParams.set("limit", String(Math.min(10, maxResults)));
+    url.searchParams.set("fields", "title,abstract,url,year,authors");
+    const response = await fetch(url, {
+        signal: withTimeout(SEARCH_TIMEOUT_MS),
+        headers: {
+            "user-agent": "Mozilla/5.0 Nezbig/1.0 (+academic originality checker)",
+            accept: "application/json"
+        }
+    });
+    if (!response.ok)
+        return [];
+    const payload = (await response.json());
+    const results = (payload.data ?? [])
+        .filter((paper) => paper.title && paper.url && paper.abstract)
+        .slice(0, maxResults)
+        .map((paper) => {
+        const authors = paper.authors?.slice(0, 2).map((author) => author.name).filter(Boolean).join(", ");
+        const meta = [authors, paper.year].filter(Boolean).join(", ");
+        return {
+            title: normalizeWhitespace(paper.title ?? ""),
+            url: paper.url ?? "",
+            snippet: normalizeWhitespace(meta ? `${meta}. ${paper.abstract}` : paper.abstract ?? ""),
+            query,
+            provider: "Semantic Scholar",
+            sourceText: normalizeWhitespace(paper.abstract ?? ""),
+            verifiedTextLength: paper.abstract?.length
+        };
+    });
+    searchCache.set(key, results);
     return results;
 }
 async function fetchReadablePageText(url) {
@@ -131,8 +213,12 @@ async function fetchReadablePageText(url) {
 export async function searchWebCandidates(chunkText, maxResults = 5, deep = false, profile = {}) {
     const perQuery = deep ? 7 : maxResults;
     const queries = buildQueries(chunkText, deep).slice(0, profile.queryLimit ?? (deep ? 4 : 3));
-    const searches = await Promise.allSettled(queries.map((query) => searchDuckDuckGo(query, perQuery)));
-    const candidates = dedupeByUrl(searches.flatMap((result) => (result.status === "fulfilled" ? result.value : []))).slice(0, deep ? 14 : 8);
+    const searches = await Promise.allSettled(queries.flatMap((query) => [
+        searchDuckDuckGo(query, perQuery),
+        searchGoogleCustom(query, perQuery),
+        ...(deep ? [searchSemanticScholar(query, Math.min(5, perQuery))] : [])
+    ]));
+    const candidates = dedupeByUrl(searches.flatMap((result) => (result.status === "fulfilled" ? result.value : []))).slice(0, deep ? 18 : 10);
     const hydrateLimit = Math.min(candidates.length, profile.hydrateLimit ?? candidates.length);
     const hydrated = await Promise.all(candidates.map(async (candidate, index) => {
         if (index >= hydrateLimit)

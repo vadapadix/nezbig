@@ -318,19 +318,10 @@ export default function App() {
         current?.id === baseReport.id
           ? {
               ...current,
-              aiProbability: payload.aiProbability,
-              aiProvider: payload.aiProvider,
-              aiModel: payload.aiModel,
-              aiNote: payload.aiNote,
-              aiSignals: [
-                ...payload.aiSignals,
-                {
-                  label: "Локальний Базовий Аналіз",
-                  score: baseReport.aiProbability,
-                  detail: "Це перша локальна оцінка, яка була показана до підключення LLM.",
-                  category: "safeguard"
-                }
-              ]
+              aiOpinionProbability: payload.aiProbability,
+              aiOpinionModel: payload.aiModel,
+              aiOpinionNote: payload.aiNote,
+              aiOpinionSignals: payload.aiSignals
             }
           : current
       );
@@ -485,7 +476,7 @@ export default function App() {
                 <span>AI-аналіз</span>
                 <strong>{report.aiProbability}%</strong>
                 <small>
-                  {llmBusy ? "AI-думка завантажується..." : `${riskLabel(report.aiProbability)} рівень з ${report.aiProvider === "openrouter" ? "AI-моделі" : "локального аналізу"}`}
+                  {`${riskLabel(report.aiProbability)} рівень з локального аналізу`}
                 </small>
               </article>
               <article>
@@ -546,6 +537,10 @@ export default function App() {
                             <dt>Доказ</dt>
                             <dd>{confidenceLabel(match.confidence)}</dd>
                           </div>
+                          <div>
+                            <dt>Індекс</dt>
+                            <dd>{match.provider ?? "Web"}</dd>
+                          </div>
                         </dl>
                       </article>
                     ))}
@@ -556,9 +551,16 @@ export default function App() {
               <section aria-labelledby="ai-title">
                 <h3 id="ai-title">Розширений AI-аналіз</h3>
                 <p className="model-badge">
-                  {llmBusy ? "AI-думка: очікування відповіді..." : report.aiProvider === "openrouter" ? `AI-модель: ${report.aiModel}` : "Локальний аналіз"}
+                  {llmBusy ? "AI-думка: очікування відповіді..." : "Локальний AI-відсоток незалежний від LLM"}
                 </p>
                 {report.aiNote ? <p className="provider-note">{report.aiNote}</p> : null}
+                {report.aiOpinionProbability !== undefined ? (
+                  <div className="opinion-panel">
+                    <strong>AI-думка: {report.aiOpinionProbability}%</strong>
+                    <span>{report.aiOpinionModel}</span>
+                    {report.aiOpinionNote ? <p>{report.aiOpinionNote}</p> : null}
+                  </div>
+                ) : null}
                 <p className="section-note">Це ансамбль стилістичних, структурних і патерн-ознак. Він показує підозрілі маркери та запобіжники, але не є юридичним доказом походження тексту.</p>
                 <div className="signal-list">
                   {report.aiSignals.map((signal) => (
@@ -576,6 +578,16 @@ export default function App() {
                           ))}
                         </ul>
                       ) : null}
+                    </article>
+                  ))}
+                  {report.aiOpinionSignals?.map((signal) => (
+                    <article className="signal opinion-signal" key={`opinion-${signal.label}`}>
+                      <div>
+                        <strong>{signal.label}</strong>
+                        <span>{signal.score}%</span>
+                      </div>
+                      <progress value={signal.score} max="100" aria-label={`${signal.label}: ${signal.score}%`} />
+                      <p>{signal.detail}</p>
                     </article>
                   ))}
                 </div>

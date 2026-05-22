@@ -1,6 +1,7 @@
 import { normalizeWhitespace } from "./chunking.js";
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const MAX_ANALYSIS_CHARS = 18000;
+const OPENROUTER_TIMEOUT_MS = 24_000;
 const FALLBACK_MODELS = [
     "openrouter/owl-alpha",
     "nvidia/nemotron-3-super-120b-a12b:free",
@@ -32,6 +33,11 @@ function asScore(value) {
     if (!Number.isFinite(number))
         return 0;
     return Math.max(0, Math.min(100, Math.round(number)));
+}
+function withTimeout(ms) {
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), ms).unref();
+    return controller.signal;
 }
 function parseAiResult(content, model, attemptedModels) {
     const parsed = extractJsonObject(content);
@@ -115,6 +121,7 @@ export async function analyzeWithOpenRouter(text, localAi) {
         const baseBody = baseBodyFor(model);
         const response = await fetch(OPENROUTER_URL, {
             method: "POST",
+            signal: withTimeout(OPENROUTER_TIMEOUT_MS),
             headers,
             body: JSON.stringify({
                 ...baseBody,
