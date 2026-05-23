@@ -10,10 +10,18 @@ export type ProseFilterResult = {
 const CODE_LINE_PATTERNS = [
   /^\s*(import|export|const|let|var|function|class|interface|type|enum|return|if|else|for|while|switch|case|try|catch)\b/,
   /^\s*(public|private|protected|async|await|def|from|package|using|namespace)\b/,
+  /^\s*(sub|end\s+sub|private\s+sub|public\s+sub|function|end\s+function|private\s+function|public\s+function|dim|set|call|then|next|loop|with|end\s+with)\b/i,
   /^\s*[{}()[\];,.<>/]*\s*$/,
   /^\s*<\/?[a-z][^>]*>\s*$/i,
   /^\s*["']?[A-Za-z0-9_$-]+["']?\s*:\s*["'{[\d]/,
   /^\s*[.#]?[A-Za-z0-9_-]+\s*\{/
+];
+
+const INLINE_CODE_PHRASES = [
+  /\b(?:end\s+sub|private\s+sub|public\s+sub|end\s+function|private\s+function|public\s+function)\b/gi,
+  /\b(?:console\.log|document\.querySelector|addEventListener|return\s+false|return\s+true)\b/gi,
+  /\b(?:const|let|var|function|class|interface|type)\s+[A-Za-z_$][\w$]*\b/g,
+  /\b[A-Za-z_$][\w$]*\s*\([^)]{0,80}\)\s*(?:=>|\{)?/g
 ];
 
 function looksLikeCodeLine(line: string): boolean {
@@ -24,6 +32,20 @@ function looksLikeCodeLine(line: string): boolean {
   const hasCodePattern = CODE_LINE_PATTERNS.some((pattern) => pattern.test(line));
   const hasAssignment = /(?:=>|===|!==|==|!=|\+\+|--|\.\w+\(|:\s*(?:string|number|boolean|unknown|void)\b)/.test(trimmed);
   return hasCodePattern || hasAssignment || (symbolDensity > 0.16 && !/[А-Яа-яІіЇїЄєҐґ]{3,}/.test(trimmed));
+}
+
+function stripInlineCodeResidue(text: string): { text: string; removedWords: number } {
+  let removedWords = 0;
+  let cleaned = text;
+
+  for (const pattern of INLINE_CODE_PHRASES) {
+    cleaned = cleaned.replace(pattern, (match) => {
+      removedWords += countWords(match);
+      return " ";
+    });
+  }
+
+  return { text: normalizeWhitespace(cleaned), removedWords };
 }
 
 export function filterProseText(rawText: string): ProseFilterResult {
@@ -67,8 +89,9 @@ export function filterProseText(rawText: string): ProseFilterResult {
   }
 
   flushCodeRun();
-  const text = normalizeWhitespace(kept.join(" "));
-  const removedCodeWords = countWords(removed.join(" "));
+  const inlineCleaned = stripInlineCodeResidue(kept.join(" "));
+  const text = inlineCleaned.text;
+  const removedCodeWords = countWords(removed.join(" ")) + inlineCleaned.removedWords;
 
   return {
     text,

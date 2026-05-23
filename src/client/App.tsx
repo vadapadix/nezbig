@@ -93,6 +93,11 @@ function summarizeAiError(error: unknown): string {
   return message.slice(0, 180);
 }
 
+function isDuplicateOpinionSignal(signal: LlmOpinion["aiSignals"][number], localSignals: ScanReport["aiSignals"]): boolean {
+  const normalizedLabel = signal.label.trim().toLowerCase();
+  return localSignals.some((localSignal) => localSignal.label.trim().toLowerCase() === normalizedLabel);
+}
+
 function wrapCanvasText(context: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number): number {
   const words = text.split(/\s+/).filter(Boolean);
   let line = "";
@@ -606,7 +611,7 @@ export default function App() {
                       ) : null}
                     </article>
                   ))}
-                  {report.aiOpinionSignals?.map((signal) => (
+                  {report.aiOpinionSignals?.filter((signal) => !isDuplicateOpinionSignal(signal, report.aiSignals)).map((signal) => (
                     <article className="signal opinion-signal" key={`opinion-${signal.label}`}>
                       <div>
                         <strong>{signal.label}</strong>

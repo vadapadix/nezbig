@@ -21,6 +21,23 @@ describe("scoreCandidate", () => {
 });
 
 describe("detectAiSignals", () => {
+  it("does not let safeguards erase corroborated AI signals", () => {
+    const text = `
+      ВСТУП. Актуальність теми зумовлена необхідністю комплексного аналізу сучасних підходів.
+      У роботі розглянуто основні аспекти функціонування інформаційної системи та визначено її ключові переваги.
+      На основі проведеного аналізу доцільно зазначити, що система не тільки зберігає записи, а й забезпечує ефективні сценарії роботи.
+      У роботі проаналізовано структуру таблиць, узагальнено вимоги користувачів та сформовано практичні рекомендації.
+      Таблиця 1.1 містить 24 записи, таблиця 1.2 містить 18 записів, а рисунок 2.1 показує схему взаємодії.
+      "Довга цитата для імітації академічного фрагмента, який не повинен повністю обнулити оцінку ризику."
+      ВИСНОВКИ. Отримані результати дозволяють стверджувати, що запропонований підхід є важливим для подальшого розвитку.
+    `.repeat(10);
+
+    const result = detectAiSignals(text);
+
+    expect(result.probability).toBeGreaterThanOrEqual(35);
+    expect(result.signals.some((signal) => signal.category === "safeguard")).toBe(true);
+  });
+
   it("returns bounded probabilities with expanded evidence", () => {
     const result = detectAiSignals("This paragraph is short. This paragraph is direct. This paragraph is balanced. Therefore, it may appear uniform.");
 

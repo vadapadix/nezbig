@@ -25,4 +25,18 @@ describe("filterProseText", () => {
     expect(result.text).not.toContain("console.log");
     expect(result.removedCodeWords).toBeGreaterThan(5);
   });
+
+  it("removes VBA-style code residue from prose extraction", () => {
+    const result = filterProseText(`
+      У навчальній версії передбачено авторизацію користувача та перевірку ролей.
+      End Sub Private Sub Login_Click() Public Function ValidateUser() End Function
+      Подальший опис стосується структури бази даних та сценаріїв роботи системи.
+    `);
+
+    expect(result.text.toLowerCase()).not.toContain("end sub");
+    expect(result.text.toLowerCase()).not.toContain("private sub");
+    expect(result.text.toLowerCase()).not.toContain("public function");
+    expect(result.text).toContain("авторизацію користувача");
+    expect(result.text).toContain("структури бази даних");
+  });
 });

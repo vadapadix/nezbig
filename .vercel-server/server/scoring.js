@@ -428,10 +428,21 @@ export function detectAiSignals(text) {
     const effectiveSafeguardScore = academicAiCluster || (wordCount < 180 && evidenceSignals.length >= 4)
         ? Math.max(0, safeguards.score - (academicAiCluster ? 22 : 16))
         : safeguards.score;
-    const safeguardPenalty = Math.min(34, effectiveSafeguardScore * 0.44);
+    const strongSuspicionSignals = evidenceSignals.filter((signal) => signal.category !== "safeguard" && signal.score >= 50);
+    const strongAverage = strongSuspicionSignals.length === 0
+        ? 0
+        : strongSuspicionSignals.reduce((sum, signal) => sum + signal.score, 0) / strongSuspicionSignals.length;
+    const safeguardPressure = strongSuspicionSignals.length >= 2 ? 0.24 : evidenceSignals.length >= 2 ? 0.34 : 0.44;
+    const safeguardPenalty = Math.min(strongSuspicionSignals.length >= 2 ? 18 : 28, effectiveSafeguardScore * safeguardPressure);
     const patternClusterBoost = evidenceSignals.filter((signal) => signal.category === "pattern" && signal.score >= 65).length >= 3 ? 18 : 4;
     const academicClusterBoost = academicAiCluster ? 34 : 0;
-    const probability = placeholderText ? Math.min(12, clampScore(weightedRaw)) : clampScore(weightedRaw * corroborationFactor * lengthFactor - safeguardPenalty + patternClusterBoost + academicClusterBoost);
+    const rawProbability = weightedRaw * corroborationFactor * lengthFactor - safeguardPenalty + patternClusterBoost + academicClusterBoost;
+    const corroboratedFloor = strongSuspicionSignals.length >= 3
+        ? Math.min(72, strongAverage * 0.72)
+        : strongSuspicionSignals.length >= 2
+            ? Math.min(56, strongAverage * 0.58)
+            : 0;
+    const probability = placeholderText ? Math.min(12, clampScore(weightedRaw)) : clampScore(Math.max(rawProbability, corroboratedFloor));
     const signals = signalDrafts
         .map(({ weight: _weight, ...signal }) => signal)
         .filter((signal) => signal.score >= 18 || signal.evidence?.length)
