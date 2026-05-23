@@ -4,7 +4,7 @@ import express from "express";
 import multer from "multer";
 import { chunkText, countWords } from "./chunking.js";
 import { prepareDocumentText } from "./documentPreprocess.js";
-import { analyzeWithOpenRouter } from "./openrouterAi.js";
+import { analyzeWithLlmProviders } from "./llmOpinion.js";
 import { detectAiSignals, scoreCandidate, summarizeReport } from "./scoring.js";
 import { extractTextFromUpload } from "./textExtraction.js";
 import { hydrateSearchCandidates, searchWebCandidates } from "./webSearch.js";
@@ -182,7 +182,7 @@ app.post("/api/ai-opinion", async (request, response) => {
             response.status(400).json({ error: "Додайте щонайменше 120 символів тексту для AI-думки." });
             return;
         }
-        const opinion = await analyzeWithOpenRouter(text, {
+        const opinion = await analyzeWithLlmProviders(text, {
             probability: Number(body.localProbability) || 0,
             signals: Array.isArray(body.localSignals) ? body.localSignals : []
         });

@@ -84,6 +84,15 @@ function confidenceLabel(value: "snippet" | "page"): string {
   return value === "page" ? "сторінку прочитано" : "лише уривок пошуку";
 }
 
+function summarizeAiError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  if (/rate-limited|rate.?limit|429/i.test(message)) return "модель тимчасово обмежена лімітом запитів";
+  if (/insufficient_quota|out of credits|quota/i.test(message)) return "у провайдера закінчилася квота";
+  if (/aborted|timeout/i.test(message)) return "модель не відповіла вчасно";
+  if (/empty response/i.test(message)) return "модель повернула порожню відповідь";
+  return message.slice(0, 180);
+}
+
 function wrapCanvasText(context: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number): number {
   const words = text.split(/\s+/).filter(Boolean);
   let line = "";
@@ -344,7 +353,7 @@ export default function App() {
       );
       setMessage(`AI-думка готова: ${payload.aiModel}.`);
     } catch (error) {
-      const note = `AI-думка недоступна, залишено локальний звіт: ${error instanceof Error ? error.message : "невідома помилка"}`;
+      const note = `AI-думка недоступна, залишено локальний звіт: ${summarizeAiError(error)}.`;
       setReport((current) => (current?.id === baseReport.id ? { ...current, aiNote: note } : current));
       setMessage("Базовий звіт готовий. AI-думка зараз недоступна, використано локальний аналіз.");
     } finally {

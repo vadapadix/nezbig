@@ -61,7 +61,7 @@ export type ScanReport = {
   chunksChecked: number;
   plagiarismScore: number;
   aiProbability: number;
-  aiProvider: "local" | "openrouter";
+  aiProvider: "local" | "openrouter" | "nvidia-nim";
   aiModel?: string;
   aiNote?: string;
   aiOpinionProbability?: number;
@@ -77,7 +77,7 @@ export type ScanReport = {
 
 export type LlmOpinion = {
   aiProbability: number;
-  aiProvider: "openrouter";
+  aiProvider: "openrouter" | "nvidia-nim";
   aiModel: string;
   aiNote?: string;
   aiSignals: AiSignal[];

@@ -59,7 +59,8 @@ const AI_PATTERN_GROUPS = [
             /(?:crucial|pivotal|vibrant|valuable|seamless|robust|innovative|transformative|groundbreaking|comprehensive)/gi,
             /(?:delve|leverage|utilize|enhance|underscore|showcase|foster|facilitate|optimize|navigate the complexities)/gi,
             /(?:ключов(?:ий|а|е|і)|важлив(?:ий|а|е|і)|комплексн(?:ий|а|е|і)|ефективн(?:ий|а|е|і)|інноваційн(?:ий|а|е|і)|унікальн(?:ий|а|е|і))/gi,
-            /(?:підкреслює|відіграє ключову роль|сприяє|забезпечує|оптимізує|покращує|розкриває потенціал)/gi
+            /(?:підкреслює|відіграє ключову роль|сприяє|забезпечує|оптимізує|покращує|розкриває потенціал)/gi,
+            /(?:актуальність\s+теми|мета\s+роботи\s+полягає|об['’]єктом\s+дослідження|предметом\s+дослідження|практичне\s+значення|теоретичне\s+значення)/gi
         ]
     },
     {
@@ -99,6 +100,17 @@ const AI_PATTERN_GROUPS = [
         patterns: [
             /(?:experts argue|observers note|studies show|research suggests|many sources|various factors|numerous examples)/gi,
             /(?:експерти вважають|дослідження показують|численні фактори|різноманітні аспекти|багато джерел|широкий спектр)/gi
+        ]
+    },
+    {
+        label: "Шаблон академічної генерації",
+        category: "pattern",
+        weight: 1.22,
+        patterns: [
+            /(?:у\s+роботі\s+(?:розглянуто|проаналізовано|досліджено|визначено|узагальнено))/gi,
+            /(?:метою\s+(?:роботи|дослідження)\s+є|завданнями\s+(?:роботи|дослідження)\s+є|робота\s+складається\s+з)/gi,
+            /(?:актуальність\s+(?:обраної\s+)?теми\s+(?:полягає|зумовлена)|предметом\s+дослідження\s+є|об['’]єктом\s+дослідження\s+є)/gi,
+            /(?:на\s+основі\s+проведеного\s+аналізу|отримані\s+результати\s+дозволяють|доцільно\s+зазначити)/gi
         ]
     }
 ];
@@ -292,6 +304,14 @@ function ngramRepetition(tokens) {
     const score = clampScore((repeated.reduce((sum, [, count]) => sum + count - 1, 0) / Math.max(1, tokens.length / 120)) * 55);
     return { score, evidence: repeated.map(([gram, count]) => `${gram} (${count}x)`).slice(0, 4) };
 }
+function impersonalAcademicVoice(text, wordCount) {
+    const matches = countRegexMatches(text, /(?<![\p{L}\p{N}_])(?:розглянуто|проаналізовано|досліджено|визначено|встановлено|узагальнено|систематизовано|обґрунтовано|виявлено|сформовано|запропоновано|охарактеризовано)(?![\p{L}\p{N}_])/giu);
+    const density = matches.length / Math.max(1, wordCount / 260);
+    return {
+        score: clampScore(Math.min(1, density / 2.6) * 100),
+        evidence: sampleEvidence(matches)
+    };
+}
 function safeguardScore(normalized, wordCount, placeholderText, academicStructure) {
     const citations = countRegexMatches(normalized, /\[[0-9]{1,3}\]|\([A-ZА-ЯІЇЄҐ][\p{L}'-]+,\s*20[0-9]{2}\)|https?:\/\/\S+|doi:\s*\S+/giu);
     const numbers = countRegexMatches(normalized, /\b\d+(?:[.,]\d+)?\s*(?:%|грн|uah|usd|км|м|року|р\.|рік|years?)?\b/giu);
@@ -326,6 +346,7 @@ export function detectAiSignals(text) {
     const academicStructure = hasAcademicStructure(normalized);
     const repeatedStarts = sentenceStartRepetition(sentences);
     const repeatedNgrams = ngramRepetition(contentWords);
+    const impersonalVoice = impersonalAcademicVoice(normalized, wordCount);
     const safeguards = safeguardScore(normalized, wordCount, placeholderText, academicStructure);
     const rhythmScore = clampScore((1 - Math.min(1, sentenceCv / 0.58)) * 100 * (sentences.length >= 5 ? 1 : 0.55));
     const lexicalScore = clampScore(Math.max(0, 0.6 - uniqueRatio) * 170 + repeatedNgrams.score * 0.28);
@@ -387,16 +408,30 @@ export function detectAiSignals(text) {
             evidence: punctuationTypes.size ? [`${punctuationTypes.size} типів пунктуаційних маркерів`] : [],
             weight: 0.46
         },
+        {
+            label: "Безособова академічна подача",
+            score: impersonalVoice.score,
+            category: "pattern",
+            detail: impersonalVoice.score >= 45 ? "Текст часто використовує безособові дієслівні конструкції, типові для згенерованих академічних заготовок." : "Безособова академічна подача не домінує.",
+            evidence: impersonalVoice.evidence,
+            weight: 0.92
+        },
         ...patternBased
     ];
     const evidenceSignals = signalDrafts.filter((signal) => signal.score >= 32);
     const weightedRaw = signalDrafts.reduce((sum, signal) => sum + signal.score * signal.weight, 0) / signalDrafts.reduce((sum, signal) => sum + signal.weight, 0);
     const corroborationFactor = evidenceSignals.length <= 1 ? 0.62 : evidenceSignals.length === 2 ? 0.78 : evidenceSignals.length === 3 ? 0.9 : 1;
     const lengthFactor = wordCount < 120 ? (evidenceSignals.length >= 4 ? 0.92 : 0.62) : wordCount < 260 ? (evidenceSignals.length >= 4 ? 0.96 : 0.84) : 1;
-    const effectiveSafeguardScore = wordCount < 180 && evidenceSignals.length >= 4 ? Math.max(0, safeguards.score - 16) : safeguards.score;
-    const safeguardPenalty = Math.min(42, effectiveSafeguardScore * 0.55);
-    const patternClusterBoost = evidenceSignals.filter((signal) => signal.category === "pattern" && signal.score >= 65).length >= 3 ? 14 : 0;
-    const probability = placeholderText ? Math.min(12, clampScore(weightedRaw)) : clampScore(weightedRaw * corroborationFactor * lengthFactor - safeguardPenalty + patternClusterBoost);
+    const academicAiCluster = academicStructure &&
+        (evidenceSignals.filter((signal) => signal.category === "pattern" && signal.score >= 45).length >= 3 ||
+            evidenceSignals.some((signal) => signal.label === "Шаблон академічної генерації" && signal.score >= 65));
+    const effectiveSafeguardScore = academicAiCluster || (wordCount < 180 && evidenceSignals.length >= 4)
+        ? Math.max(0, safeguards.score - (academicAiCluster ? 22 : 16))
+        : safeguards.score;
+    const safeguardPenalty = Math.min(34, effectiveSafeguardScore * 0.44);
+    const patternClusterBoost = evidenceSignals.filter((signal) => signal.category === "pattern" && signal.score >= 65).length >= 3 ? 18 : 4;
+    const academicClusterBoost = academicAiCluster ? 34 : 0;
+    const probability = placeholderText ? Math.min(12, clampScore(weightedRaw)) : clampScore(weightedRaw * corroborationFactor * lengthFactor - safeguardPenalty + patternClusterBoost + academicClusterBoost);
     const signals = signalDrafts
         .map(({ weight: _weight, ...signal }) => signal)
         .filter((signal) => signal.score >= 18 || signal.evidence?.length)
