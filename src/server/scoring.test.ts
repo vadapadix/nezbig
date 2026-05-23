@@ -38,6 +38,13 @@ describe("detectAiSignals", () => {
     expect(result.signals.some((signal) => signal.category === "safeguard")).toBe(true);
   });
 
+  it("keeps a non-zero floor for a very strong isolated local signal", () => {
+    const repeated = Array.from({ length: 90 }, () => "Форма позиції замовлення описує форму позиції поставки та форму позиції замовлення.").join(" ");
+    const result = detectAiSignals(`${repeated} Таблиця 1.1 містить 24 записи. Таблиця 1.2 містить 18 записів.`);
+
+    expect(result.probability).toBeGreaterThan(0);
+  });
+
   it("returns bounded probabilities with expanded evidence", () => {
     const result = detectAiSignals("This paragraph is short. This paragraph is direct. This paragraph is balanced. Therefore, it may appear uniform.");
 

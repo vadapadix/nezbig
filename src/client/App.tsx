@@ -80,6 +80,22 @@ function riskLabel(value: number): string {
   return "Низький";
 }
 
+function reportAiRisk(report: ScanReport): number {
+  return Math.max(report.aiProbability, report.aiOpinionProbability ?? 0);
+}
+
+function reportSummaryText(report: ScanReport): string {
+  const aiRisk = reportAiRisk(report);
+  if (aiRisk === report.aiProbability || report.aiOpinionProbability === undefined) return report.summary;
+
+  const aiDetail = `Підсумковий AI-ризик: ${aiRisk}% (локально ${report.aiProbability}%, AI-думка ${report.aiOpinionProbability}%).`;
+  if (report.matches.length === 0) {
+    return `Сильних збігів у відкритих вебджерелах не знайдено. ${aiDetail}`;
+  }
+
+  return `${report.summary} ${aiDetail}`;
+}
+
 function confidenceLabel(value: "snippet" | "page"): string {
   return value === "page" ? "сторінку прочитано" : "лише уривок пошуку";
 }
@@ -154,7 +170,7 @@ function downloadReportPng(report: ScanReport): void {
   const cardWidth = 380;
   const cards = [
     ["Плагіат", `${report.plagiarismScore}%`, `${riskLabel(report.plagiarismScore)} ризик`],
-    ["AI-аналіз", `${report.aiProbability}%`, `${riskLabel(report.aiProbability)} рівень`],
+    ["AI-аналіз", `${reportAiRisk(report)}%`, `${riskLabel(reportAiRisk(report))} рівень`],
     ["Фрагменти", formatNumber(report.chunksChecked), `${formatNumber(report.wordCount)} слів`]
   ];
 
@@ -184,7 +200,7 @@ function downloadReportPng(report: ScanReport): void {
   context.fillText("Підсумок", 70, y);
   context.fillStyle = "#505c59";
   context.font = "400 24px Actay, sans-serif";
-  y = wrapCanvasText(context, report.summary, 70, y + 42, 1220, 34) + 22;
+  y = wrapCanvasText(context, reportSummaryText(report), 70, y + 42, 1220, 34) + 22;
 
   if (report.scanNotes?.length) {
     context.fillStyle = "#101817";
@@ -487,7 +503,7 @@ export default function App() {
               <div>
                 <p className="eyebrow">Звіт Незбіг</p>
                 <h2 id="report-title">{report.fileName}</h2>
-                <p>{report.summary}</p>
+                <p>{reportSummaryText(report)}</p>
               </div>
               <div className="report-actions">
                 <time dateTime={report.checkedAt}>{new Intl.DateTimeFormat("uk-UA", { dateStyle: "medium", timeStyle: "short" }).format(new Date(report.checkedAt))}</time>
@@ -505,9 +521,11 @@ export default function App() {
               </article>
               <article>
                 <span>AI-аналіз</span>
-                <strong>{report.aiProbability}%</strong>
+                <strong>{reportAiRisk(report)}%</strong>
                 <small>
-                  {`${riskLabel(report.aiProbability)} рівень з локального аналізу`}
+                  {report.aiOpinionProbability !== undefined
+                    ? `${riskLabel(reportAiRisk(report))} рівень: локально ${report.aiProbability}%, AI-думка ${report.aiOpinionProbability}%`
+                    : `${riskLabel(report.aiProbability)} рівень з локального аналізу`}
                 </small>
               </article>
               <article>

@@ -441,7 +441,9 @@ export function detectAiSignals(text) {
         ? Math.min(72, strongAverage * 0.72)
         : strongSuspicionSignals.length >= 2
             ? Math.min(56, strongAverage * 0.58)
-            : 0;
+            : strongSuspicionSignals[0]?.score >= 78
+                ? Math.min(32, strongSuspicionSignals[0].score * 0.34)
+                : 0;
     const probability = placeholderText ? Math.min(12, clampScore(weightedRaw)) : clampScore(Math.max(rawProbability, corroboratedFloor));
     const signals = signalDrafts
         .map(({ weight: _weight, ...signal }) => signal)
