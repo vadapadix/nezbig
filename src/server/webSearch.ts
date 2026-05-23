@@ -11,6 +11,7 @@ const pageCache = new MemoryTtlCache<string | undefined>(1000 * 60 * 60, 500);
 
 export type SearchProfile = {
   hydrateLimit?: number;
+  includeAcademic?: boolean;
   queryLimit?: number;
 };
 
@@ -264,7 +265,7 @@ export async function searchWebCandidates(chunkText: string, maxResults = 5, dee
     queries.flatMap((query) => [
       searchDuckDuckGo(query, perQuery),
       searchGoogleCustom(query, perQuery),
-      ...(deep ? [searchSemanticScholar(query, Math.min(5, perQuery))] : [])
+      ...(deep && profile.includeAcademic !== false ? [searchSemanticScholar(query, Math.min(5, perQuery))] : [])
     ])
   );
   const candidates = dedupeByUrl(searches.flatMap((result) => (result.status === "fulfilled" ? result.value : []))).slice(0, deep ? 18 : 10);
@@ -283,4 +284,25 @@ export async function searchWebCandidates(chunkText: string, maxResults = 5, dee
   );
 
   return hydrated.slice(0, maxResults);
+}
+
+export async function hydrateSearchCandidates(candidates: SearchCandidate[], maxPages: number): Promise<SearchCandidate[]> {
+  const selected = candidates.slice(0, maxPages);
+  const sourceByUrl = new Map<string, Promise<string | undefined>>();
+
+  const hydrated = await Promise.all(
+    selected.map(async (candidate) => {
+      const key = candidate.url.replace(/#.*$/, "").replace(/\/$/, "");
+      const sourcePromise = sourceByUrl.get(key) ?? fetchReadablePageText(candidate.url);
+      sourceByUrl.set(key, sourcePromise);
+      const sourceText = await sourcePromise;
+      return {
+        ...candidate,
+        sourceText: sourceText ?? candidate.sourceText,
+        verifiedTextLength: sourceText?.length ?? candidate.verifiedTextLength
+      };
+    })
+  );
+
+  return hydrated;
 }

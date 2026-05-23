@@ -5,7 +5,7 @@ export function countWords(text) {
 export function normalizeWhitespace(text) {
     return text.replace(/\s+/g, " ").trim();
 }
-export function chunkText(text, chunkWords, overlapWords, maxChunks) {
+export function chunkText(text, chunkWords, overlapWords, maxChunks = Number.POSITIVE_INFINITY) {
     const words = normalizeWhitespace(text).split(" ").filter(Boolean);
     if (words.length === 0)
         return [];

@@ -14,7 +14,7 @@ export function normalizeWhitespace(text: string): string {
   return text.replace(/\s+/g, " ").trim();
 }
 
-export function chunkText(text: string, chunkWords: number, overlapWords: number, maxChunks: number): TextChunk[] {
+export function chunkText(text: string, chunkWords: number, overlapWords: number, maxChunks = Number.POSITIVE_INFINITY): TextChunk[] {
   const words = normalizeWhitespace(text).split(" ").filter(Boolean);
   if (words.length === 0) return [];
 

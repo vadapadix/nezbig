@@ -7,7 +7,7 @@ import { prepareDocumentText } from "./documentPreprocess.js";
 import { analyzeWithOpenRouter } from "./openrouterAi.js";
 import { detectAiSignals, scoreCandidate, summarizeReport } from "./scoring.js";
 import { extractTextFromUpload } from "./textExtraction.js";
-import { searchWebCandidates } from "./webSearch.js";
+import { hydrateSearchCandidates, searchWebCandidates } from "./webSearch.js";
 export const app = express();
 const upload = multer({
     storage: multer.memoryStorage(),
@@ -23,10 +23,30 @@ function sanitizeSettings(settings) {
     const sensitivity = settings?.sensitivity ?? defaultSettings.sensitivity;
     const maxBySensitivity = sensitivity === "deep" ? 48 : sensitivity === "quick" ? 8 : 14;
     return {
-        maxChunks: Math.min(Math.max(Number(settings?.maxChunks ?? maxBySensitivity), 1), 80),
-        chunkWords: Math.min(Math.max(Number(settings?.chunkWords ?? defaultSettings.chunkWords), 70), 260),
-        overlapWords: Math.min(Math.max(Number(settings?.overlapWords ?? defaultSettings.overlapWords), 0), 120),
+        maxChunks: Math.min(Math.max(Number(settings?.maxChunks ?? maxBySensitivity), 1), 2000),
+        chunkWords: Math.min(Math.max(Number(settings?.chunkWords ?? defaultSettings.chunkWords), 70), 520),
+        overlapWords: Math.min(Math.max(Number(settings?.overlapWords ?? defaultSettings.overlapWords), 0), 180),
         sensitivity
+    };
+}
+function fullCoverageSettings(settings, wordCount) {
+    const chunkWords = wordCount > 20000
+        ? 520
+        : wordCount > 10000
+            ? 460
+            : wordCount > 5000
+                ? 380
+                : wordCount > 2000
+                    ? Math.max(settings.chunkWords, 240)
+                    : settings.chunkWords;
+    const overlapWords = Math.min(Math.floor(chunkWords * 0.18), Math.max(settings.overlapWords, wordCount > 5000 ? 56 : 32));
+    const step = Math.max(60, chunkWords - overlapWords);
+    const chunksNeeded = Math.max(1, Math.ceil(Math.max(1, wordCount - overlapWords) / step));
+    return {
+        ...settings,
+        chunkWords,
+        overlapWords,
+        maxChunks: chunksNeeded
     };
 }
 function thresholdFor(settings) {
@@ -65,25 +85,35 @@ async function runScan(request) {
     if (text.length < 120) {
         throw new Error("Додайте щонайменше 120 символів тексту для надійної перевірки.");
     }
-    const settings = sanitizeSettings(request.settings);
+    const wordCount = countWords(text);
+    const settings = fullCoverageSettings(sanitizeSettings(request.settings), wordCount);
     const chunks = chunkText(text, settings.chunkWords, settings.overlapWords, settings.maxChunks);
-    const longDocumentMode = countWords(text) > 2000 || chunks.length > 18;
-    const searchLimit = settings.sensitivity === "deep" ? (longDocumentMode ? 8 : 12) : longDocumentMode ? 5 : 8;
-    const concurrency = settings.sensitivity === "deep" ? 3 : 4;
+    const longDocumentMode = wordCount > 2000 || chunks.length > 18;
+    const veryLongDocumentMode = wordCount > 8000 || chunks.length > 45;
+    const searchLimit = settings.sensitivity === "deep" ? (veryLongDocumentMode ? 5 : longDocumentMode ? 7 : 12) : veryLongDocumentMode ? 3 : longDocumentMode ? 4 : 8;
+    const concurrency = veryLongDocumentMode ? 8 : settings.sensitivity === "deep" ? 4 : 5;
     const matchedByChunk = await mapWithConcurrency(chunks, concurrency, async (chunk) => {
         try {
             const candidates = await searchWebCandidates(chunk.text, searchLimit, settings.sensitivity === "deep", {
-                hydrateLimit: longDocumentMode ? 2 : undefined,
-                queryLimit: longDocumentMode ? 2 : undefined
+                hydrateLimit: longDocumentMode ? 0 : undefined,
+                includeAcademic: settings.sensitivity === "deep" && !veryLongDocumentMode,
+                queryLimit: veryLongDocumentMode ? 1 : longDocumentMode ? 2 : undefined
             });
-            return candidates.map((candidate) => scoreCandidate(chunk.text, candidate, chunk.index));
+            return candidates.map((candidate) => ({ chunkText: chunk.text, match: scoreCandidate(chunk.text, candidate, chunk.index) }));
         }
         catch (error) {
             console.warn(error);
             return [];
         }
     });
-    const allMatches = matchedByChunk.flat();
+    const preliminaryMatches = matchedByChunk.flat();
+    const hydrationTargets = preliminaryMatches
+        .filter(({ match }) => match.confidence === "snippet" && (match.score >= thresholdFor(settings) - 10 || match.longestRun >= 7))
+        .sort((a, b) => b.match.score - a.match.score || b.match.longestRun - a.match.longestRun)
+        .slice(0, veryLongDocumentMode ? 32 : longDocumentMode ? 48 : 80);
+    const hydratedCandidates = await hydrateSearchCandidates(hydrationTargets.map(({ match }) => match), hydrationTargets.length);
+    const hydratedMatches = hydratedCandidates.map((candidate, index) => scoreCandidate(hydrationTargets[index].chunkText, candidate, hydrationTargets[index].match.chunkIndex));
+    const allMatches = [...preliminaryMatches.map(({ match }) => match), ...hydratedMatches];
     const matches = uniqueMatches(allMatches)
         .filter((match) => match.score >= thresholdFor(settings) || match.longestRun >= 10)
         .sort((a, b) => b.score - a.score || b.longestRun - a.longestRun)
@@ -98,13 +128,14 @@ async function runScan(request) {
     const localAi = detectAiSignals(text);
     const scanNotes = [...prepared.notes];
     if (longDocumentMode) {
-        scanNotes.push("Для довгого тексту застосовано прискорений вебпошук: усі фрагменти перевіряються, але зайві сторінки не дочитуються повністю.");
+        scanNotes.push(`Повне покриття: перевірено ${chunks.length} фрагментів, включно з кінцем документа.`);
+        scanNotes.push("Для довгого тексту застосовано двофазний пошук: швидкий прохід по всіх фрагментах і точне дочитування найсильніших збігів.");
     }
     return {
         id: crypto.randomUUID(),
         fileName: request.fileName || "Вставлений текст",
         checkedAt: new Date().toISOString(),
-        wordCount: countWords(text),
+        wordCount,
         chunksChecked: chunks.length,
         plagiarismScore,
         aiProbability: localAi.probability,

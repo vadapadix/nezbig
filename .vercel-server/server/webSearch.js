@@ -216,7 +216,7 @@ export async function searchWebCandidates(chunkText, maxResults = 5, deep = fals
     const searches = await Promise.allSettled(queries.flatMap((query) => [
         searchDuckDuckGo(query, perQuery),
         searchGoogleCustom(query, perQuery),
-        ...(deep ? [searchSemanticScholar(query, Math.min(5, perQuery))] : [])
+        ...(deep && profile.includeAcademic !== false ? [searchSemanticScholar(query, Math.min(5, perQuery))] : [])
     ]));
     const candidates = dedupeByUrl(searches.flatMap((result) => (result.status === "fulfilled" ? result.value : []))).slice(0, deep ? 18 : 10);
     const hydrateLimit = Math.min(candidates.length, profile.hydrateLimit ?? candidates.length);
@@ -231,4 +231,20 @@ export async function searchWebCandidates(chunkText, maxResults = 5, deep = fals
         };
     }));
     return hydrated.slice(0, maxResults);
+}
+export async function hydrateSearchCandidates(candidates, maxPages) {
+    const selected = candidates.slice(0, maxPages);
+    const sourceByUrl = new Map();
+    const hydrated = await Promise.all(selected.map(async (candidate) => {
+        const key = candidate.url.replace(/#.*$/, "").replace(/\/$/, "");
+        const sourcePromise = sourceByUrl.get(key) ?? fetchReadablePageText(candidate.url);
+        sourceByUrl.set(key, sourcePromise);
+        const sourceText = await sourcePromise;
+        return {
+            ...candidate,
+            sourceText: sourceText ?? candidate.sourceText,
+            verifiedTextLength: sourceText?.length ?? candidate.verifiedTextLength
+        };
+    }));
+    return hydrated;
 }

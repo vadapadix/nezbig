@@ -21,26 +21,43 @@ const scanModes: Array<{
 
 function recommendSettings(wordCount: number, sensitivity: ScanSettings["sensitivity"]): ScanSettings {
   const words = Math.max(0, wordCount);
-  const chunkWords = sensitivity === "quick" ? (words > 2000 ? 150 : 110) : sensitivity === "deep" ? (words > 3500 ? 220 : 160) : words > 2000 ? 180 : 120;
-  const overlapWords = sensitivity === "quick" ? 18 : sensitivity === "deep" ? 46 : words > 2000 ? 36 : 32;
+  const chunkWords =
+    words > 20000
+      ? 520
+      : words > 10000
+        ? 460
+        : words > 5000
+          ? 380
+          : sensitivity === "quick"
+            ? words > 2000
+              ? 240
+              : 110
+            : sensitivity === "deep"
+              ? words > 3500
+                ? 260
+                : 160
+              : words > 2000
+                ? 240
+                : 120;
+  const overlapWords = Math.min(Math.floor(chunkWords * 0.18), sensitivity === "deep" ? 56 : words > 2000 ? 44 : 32);
   const usableStep = Math.max(40, chunkWords - overlapWords);
   const estimatedChunks = Math.max(1, Math.ceil(words / usableStep));
-  const cap = sensitivity === "quick" ? (words > 2000 ? 24 : 8) : sensitivity === "deep" ? 80 : words > 2000 ? 80 : 18;
   const floor = sensitivity === "quick" ? 4 : sensitivity === "deep" ? 18 : 8;
 
   return {
     sensitivity,
     chunkWords,
     overlapWords,
-    maxChunks: words === 0 ? (sensitivity === "quick" ? 8 : sensitivity === "deep" ? 40 : 14) : Math.min(cap, Math.max(floor, estimatedChunks))
+    maxChunks: words === 0 ? (sensitivity === "quick" ? 8 : sensitivity === "deep" ? 40 : 14) : Math.max(floor, estimatedChunks)
   };
 }
 
 function estimateScanSeconds(settings: ScanSettings, wordCount: number): number {
   if (wordCount <= 0) return 0;
   const longMode = wordCount > 2000 || settings.maxChunks > 18;
-  const concurrency = settings.sensitivity === "deep" ? 3 : 4;
-  const secondsPerWave = settings.sensitivity === "quick" ? 9 : settings.sensitivity === "deep" ? (longMode ? 17 : 24) : longMode ? 13 : 18;
+  const veryLongMode = wordCount > 8000 || settings.maxChunks > 45;
+  const concurrency = veryLongMode ? 8 : settings.sensitivity === "deep" ? 4 : 5;
+  const secondsPerWave = veryLongMode ? 9 : settings.sensitivity === "quick" ? 8 : settings.sensitivity === "deep" ? (longMode ? 15 : 22) : longMode ? 12 : 17;
   const waves = Math.max(1, Math.ceil(settings.maxChunks / concurrency));
   return Math.max(18, Math.round(8 + waves * secondsPerWave));
 }
@@ -225,7 +242,7 @@ export default function App() {
 
   const wordCount = useMemo(() => text.trim().split(/\s+/).filter(Boolean).length, [text]);
   const canScan = text.trim().length >= 120 && !busy;
-  const coverageWords = Math.min(wordCount, settings.maxChunks * Math.max(1, settings.chunkWords - settings.overlapWords) + settings.overlapWords);
+  const coverageWords = wordCount;
   const settingsMode = scanModes.find((mode) => mode.value === settings.sensitivity) ?? scanModes[1];
   const estimatedScanSeconds = useMemo(() => estimateScanSeconds(settings, wordCount), [settings, wordCount]);
 
