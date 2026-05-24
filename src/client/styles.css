@@ -661,7 +661,7 @@ time {
 }
 
 .metrics {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   margin: 18px 0 24px;
 }
 
@@ -679,6 +679,10 @@ time {
 
 .metrics article:nth-child(3) {
   animation-delay: 160ms;
+}
+
+.metrics article:nth-child(4) {
+  animation-delay: 240ms;
 }
 
 .metrics span,

@@ -80,20 +80,9 @@ function riskLabel(value: number): string {
   return "Низький";
 }
 
-function reportAiRisk(report: ScanReport): number {
-  return Math.max(report.aiProbability, report.aiOpinionProbability ?? 0);
-}
-
 function reportSummaryText(report: ScanReport): string {
-  const aiRisk = reportAiRisk(report);
-  if (aiRisk === report.aiProbability || report.aiOpinionProbability === undefined) return report.summary;
-
-  const aiDetail = `Підсумковий AI-ризик: ${aiRisk}% (локально ${report.aiProbability}%, AI-думка ${report.aiOpinionProbability}%).`;
-  if (report.matches.length === 0) {
-    return `Сильних збігів у відкритих вебджерелах не знайдено. ${aiDetail}`;
-  }
-
-  return `${report.summary} ${aiDetail}`;
+  if (report.aiOpinionProbability === undefined) return report.summary;
+  return `${report.summary} AI-думка показана окремо: ${report.aiOpinionProbability}%.`;
 }
 
 function confidenceLabel(value: "snippet" | "page"): string {
@@ -167,10 +156,11 @@ function downloadReportPng(report: ScanReport): void {
   context.fillText(new Intl.DateTimeFormat("uk-UA", { dateStyle: "medium", timeStyle: "short" }).format(new Date(report.checkedAt)), 1050, 72);
 
   let y = Math.max(260, titleY + 48);
-  const cardWidth = 380;
+  const cardWidth = 280;
   const cards = [
     ["Плагіат", `${report.plagiarismScore}%`, `${riskLabel(report.plagiarismScore)} ризик`],
-    ["AI-аналіз", `${reportAiRisk(report)}%`, `${riskLabel(reportAiRisk(report))} рівень`],
+    ["ШІ-аналіз", `${report.aiProbability}%`, `${riskLabel(report.aiProbability)} рівень`],
+    ["AI-думка", report.aiOpinionProbability !== undefined ? `${report.aiOpinionProbability}%` : "...", report.aiOpinionProbability !== undefined ? `${riskLabel(report.aiOpinionProbability)} рівень` : "очікує модель"],
     ["Фрагменти", formatNumber(report.chunksChecked), `${formatNumber(report.wordCount)} слів`]
   ];
 
@@ -520,13 +510,14 @@ export default function App() {
                 <small>{riskLabel(report.plagiarismScore)} ризик</small>
               </article>
               <article>
-                <span>AI-аналіз</span>
-                <strong>{reportAiRisk(report)}%</strong>
-                <small>
-                  {report.aiOpinionProbability !== undefined
-                    ? `${riskLabel(reportAiRisk(report))} рівень: локально ${report.aiProbability}%, AI-думка ${report.aiOpinionProbability}%`
-                    : `${riskLabel(report.aiProbability)} рівень з локального аналізу`}
-                </small>
+                <span>ШІ-аналіз</span>
+                <strong>{report.aiProbability}%</strong>
+                <small>{riskLabel(report.aiProbability)} рівень з локального аналізу</small>
+              </article>
+              <article>
+                <span>AI-думка</span>
+                <strong>{report.aiOpinionProbability !== undefined ? `${report.aiOpinionProbability}%` : "..."}</strong>
+                <small>{report.aiOpinionProbability !== undefined ? `${riskLabel(report.aiOpinionProbability)} рівень від моделі` : llmBusy ? "модель ще думає" : "немає відповіді моделі"}</small>
               </article>
               <article>
                 <span>Фрагменти</span>
