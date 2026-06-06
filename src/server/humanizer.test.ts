@@ -25,6 +25,18 @@ describe("humanizeText", () => {
     expect(result.revisedText.toLowerCase()).toContain("перевірка ролей");
   });
 
+  it("reduces cautious wording and repeated sentences", () => {
+    const result = humanizeText(
+      "Документ може містити багато позицій для обліку поставок. Документ може містити багато позицій для обліку поставок. Цей важливий комплексний блок може показувати роботу системи. Користувач часто може бути не впевнений у результаті перевірки."
+    );
+
+    expect(result.revisedText.toLowerCase()).not.toContain("може містити");
+    expect(result.revisedText.toLowerCase()).not.toContain("може показувати");
+    expect(result.revisedText.toLowerCase()).not.toContain("важливий комплексний");
+    expect(result.revisedText.match(/обліку поставок/giu)?.length ?? 0).toBe(1);
+    expect(result.changes.some((change) => change.label === "Прибрано повторені речення")).toBe(true);
+  });
+
   it("rejects text that is too short for reliable editing", () => {
     expect(() => humanizeText("Занадто мало тексту.")).toThrow(/20 слів/);
   });

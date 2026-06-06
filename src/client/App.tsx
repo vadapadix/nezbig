@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import nezbigLogo from "./assets/nezbig-mark.png";
 import type { HumanizeResult, LlmOpinion, ScanReport, ScanSettings } from "../shared/types";
 
@@ -101,6 +101,44 @@ function summarizeAiError(error: unknown): string {
 function isDuplicateOpinionSignal(signal: LlmOpinion["aiSignals"][number], localSignals: ScanReport["aiSignals"]): boolean {
   const normalizedLabel = signal.label.trim().toLowerCase();
   return localSignals.some((localSignal) => localSignal.label.trim().toLowerCase() === normalizedLabel);
+}
+
+function fileMethodLabel(method: NonNullable<ScanReport["fileEvidence"]>["extractionMethod"]): string {
+  if (method === "docx") return "DOCX";
+  if (method === "pdf") return "PDF";
+  return "Текст";
+}
+
+function recommendationForReport(report: ScanReport): { title: string; detail: string; tone: "ok" | "warn" | "danger" } {
+  if (report.plagiarismScore >= 45) {
+    return {
+      title: "Перевірити джерела",
+      detail: "Є сильні текстові збіги. Відкрийте знайдені посилання й додайте посилання або перепишіть проблемні фрагменти.",
+      tone: "danger"
+    };
+  }
+
+  if (report.aiProbability >= 38) {
+    return {
+      title: "Олюднити стиль",
+      detail: "Локальний AI-аналіз бачить шаблонність. Спершу обробіть текст олюдненням, потім запустіть перевірку ще раз.",
+      tone: "warn"
+    };
+  }
+
+  if (report.aiOpinionProbability !== undefined && report.aiOpinionProbability >= 50) {
+    return {
+      title: "Переглянути AI-думку",
+      detail: "Локальний аналіз нижчий, але модель бачить ризик. Перевірте її пояснення й конкретні сигнали нижче.",
+      tone: "warn"
+    };
+  }
+
+  return {
+    title: "Звіт виглядає чисто",
+    detail: "Сильних збігів і високих локальних AI-сигналів немає. Для курсової все одно перевірте цитати й список джерел.",
+    tone: "ok"
+  };
 }
 
 function wrapCanvasText(context: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number): number {
@@ -262,6 +300,7 @@ export default function App() {
   const [humanizerBusy, setHumanizerBusy] = useState(false);
   const [humanized, setHumanized] = useState<HumanizeResult | null>(null);
   const [message, setMessage] = useState("");
+  const reportRef = useRef<HTMLElement | null>(null);
 
   const wordCount = useMemo(() => text.trim().split(/\s+/).filter(Boolean).length, [text]);
   const canScan = (selectedFile !== null || text.trim().length >= 120) && !busy;
@@ -269,6 +308,7 @@ export default function App() {
   const coverageWords = wordCount;
   const settingsMode = scanModes.find((mode) => mode.value === settings.sensitivity) ?? scanModes[1];
   const estimatedScanSeconds = useMemo(() => estimateScanSeconds(settings, wordCount), [settings, wordCount]);
+  const reportRecommendation = report ? recommendationForReport(report) : null;
 
   useEffect(() => {
     setSettings((current) => {
@@ -283,6 +323,13 @@ export default function App() {
       return recommended;
     });
   }, [wordCount]);
+
+  useEffect(() => {
+    if (!report) return;
+    window.requestAnimationFrame(() => {
+      reportRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [report?.id]);
 
   async function handleFile(file: File | null) {
     if (!file) return;
@@ -411,6 +458,18 @@ export default function App() {
     const formData = new FormData();
     formData.append("file", file);
     return fetch("/api/humanize-file", { method: "POST", body: formData });
+  }
+
+  function moveHumanizedTextToChecker() {
+    if (!humanized) return;
+    setText(humanized.revisedText);
+    setSelectedFile(null);
+    setFileName("Олюднений текст");
+    setReport(null);
+    setMessage("Олюднений текст перенесено в поле. Запустіть повторну перевірку.");
+    window.requestAnimationFrame(() => {
+      document.getElementById("checker")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   }
 
   return (
@@ -544,6 +603,12 @@ export default function App() {
               <p>{formatNumber(humanized.originalWordCount)} -&gt; {formatNumber(humanized.revisedWordCount)} слів</p>
             </div>
             <textarea className="humanized-output" value={humanized.revisedText} readOnly />
+            <div className="humanizer-actions">
+              <button type="button" className="secondary-button" onClick={moveHumanizedTextToChecker}>
+                Перенести в перевірку
+              </button>
+              <span>Після перенесення запустіть скан ще раз, щоб побачити новий AI-відсоток.</span>
+            </div>
             <div className="humanizer-grid">
               <section>
                 <h3>Зміни</h3>
@@ -588,7 +653,7 @@ export default function App() {
         ) : null}
 
         {report ? (
-          <section className="report" aria-labelledby="report-title">
+          <section ref={reportRef} className="report" aria-labelledby="report-title">
             <div className="report-header">
               <div>
                 <p className="eyebrow">Звіт Незбіг</p>
@@ -636,57 +701,101 @@ export default function App() {
             ) : null}
 
             <div className="report-grid">
-              <section aria-labelledby="matches-title">
-                <h3 id="matches-title">Ймовірні джерела</h3>
-                {report.matches.length === 0 ? (
-                  <p className="empty-state">Сильних збігів у відкритих вебджерелах не знайдено.</p>
-                ) : (
-                  <div className="match-list">
-                    {report.matches.map((match) => (
-                      <article className="match-card" key={`${match.url}-${match.chunkIndex}`}>
-                        <div className="match-score">
-                          <strong>{match.score}%</strong>
-                          <span>Фрагмент {match.chunkIndex + 1}</span>
-                        </div>
-                        <h4>
-                          <a href={match.url} target="_blank" rel="noreferrer">{match.title}</a>
-                        </h4>
-                        <p>{match.snippet}</p>
-                        <dl>
-                          <div>
-                            <dt>Слова</dt>
-                            <dd>{match.overlapPercent}%</dd>
-                          </div>
-                          <div>
-                            <dt>N-грам</dt>
-                            <dd>{match.ngramOverlapPercent}%</dd>
-                          </div>
-                          <div>
-                            <dt>Довгий збіг</dt>
-                            <dd>{match.longestRun} слів</dd>
-                          </div>
-                          <div>
-                            <dt>Хеші</dt>
-                            <dd>{match.hashOverlapPercent}%</dd>
-                          </div>
-                          <div>
-                            <dt>Full-text</dt>
-                            <dd>{match.fullTextRank}%</dd>
-                          </div>
-                          <div>
-                            <dt>Доказ</dt>
-                            <dd>{confidenceLabel(match.confidence)}</dd>
-                          </div>
-                          <div>
-                            <dt>Індекс</dt>
-                            <dd>{match.provider ?? "Web"}</dd>
-                          </div>
-                        </dl>
-                      </article>
-                    ))}
+              <div className="report-left-stack">
+                <section className="source-panel" aria-labelledby="matches-title">
+                  <div className="section-heading-row">
+                    <h3 id="matches-title">Ймовірні джерела</h3>
+                    <span>{report.matches.length ? `${formatNumber(report.matches.length)} збігів` : "0 збігів"}</span>
                   </div>
-                )}
-              </section>
+                  {report.matches.length === 0 ? (
+                    <p className="empty-state compact-empty">Сильних збігів у відкритих вебджерелах не знайдено.</p>
+                  ) : (
+                    <div className="match-list">
+                      {report.matches.map((match) => (
+                        <article className="match-card" key={`${match.url}-${match.chunkIndex}`}>
+                          <div className="match-score">
+                            <strong>{match.score}%</strong>
+                            <span>Фрагмент {match.chunkIndex + 1}</span>
+                          </div>
+                          <h4>
+                            <a href={match.url} target="_blank" rel="noreferrer">{match.title}</a>
+                          </h4>
+                          <p>{match.snippet}</p>
+                          <dl>
+                            <div>
+                              <dt>Слова</dt>
+                              <dd>{match.overlapPercent}%</dd>
+                            </div>
+                            <div>
+                              <dt>N-грам</dt>
+                              <dd>{match.ngramOverlapPercent}%</dd>
+                            </div>
+                            <div>
+                              <dt>Довгий збіг</dt>
+                              <dd>{match.longestRun} слів</dd>
+                            </div>
+                            <div>
+                              <dt>Хеші</dt>
+                              <dd>{match.hashOverlapPercent}%</dd>
+                            </div>
+                            <div>
+                              <dt>Full-text</dt>
+                              <dd>{match.fullTextRank}%</dd>
+                            </div>
+                            <div>
+                              <dt>Доказ</dt>
+                              <dd>{confidenceLabel(match.confidence)}</dd>
+                            </div>
+                            <div>
+                              <dt>Індекс</dt>
+                              <dd>{match.provider ?? "Web"}</dd>
+                            </div>
+                          </dl>
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </section>
+
+                <div className="report-insights" aria-label="Підсумкові блоки звіту">
+                  <article className={`insight-card insight-${reportRecommendation?.tone ?? "ok"}`}>
+                    <span>Наступний крок</span>
+                    <strong>{reportRecommendation?.title}</strong>
+                    <p>{reportRecommendation?.detail}</p>
+                    {report.aiProbability >= 38 ? (
+                      <button type="button" className="secondary-button compact-action" disabled={!canHumanize} onClick={() => void handleHumanize()}>
+                        Олюднити зараз
+                      </button>
+                    ) : null}
+                  </article>
+
+                  <article className="insight-card">
+                    <span>Покриття</span>
+                    <strong>{formatNumber(report.chunksChecked)} фрагм.</strong>
+                    <p>{formatNumber(report.wordCount)} слів перевірено; кінець документа включено.</p>
+                  </article>
+
+                  <article className="insight-card">
+                    <span>AI-порівняння</span>
+                    <strong>{report.aiProbability}% локально</strong>
+                    <p>{report.aiOpinionProbability !== undefined ? `${report.aiOpinionProbability}% дала AI-думка; це окрема оцінка.` : "AI-думка підвантажується окремо й не змінює локальний відсоток."}</p>
+                  </article>
+
+                  {report.fileEvidence ? (
+                    <article className="insight-card">
+                      <span>Файл</span>
+                      <strong>{fileMethodLabel(report.fileEvidence.extractionMethod)}</strong>
+                      <p>{formatNumber(report.fileEvidence.extractedWordCount)} слів зчитано, {(report.fileEvidence.sizeBytes / 1024 / 1024).toFixed(2)} MB.</p>
+                    </article>
+                  ) : (
+                    <article className="insight-card">
+                      <span>Ввід</span>
+                      <strong>Вставлений текст</strong>
+                      <p>Звіт сформовано без файлових метаданих.</p>
+                    </article>
+                  )}
+                </div>
+              </div>
 
               <section aria-labelledby="ai-title">
                 <h3 id="ai-title">Розширений AI-аналіз</h3>

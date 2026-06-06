@@ -61,6 +61,52 @@ const RULES: Rule[] = [
     replacement: (match) => (match.toLowerCase().includes("аналіз") ? "аналіз показав, що" : "")
   },
   {
+    label: "Зменшено обережні формулювання",
+    detail: "Послаблено часті 'може...', які детектори сприймають як розмиту позицію.",
+    pattern: /(?<![\p{L}\p{N}_])може\s+(?:містити|використовувати|показувати|забезпечувати|впливати|свідчити|бути|розмивати|створювати)(?![\p{L}\p{N}_])/giu,
+    replacement: (match) => {
+      const map: Record<string, string> = {
+        "може містити": "містить",
+        "може використовувати": "використовує",
+        "може показувати": "показує",
+        "може забезпечувати": "забезпечує",
+        "може впливати": "впливає",
+        "може свідчити": "свідчить",
+        "може бути": "є",
+        "може розмивати": "розмиває",
+        "може створювати": "створює"
+      };
+      return map[match.toLowerCase()] ?? match;
+    }
+  },
+  {
+    label: "Спрощено типову AI-лексику",
+    detail: "Замінено слова, які часто створюють канцелярний або згенерований тон.",
+    pattern: /(?<![\p{L}\p{N}_])(?:важливий|важлива|важливе|важливі|ефективний|ефективна|ефективне|ефективні|комплексний|комплексна|комплексне|комплексні|практичне значення|ключовий|ключова|ключове|ключові)(?![\p{L}\p{N}_])/giu,
+    replacement: (match) => {
+      const map: Record<string, string> = {
+        важливий: "потрібний",
+        важлива: "потрібна",
+        важливе: "потрібне",
+        важливі: "потрібні",
+        ефективний: "дієвий",
+        ефективна: "дієва",
+        ефективне: "дієве",
+        ефективні: "дієві",
+        комплексний: "цілісний",
+        комплексна: "цілісна",
+        комплексне: "цілісне",
+        комплексні: "цілісні",
+        "практичне значення": "користь",
+        ключовий: "головний",
+        ключова: "головна",
+        ключове: "головне",
+        ключові: "головні"
+      };
+      return map[match.toLowerCase()] ?? match;
+    }
+  },
+  {
     label: "Зменшено негативний паралелізм",
     detail: "Переписано характерні конструкції 'не лише..., а й...' у простішу форму.",
     pattern: /не\s+(?:лише|тільки)\s+([^,.]{3,90}?),\s*а\s+й\s+/giu,
@@ -104,6 +150,33 @@ function softenRigidSentences(text: string): { text: string; count: number } {
   return { text: revised, count };
 }
 
+function removeDuplicateSentences(text: string): { text: string; count: number } {
+  const sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/gu) ?? [text];
+  const seen = new Set<string>();
+  const kept: string[] = [];
+  let count = 0;
+
+  for (const sentence of sentences) {
+    const trimmed = sentence.trim();
+    const normalized = trimmed
+      .toLowerCase()
+      .replace(/\d+/g, "#")
+      .replace(/[^\p{L}\p{N}\s#]/gu, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (normalized.split(" ").length >= 7 && seen.has(normalized)) {
+      count += 1;
+      continue;
+    }
+
+    if (normalized) seen.add(normalized);
+    kept.push(trimmed);
+  }
+
+  return { text: kept.join(" "), count };
+}
+
 export function humanizeText(input: string): HumanizeResult {
   const original = normalizeWhitespace(input);
   if (countWords(original) < 20) {
@@ -128,6 +201,16 @@ export function humanizeText(input: string): HumanizeResult {
       label: "Послаблено механічні переходи",
       count: softened.count,
       detail: "Зменшено кількість явних переходів, які роблять текст схожим на план-відповідь."
+    });
+  }
+
+  const deduplicated = removeDuplicateSentences(revised);
+  revised = deduplicated.text;
+  if (deduplicated.count > 0) {
+    changes.push({
+      label: "Прибрано повторені речення",
+      count: deduplicated.count,
+      detail: "Вилучено дублікати, які підсилюють показники шаблонності та лексичної передбачуваності."
     });
   }
 
