@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import nezbigLogo from "./assets/nezbig-mark.png";
-import type { LlmOpinion, ScanReport, ScanSettings, UploadedText } from "../shared/types";
+import type { HumanizeResult, LlmOpinion, ScanReport, ScanSettings } from "../shared/types";
 
 const defaultSettings: ScanSettings = {
   maxChunks: 14,
@@ -254,14 +254,18 @@ function downloadReportPng(report: ScanReport): void {
 export default function App() {
   const [text, setText] = useState("");
   const [fileName, setFileName] = useState("Вставлений текст");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [settings, setSettings] = useState<ScanSettings>(defaultSettings);
   const [report, setReport] = useState<ScanReport | null>(null);
   const [busy, setBusy] = useState(false);
   const [llmBusy, setLlmBusy] = useState(false);
+  const [humanizerBusy, setHumanizerBusy] = useState(false);
+  const [humanized, setHumanized] = useState<HumanizeResult | null>(null);
   const [message, setMessage] = useState("");
 
   const wordCount = useMemo(() => text.trim().split(/\s+/).filter(Boolean).length, [text]);
-  const canScan = text.trim().length >= 120 && !busy;
+  const canScan = (selectedFile !== null || text.trim().length >= 120) && !busy;
+  const canHumanize = (selectedFile !== null || wordCount >= 20) && !humanizerBusy;
   const coverageWords = wordCount;
   const settingsMode = scanModes.find((mode) => mode.value === settings.sensitivity) ?? scanModes[1];
   const estimatedScanSeconds = useMemo(() => estimateScanSeconds(settings, wordCount), [settings, wordCount]);
@@ -282,32 +286,19 @@ export default function App() {
 
   async function handleFile(file: File | null) {
     if (!file) return;
-    setBusy(true);
-    setMessage("Зчитую файл...");
+    setSelectedFile(file);
+    setFileName(file.name);
+    setText("");
     setReport(null);
+    setHumanized(null);
     setLlmBusy(false);
-
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-      const response = await fetch("/api/extract", { method: "POST", body: formData });
-      const payload = (await response.json()) as UploadedText | { error: string };
-      if (!response.ok || "error" in payload) throw new Error("error" in payload ? payload.error : "Не вдалося прочитати файл.");
-      setText(payload.text);
-      setFileName(payload.fileName);
-      setMessage(`Файл готовий: ${formatNumber(payload.wordCount)} слів.`);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Не вдалося прочитати файл.");
-    } finally {
-      setBusy(false);
-    }
+    setMessage(`Файл прикріплено: ${file.name}. Текст не вставляється в поле; перевірка піде файлом.`);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canScan) {
-      setMessage("Додайте щонайменше 120 символів тексту.");
+      setMessage("Додайте файл або щонайменше 120 символів тексту.");
       return;
     }
 
@@ -318,16 +309,18 @@ export default function App() {
     setMessage(`Шукаю збіги, відкриваю сторінки джерел і рахую локальні AI-сигнали. Орієнтовно: ${formatDuration(estimateScanSeconds(scanSettings, wordCount))}.`);
 
     try {
-      const response = await fetch("/api/scan", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ text, fileName, settings: scanSettings })
-      });
+      const response = selectedFile
+        ? await scanSelectedFile(selectedFile, scanSettings)
+        : await fetch("/api/scan", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ text, fileName, settings: scanSettings })
+          });
       const payload = (await response.json()) as ScanReport | { error: string };
       if (!response.ok || "error" in payload) throw new Error("error" in payload ? payload.error : "Перевірка не вдалася.");
       setReport(payload);
       setMessage("Базовий звіт готовий. AI-думка підвантажується окремо...");
-      void loadLlmOpinion(payload, text);
+      void loadLlmOpinion(payload, text, selectedFile);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Перевірка не вдалася.");
     } finally {
@@ -335,19 +328,26 @@ export default function App() {
     }
   }
 
-  async function loadLlmOpinion(baseReport: ScanReport, sourceText: string) {
+  async function scanSelectedFile(file: File, scanSettings: ScanSettings): Promise<Response> {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("settings", JSON.stringify(scanSettings));
+    return fetch("/api/scan-file", { method: "POST", body: formData });
+  }
+
+  async function loadLlmOpinion(baseReport: ScanReport, sourceText: string, sourceFile: File | null) {
     setLlmBusy(true);
 
     try {
-      const response = await fetch("/api/ai-opinion", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          text: sourceText,
-          localProbability: baseReport.aiProbability,
-          localSignals: baseReport.aiSignals
-        })
-      });
+      const response = sourceFile ? await loadFileLlmOpinion(baseReport, sourceFile) : await fetch("/api/ai-opinion", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            text: sourceText,
+            localProbability: baseReport.aiProbability,
+            localSignals: baseReport.aiSignals
+          })
+        });
       const payload = (await response.json()) as LlmOpinion | { error: string };
       if (!response.ok || "error" in payload) throw new Error("error" in payload ? payload.error : "AI-думка недоступна.");
 
@@ -372,6 +372,47 @@ export default function App() {
     }
   }
 
+  async function loadFileLlmOpinion(baseReport: ScanReport, file: File): Promise<Response> {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("localProbability", String(baseReport.aiProbability));
+    formData.append("localSignals", JSON.stringify(baseReport.aiSignals));
+    return fetch("/api/ai-opinion-file", { method: "POST", body: formData });
+  }
+
+  async function handleHumanize() {
+    if (!canHumanize) {
+      setMessage("Для олюднення додайте файл або щонайменше 20 слів.");
+      return;
+    }
+
+    setHumanizerBusy(true);
+    setHumanized(null);
+    setMessage(selectedFile ? "Олюднюю текст із файлу..." : "Олюднюю вставлений текст...");
+
+    try {
+      const response = selectedFile ? await humanizeSelectedFile(selectedFile) : await fetch("/api/humanize", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ text })
+      });
+      const payload = (await response.json()) as HumanizeResult | { error: string };
+      if (!response.ok || "error" in payload) throw new Error("error" in payload ? payload.error : "Олюднення не вдалося.");
+      setHumanized(payload);
+      setMessage(`Олюднення готове: ${payload.changes.length} груп змін.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Олюднення не вдалося.");
+    } finally {
+      setHumanizerBusy(false);
+    }
+  }
+
+  async function humanizeSelectedFile(file: File): Promise<Response> {
+    const formData = new FormData();
+    formData.append("file", file);
+    return fetch("/api/humanize-file", { method: "POST", body: formData });
+  }
+
   return (
     <>
       <a className="skip-link" href="#checker">Перейти до перевірки</a>
@@ -386,8 +427,8 @@ export default function App() {
             </div>
           </div>
           <div className="status-strip" aria-live="polite">
-            <span>{busy ? "Сканування..." : llmBusy ? "AI-думка аналізує..." : "Готово до перевірки"}</span>
-            <strong>{formatNumber(wordCount)} слів</strong>
+            <span>{busy ? "Сканування..." : llmBusy ? "AI-думка аналізує..." : selectedFile ? "Файл готовий до перевірки" : "Готово до перевірки"}</span>
+            <strong>{selectedFile ? "файл" : `${formatNumber(wordCount)} слів`}</strong>
           </div>
         </section>
 
@@ -396,7 +437,7 @@ export default function App() {
             <div className="panel-heading">
               <div>
                 <h2 id="input-title">Документ</h2>
-                <p>{fileName}</p>
+                <p>{selectedFile ? `${fileName} - ${(selectedFile.size / 1024 / 1024).toFixed(2)} MB` : fileName}</p>
               </div>
               <label className="file-button">
                 <input
@@ -419,10 +460,30 @@ export default function App() {
               onChange={(event) => {
                 setText(event.target.value);
                 setFileName("Вставлений текст");
+                setSelectedFile(null);
+                setHumanized(null);
               }}
-              placeholder="Вставте текст або завантажте документ..."
+              placeholder={selectedFile ? "Файл прикріплено. Для текстового режиму почніть вводити або очистіть вибір файлу..." : "Вставте текст або завантажте документ..."}
               autoComplete="off"
+              disabled={selectedFile !== null}
             />
+            {selectedFile ? (
+              <div className="file-mode">
+                <strong>Файловий режим</strong>
+                <span>Текст не підставляється у поле. Сервер прочитає файл під час перевірки або олюднення.</span>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => {
+                    setSelectedFile(null);
+                    setFileName("Вставлений текст");
+                    setMessage("Файл прибрано. Можна вставити текст вручну.");
+                  }}
+                >
+                  Прибрати файл
+                </button>
+              </div>
+            ) : null}
           </section>
 
           <aside className="control-panel" aria-labelledby="settings-title">
@@ -468,9 +529,48 @@ export default function App() {
             <button type="submit" disabled={!canScan}>
               {busy ? "Перевірка..." : "Запустити перевірку"}
             </button>
+            <button type="button" className="secondary-button humanize-button" disabled={!canHumanize} onClick={() => void handleHumanize()}>
+              {humanizerBusy ? "Олюднення..." : "Олюднити текст"}
+            </button>
             <p className="message" aria-live="polite">{message}</p>
           </aside>
         </form>
+
+        {humanized ? (
+          <section className="humanizer-result" aria-labelledby="humanizer-title">
+            <div>
+              <p className="eyebrow">Humanizer</p>
+              <h2 id="humanizer-title">Олюднений текст</h2>
+              <p>{formatNumber(humanized.originalWordCount)} -&gt; {formatNumber(humanized.revisedWordCount)} слів</p>
+            </div>
+            <textarea className="humanized-output" value={humanized.revisedText} readOnly />
+            <div className="humanizer-grid">
+              <section>
+                <h3>Зміни</h3>
+                {humanized.changes.length === 0 ? (
+                  <p className="empty-state">Помітних AI-шаблонів не знайдено.</p>
+                ) : (
+                  <ul className="humanizer-list">
+                    {humanized.changes.map((change) => (
+                      <li key={change.label}>
+                        <strong>{change.label}</strong>
+                        <span>{change.count}x - {change.detail}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+              <section>
+                <h3>Примітки</h3>
+                <ul className="humanizer-list">
+                  {humanized.notes.map((note) => (
+                    <li key={note}><span>{note}</span></li>
+                  ))}
+                </ul>
+              </section>
+            </div>
+          </section>
+        ) : null}
 
         {busy || llmBusy ? (
           <section className="loading-panel" aria-live="polite" aria-label="Стан перевірки">

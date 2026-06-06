@@ -9,6 +9,7 @@ export type UploadedText = {
   text: string;
   fileName: string;
   wordCount: number;
+  fileEvidence?: FileEvidence;
 };
 
 export type ScanRequest = {
@@ -21,6 +22,24 @@ export type LlmOpinionRequest = {
   text: string;
   localProbability: number;
   localSignals: AiSignal[];
+};
+
+export type HumanizeRequest = {
+  text: string;
+};
+
+export type HumanizeChange = {
+  label: string;
+  count: number;
+  detail: string;
+};
+
+export type HumanizeResult = {
+  originalWordCount: number;
+  revisedWordCount: number;
+  revisedText: string;
+  changes: HumanizeChange[];
+  notes: string[];
 };
 
 export type SearchCandidate = {
@@ -53,6 +72,17 @@ export type AiSignal = {
   evidence?: string[];
 };
 
+export type FileEvidence = {
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  extension: string;
+  extractionMethod: "plain-text" | "docx" | "pdf";
+  extractedWordCount: number;
+  extractedCharCount: number;
+  signals: AiSignal[];
+};
+
 export type ScanReport = {
   id: string;
   fileName: string;
@@ -70,6 +100,7 @@ export type ScanReport = {
   aiOpinionSignals?: AiSignal[];
   scanNotes?: string[];
   skippedTitleWords?: number;
+  fileEvidence?: FileEvidence;
   matches: PlagiarismMatch[];
   aiSignals: AiSignal[];
   summary: string;

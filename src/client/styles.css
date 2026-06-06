@@ -388,6 +388,30 @@ textarea:focus {
   background-position: 0 8px, 0 0;
 }
 
+textarea:disabled {
+  cursor: not-allowed;
+  opacity: 0.68;
+}
+
+.file-mode {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  border: 1px solid rgba(46, 196, 182, 0.3);
+  border-radius: 8px;
+  background: rgba(46, 196, 182, 0.08);
+  color: var(--muted);
+  padding: 12px;
+}
+
+.file-mode strong {
+  color: var(--ink);
+}
+
+.file-mode .secondary-button {
+  justify-self: start;
+}
+
 .control-panel {
   position: sticky;
   top: 20px;
@@ -535,8 +559,12 @@ button:disabled {
   margin-top: 4px;
 }
 
+.humanize-button {
+  order: 3;
+}
+
 .message {
-  order: 4;
+  order: 5;
   min-height: 2.8rem;
   margin-bottom: 0;
   color: var(--muted);
@@ -623,6 +651,59 @@ button:disabled {
   margin-top: 24px;
   padding: clamp(16px, 3vw, 28px);
   animation: report-enter 700ms var(--ease-out) both;
+}
+
+.humanizer-result {
+  display: grid;
+  gap: 16px;
+  margin-top: 24px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(251, 247, 237, 0.92);
+  box-shadow: var(--shadow);
+  padding: clamp(16px, 3vw, 28px);
+  animation: report-enter 700ms var(--ease-out) both;
+}
+
+.humanizer-result h2 {
+  margin-bottom: 4px;
+}
+
+.humanizer-result p {
+  color: var(--muted);
+  margin-bottom: 0;
+}
+
+.humanized-output {
+  min-height: 260px;
+}
+
+.humanizer-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.8fr);
+  gap: 18px;
+}
+
+.humanizer-list {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.humanizer-list li {
+  display: grid;
+  gap: 4px;
+  border-left: 4px solid var(--accent);
+  background: rgba(46, 196, 182, 0.1);
+  border-radius: 6px;
+  color: var(--muted);
+  padding: 10px 12px;
+}
+
+.humanizer-list strong {
+  color: var(--ink);
 }
 
 .report-header {
@@ -921,6 +1002,7 @@ progress::-moz-progress-bar {
   .workspace,
   .report-header,
   .report-grid,
+  .humanizer-grid,
   .metrics {
     grid-template-columns: 1fr;
   }

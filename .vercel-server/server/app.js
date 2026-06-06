@@ -4,6 +4,7 @@ import express from "express";
 import multer from "multer";
 import { chunkText, countWords } from "./chunking.js";
 import { prepareDocumentText } from "./documentPreprocess.js";
+import { humanizeText } from "./humanizer.js";
 import { analyzeWithLlmProviders } from "./llmOpinion.js";
 import { detectAiSignals, scoreCandidate, summarizeReport } from "./scoring.js";
 import { extractTextFromUpload } from "./textExtraction.js";
@@ -79,7 +80,7 @@ function uniqueMatches(matches) {
     }
     return [...bestByUrl.values()];
 }
-async function runScan(request) {
+async function runScan(request, fileEvidence) {
     const prepared = prepareDocumentText(request.text);
     const text = prepared.text;
     if (text.length < 120) {
@@ -127,6 +128,10 @@ async function runScan(request) {
         }, 0) / weightedTop.reduce((sum, _match, index) => sum + Math.max(0.35, 1 - index * 0.08), 0));
     const localAi = detectAiSignals(text);
     const scanNotes = [...prepared.notes];
+    if (fileEvidence) {
+        const sizeKb = Math.max(1, Math.round(fileEvidence.sizeBytes / 1024));
+        scanNotes.push(`Файл перевірено напряму: ${fileEvidence.fileName}, ${sizeKb} KB, метод ${fileEvidence.extractionMethod}, витягнуто ${fileEvidence.extractedWordCount} слів.`);
+    }
     if (longDocumentMode) {
         scanNotes.push(`Повне покриття: перевірено ${chunks.length} фрагментів, включно з кінцем документа.`);
         scanNotes.push("Для довгого тексту застосовано двофазний пошук: швидкий прохід по всіх фрагментах і точне дочитування найсильніших збігів.");
@@ -144,8 +149,9 @@ async function runScan(request) {
         aiNote: "Базовий звіт згенеровано локально. AI-думка підвантажується окремо після звіту.",
         scanNotes,
         skippedTitleWords: prepared.skippedTitleWords,
+        fileEvidence,
         matches,
-        aiSignals: localAi.signals,
+        aiSignals: fileEvidence ? [...fileEvidence.signals, ...localAi.signals] : localAi.signals,
         summary: summarizeReport(plagiarismScore, localAi.probability, matches)
     };
 }
@@ -174,6 +180,20 @@ app.post("/api/scan", async (request, response) => {
         response.status(400).json({ error: error instanceof Error ? error.message : "Не вдалося виконати перевірку." });
     }
 });
+app.post("/api/scan-file", upload.single("file"), async (request, response) => {
+    try {
+        if (!request.file) {
+            response.status(400).json({ error: "Додайте файл для перевірки." });
+            return;
+        }
+        const extracted = await extractTextFromUpload(request.file);
+        const settings = typeof request.body.settings === "string" ? JSON.parse(request.body.settings) : request.body.settings;
+        response.json(await runScan({ text: extracted.text, fileName: extracted.fileName, settings }, extracted.fileEvidence));
+    }
+    catch (error) {
+        response.status(400).json({ error: error instanceof Error ? error.message : "Не вдалося виконати файлову перевірку." });
+    }
+});
 app.post("/api/ai-opinion", async (request, response) => {
     try {
         const body = request.body;
@@ -194,5 +214,58 @@ app.post("/api/ai-opinion", async (request, response) => {
     }
     catch (error) {
         response.status(502).json({ error: error instanceof Error ? error.message : "AI-думка недоступна." });
+    }
+});
+app.post("/api/ai-opinion-file", upload.single("file"), async (request, response) => {
+    try {
+        if (!request.file) {
+            response.status(400).json({ error: "Додайте файл для AI-думки." });
+            return;
+        }
+        const extracted = await extractTextFromUpload(request.file);
+        const text = prepareDocumentText(extracted.text).text;
+        if (text.length < 120) {
+            response.status(400).json({ error: "Файл має містити щонайменше 120 символів тексту для AI-думки." });
+            return;
+        }
+        const localSignals = typeof request.body.localSignals === "string" ? JSON.parse(request.body.localSignals) : [];
+        const opinion = await analyzeWithLlmProviders(text, {
+            probability: Number(request.body.localProbability) || 0,
+            signals: Array.isArray(localSignals) ? localSignals : []
+        });
+        if (!opinion) {
+            response.status(400).json({ error: "API-ключ або список AI-моделей не налаштовано." });
+            return;
+        }
+        response.json(opinion);
+    }
+    catch (error) {
+        response.status(502).json({ error: error instanceof Error ? error.message : "AI-думка для файлу недоступна." });
+    }
+});
+app.post("/api/humanize", async (request, response) => {
+    try {
+        const body = request.body;
+        response.json(humanizeText(body.text));
+    }
+    catch (error) {
+        response.status(400).json({ error: error instanceof Error ? error.message : "Не вдалося олюднити текст." });
+    }
+});
+app.post("/api/humanize-file", upload.single("file"), async (request, response) => {
+    try {
+        if (!request.file) {
+            response.status(400).json({ error: "Додайте файл для олюднення." });
+            return;
+        }
+        const extracted = await extractTextFromUpload(request.file);
+        const result = humanizeText(prepareDocumentText(extracted.text).text);
+        response.json({
+            ...result,
+            notes: [`Файл прочитано напряму: ${extracted.fileName}.`, ...result.notes]
+        });
+    }
+    catch (error) {
+        response.status(400).json({ error: error instanceof Error ? error.message : "Не вдалося олюднити файл." });
     }
 });
