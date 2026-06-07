@@ -57,8 +57,44 @@ const RULES: Rule[] = [
   {
     label: "Очищено українські шаблони",
     detail: "Скорочено типові академічні AI-звороти без втрати змісту.",
-    pattern: /(?:варто зазначити,?\s*що|слід зазначити,?\s*що|важливо підкреслити,?\s*що|на основі проведеного аналізу встановлено,?\s*що|отримані результати дозволяють зробити висновок,?\s*що)/giu,
+    pattern: /(?:варто зазначити,?\s*що|слід зазначити,?\s*що|важливо підкреслити,?\s*що|доцільно зазначити,?\s*що|на основі проведеного аналізу встановлено,?\s*що|отримані результати дозволяють зробити висновок,?\s*що)/giu,
     replacement: (match) => (match.toLowerCase().includes("аналіз") ? "аналіз показав, що" : "")
+  },
+  {
+    label: "Переписано академічні заготовки",
+    detail: "Службові формули курсової замінено на коротші конструкції без шаблонного вступу.",
+    pattern: /(?:метою\s+(?:роботи|дослідження)\s+є|завданнями\s+(?:роботи|дослідження)\s+є|актуальність\s+(?:обраної\s+)?теми\s+(?:полягає|зумовлена)\s+(?:у\s+тому,?\s*що|тим,?\s*що|у)|предметом\s+дослідження\s+є|об['’]єктом\s+дослідження\s+є|робота\s+складається\s+з)/giu,
+    replacement: (match) => {
+      const lower = match.toLowerCase();
+      if (lower.startsWith("метою")) return "Мета:";
+      if (lower.startsWith("завданнями")) return "Завдання:";
+      if (lower.startsWith("актуальність")) return "Тема актуальна через те, що";
+      if (lower.startsWith("предметом")) return "Предмет дослідження:";
+      if (lower.startsWith("об'єктом") || lower.startsWith("об’єктом")) return "Об'єкт дослідження:";
+      return "Структура роботи:";
+    }
+  },
+  {
+    label: "Послаблено безособову академічну подачу",
+    detail: "Безособові дієслова замінено на активніші формулювання, щоб текст не звучав як згенерована заготовка.",
+    pattern: /(?<![\p{L}\p{N}_])(?:розглянуто|проаналізовано|досліджено|визначено|встановлено|узагальнено|систематизовано|обґрунтовано|виявлено|сформовано|запропоновано|охарактеризовано)(?![\p{L}\p{N}_])/giu,
+    replacement: (match) => {
+      const map: Record<string, string> = {
+        розглянуто: "розглядається",
+        проаналізовано: "аналіз подано",
+        досліджено: "досліджується",
+        визначено: "названо окремо",
+        встановлено: "показано",
+        узагальнено: "зібрано",
+        систематизовано: "упорядковано",
+        обґрунтовано: "пояснено",
+        виявлено: "помітно",
+        сформовано: "підготовлено",
+        запропоновано: "подано",
+        охарактеризовано: "описано"
+      };
+      return map[match.toLowerCase()] ?? match;
+    }
   },
   {
     label: "Зменшено обережні формулювання",
@@ -82,7 +118,7 @@ const RULES: Rule[] = [
   {
     label: "Спрощено типову AI-лексику",
     detail: "Замінено слова, які часто створюють канцелярний або згенерований тон.",
-    pattern: /(?<![\p{L}\p{N}_])(?:важливий|важлива|важливе|важливі|ефективний|ефективна|ефективне|ефективні|комплексний|комплексна|комплексне|комплексні|практичне значення|ключовий|ключова|ключове|ключові)(?![\p{L}\p{N}_])/giu,
+    pattern: /(?<![\p{L}\p{N}_])(?:важливий|важлива|важливе|важливі|ефективний|ефективна|ефективне|ефективні|комплексний|комплексна|комплексне|комплексні|практичне значення|теоретичне значення|ключовий|ключова|ключове|ключові|унікальний|унікальна|унікальне|унікальні|інноваційний|інноваційна|інноваційне|інноваційні)(?![\p{L}\p{N}_])/giu,
     replacement: (match) => {
       const map: Record<string, string> = {
         важливий: "потрібний",
@@ -98,12 +134,53 @@ const RULES: Rule[] = [
         комплексне: "цілісне",
         комплексні: "цілісні",
         "практичне значення": "користь",
+        "теоретичне значення": "теоретична користь",
         ключовий: "головний",
         ключова: "головна",
         ключове: "головне",
-        ключові: "головні"
+        ключові: "головні",
+        унікальний: "окремий",
+        унікальна: "окрема",
+        унікальне: "окреме",
+        унікальні: "окремі",
+        інноваційний: "новий",
+        інноваційна: "нова",
+        інноваційне: "нове",
+        інноваційні: "нові"
       };
       return map[match.toLowerCase()] ?? match;
+    }
+  },
+  {
+    label: "Прибрано гладкі LLM-дієслова",
+    detail: "Заміщено дієслова, які часто створюють надто загальний управлінський тон.",
+    pattern: /(?<![\p{L}\p{N}_])(?:сприяє|забезпечує|оптимізує|покращує|розкриває потенціал|відіграє ключову роль|підкреслює)(?![\p{L}\p{N}_])/giu,
+    replacement: (match) => {
+      const map: Record<string, string> = {
+        сприяє: "допомагає",
+        забезпечує: "дає",
+        оптимізує: "спрощує",
+        покращує: "поліпшує",
+        "розкриває потенціал": "показує можливості",
+        "відіграє ключову роль": "має значення",
+        підкреслює: "показує"
+      };
+      return map[match.toLowerCase()] ?? match;
+    }
+  },
+  {
+    label: "Прибрано нечіткі авторитетні твердження",
+    detail: "Розмиті посилання на експертів або дослідження замінено на нейтральніші формулювання.",
+    pattern: /(?<![\p{L}\p{N}_])(?:експерти вважають|дослідження показують|численні фактори|різноманітні аспекти|багато джерел|широкий спектр|experts argue|observers note|studies show|research suggests|various factors|numerous examples)(?![\p{L}\p{N}_])/giu,
+    replacement: (match) => {
+      const lower = match.toLowerCase();
+      if (lower.includes("експерти") || lower.includes("experts")) return "у джерелах зазначають";
+      if (lower.includes("дослідження") || lower.includes("studies") || lower.includes("research")) return "дані показують";
+      if (lower.includes("фактор") || lower.includes("factor")) return "причини";
+      if (lower.includes("аспект")) return "деталі";
+      if (lower.includes("джерел")) return "джерела";
+      if (lower.includes("спектр")) return "кілька варіантів";
+      return "приклади";
     }
   },
   {
@@ -177,6 +254,44 @@ function removeDuplicateSentences(text: string): { text: string; count: number }
   return { text: kept.join(" "), count };
 }
 
+function varyRepeatedSentenceStarts(text: string): { text: string; count: number } {
+  const sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/gu) ?? [text];
+  const counts = new Map<string, number>();
+  const revised: string[] = [];
+  let count = 0;
+
+  for (const sentence of sentences) {
+    const trimmed = sentence.trim();
+    const tokens = trimmed
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s'-]/gu, " ")
+      .split(/\s+/)
+      .filter(Boolean);
+    const start = tokens.slice(0, 3).join(" ");
+    const seen = counts.get(start) ?? 0;
+    counts.set(start, seen + 1);
+
+    if (seen > 0 && start.length > 6) {
+      const words = trimmed.split(/\s+/);
+      if (/^(у|в)\s+роботі\b/iu.test(trimmed)) {
+        revised.push(trimmed.replace(/^(у|в)\s+роботі\s+/iu, "Далі "));
+        count += 1;
+        continue;
+      }
+      if (words.length > 8) {
+        const lead = seen % 2 === 0 ? "Далі" : "Після цього";
+        revised.push(`${lead} ${words.slice(1).join(" ")}`);
+        count += 1;
+        continue;
+      }
+    }
+
+    revised.push(trimmed);
+  }
+
+  return { text: revised.join(" "), count };
+}
+
 export function humanizeText(input: string): HumanizeResult {
   const original = normalizeWhitespace(input);
   if (countWords(original) < 20) {
@@ -211,6 +326,16 @@ export function humanizeText(input: string): HumanizeResult {
       label: "Прибрано повторені речення",
       count: deduplicated.count,
       detail: "Вилучено дублікати, які підсилюють показники шаблонності та лексичної передбачуваності."
+    });
+  }
+
+  const variedStarts = varyRepeatedSentenceStarts(revised);
+  revised = variedStarts.text;
+  if (variedStarts.count > 0) {
+    changes.push({
+      label: "Урізноманітнено початки речень",
+      count: variedStarts.count,
+      detail: "Повторювані початки речень переписано, щоб текст не читався як серія однакових шаблонів."
     });
   }
 
