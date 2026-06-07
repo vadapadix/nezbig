@@ -103,44 +103,6 @@ function isDuplicateOpinionSignal(signal: LlmOpinion["aiSignals"][number], local
   return localSignals.some((localSignal) => localSignal.label.trim().toLowerCase() === normalizedLabel);
 }
 
-function fileMethodLabel(method: NonNullable<ScanReport["fileEvidence"]>["extractionMethod"]): string {
-  if (method === "docx") return "DOCX";
-  if (method === "pdf") return "PDF";
-  return "Текст";
-}
-
-function recommendationForReport(report: ScanReport): { title: string; detail: string; tone: "ok" | "warn" | "danger" } {
-  if (report.plagiarismScore >= 45) {
-    return {
-      title: "Перевірити джерела",
-      detail: "Є сильні текстові збіги. Відкрийте знайдені посилання й додайте посилання або перепишіть проблемні фрагменти.",
-      tone: "danger"
-    };
-  }
-
-  if (report.aiProbability >= 38) {
-    return {
-      title: "Олюднити стиль",
-      detail: "Локальний AI-аналіз бачить шаблонність. Спершу обробіть текст олюдненням, потім запустіть перевірку ще раз.",
-      tone: "warn"
-    };
-  }
-
-  if (report.aiOpinionProbability !== undefined && report.aiOpinionProbability >= 50) {
-    return {
-      title: "Переглянути AI-думку",
-      detail: "Локальний аналіз нижчий, але модель бачить ризик. Перевірте її пояснення й конкретні сигнали нижче.",
-      tone: "warn"
-    };
-  }
-
-  return {
-    title: "Звіт виглядає чисто",
-    detail: "Сильних збігів і високих локальних AI-сигналів немає. Для курсової все одно перевірте цитати й список джерел.",
-    tone: "ok"
-  };
-}
-
 function wrapCanvasText(context: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number): number {
   const words = text.split(/\s+/).filter(Boolean);
   let line = "";
@@ -178,20 +140,28 @@ function downloadReportPng(report: ScanReport): void {
   const context = canvas.getContext("2d");
   if (!context) return;
 
-  context.scale(scale, scale);
-  context.fillStyle = "#fbf7ed";
-  context.fillRect(0, 0, width, height);
-  context.fillStyle = "#0f211e";
-  context.fillRect(0, 0, width, 210);
+  const printBlack = "#111111";
+  const printGray = "#555555";
+  const printLight = "#e6e6e6";
+  const printPaper = "#ffffff";
 
-  context.fillStyle = "#2ec4b6";
+  context.scale(scale, scale);
+  context.fillStyle = printPaper;
+  context.fillRect(0, 0, width, height);
+
+  context.fillStyle = printBlack;
   context.font = "700 22px Actay, sans-serif";
   context.fillText("ЗВІТ НЕЗБІГ", 70, 72);
-  context.fillStyle = "#fff8ed";
   context.font = "700 48px 'Actay Wide', Actay, sans-serif";
   const titleY = wrapCanvasText(context, report.fileName, 70, 132, 920, 56);
   context.font = "400 24px Actay, sans-serif";
   context.fillText(new Intl.DateTimeFormat("uk-UA", { dateStyle: "medium", timeStyle: "short" }).format(new Date(report.checkedAt)), 1050, 72);
+  context.strokeStyle = printBlack;
+  context.lineWidth = 2;
+  context.beginPath();
+  context.moveTo(70, Math.max(210, titleY + 18));
+  context.lineTo(1330, Math.max(210, titleY + 18));
+  context.stroke();
 
   let y = Math.max(260, titleY + 48);
   const cardWidth = 280;
@@ -204,37 +174,37 @@ function downloadReportPng(report: ScanReport): void {
 
   for (const [index, card] of cards.entries()) {
     const x = 70 + index * (cardWidth + 35);
-    context.fillStyle = "#fffdf7";
-    context.strokeStyle = "#ddd6c8";
+    context.fillStyle = printPaper;
+    context.strokeStyle = printBlack;
     context.lineWidth = 2;
     context.beginPath();
     context.roundRect(x, y, cardWidth, 170, 14);
     context.fill();
     context.stroke();
-    context.fillStyle = "#66716f";
+    context.fillStyle = printGray;
     context.font = "700 24px Actay, sans-serif";
     context.fillText(card[0], x + 28, y + 48);
-    context.fillStyle = "#101817";
+    context.fillStyle = printBlack;
     context.font = "800 70px 'Actay Wide', Actay, sans-serif";
     context.fillText(card[1], x + 28, y + 116);
-    context.fillStyle = "#66716f";
+    context.fillStyle = printGray;
     context.font = "400 22px Actay, sans-serif";
     context.fillText(card[2], x + 28, y + 148);
   }
 
   y += 225;
-  context.fillStyle = "#101817";
+  context.fillStyle = printBlack;
   context.font = "800 28px 'Actay Wide', Actay, sans-serif";
   context.fillText("Підсумок", 70, y);
-  context.fillStyle = "#505c59";
+  context.fillStyle = printGray;
   context.font = "400 24px Actay, sans-serif";
   y = wrapCanvasText(context, reportSummaryText(report), 70, y + 42, 1220, 34) + 22;
 
   if (report.scanNotes?.length) {
-    context.fillStyle = "#101817";
+    context.fillStyle = printBlack;
     context.font = "800 26px 'Actay Wide', Actay, sans-serif";
     context.fillText("Примітки перевірки", 70, y);
-    context.fillStyle = "#505c59";
+    context.fillStyle = printGray;
     context.font = "400 22px Actay, sans-serif";
     y += 38;
     for (const note of report.scanNotes.slice(0, 4)) {
@@ -243,37 +213,53 @@ function downloadReportPng(report: ScanReport): void {
     y += 18;
   }
 
-  context.fillStyle = "#101817";
+  context.strokeStyle = printLight;
+  context.lineWidth = 1;
+  context.beginPath();
+  context.moveTo(70, y);
+  context.lineTo(1330, y);
+  context.stroke();
+  y += 36;
+
+  context.fillStyle = printBlack;
   context.font = "800 28px 'Actay Wide', Actay, sans-serif";
   context.fillText("Ймовірні джерела", 70, y);
   y += 46;
   context.font = "400 22px Actay, sans-serif";
-  context.fillStyle = "#505c59";
+  context.fillStyle = printGray;
 
   const matches = report.matches.slice(0, 5);
   if (matches.length === 0) {
     y = wrapCanvasText(context, "Сильних збігів у відкритих вебджерелах не знайдено.", 70, y, 1220, 32) + 26;
   } else {
     for (const match of matches) {
-      context.fillStyle = "#101817";
+      context.fillStyle = printBlack;
       context.font = "800 24px Actay, sans-serif";
       y = wrapCanvasText(context, `${match.score}% - ${match.title}`, 70, y, 1220, 32);
-      context.fillStyle = "#505c59";
+      context.fillStyle = printGray;
       context.font = "400 21px Actay, sans-serif";
       y = wrapCanvasText(context, `${match.url} | слова ${match.overlapPercent}%, хеші ${match.hashOverlapPercent}%, full-text ${match.fullTextRank}%`, 90, y + 6, 1180, 29);
       y += 18;
     }
   }
 
-  context.fillStyle = "#101817";
+  context.strokeStyle = printLight;
+  context.lineWidth = 1;
+  context.beginPath();
+  context.moveTo(70, y);
+  context.lineTo(1330, y);
+  context.stroke();
+  y += 36;
+
+  context.fillStyle = printBlack;
   context.font = "800 28px 'Actay Wide', Actay, sans-serif";
   context.fillText("AI-сигнали", 70, y);
   y += 44;
   for (const signal of report.aiSignals.slice(0, 5)) {
-    context.fillStyle = "#101817";
+    context.fillStyle = printBlack;
     context.font = "800 23px Actay, sans-serif";
     context.fillText(`${signal.label}: ${signal.score}%`, 70, y);
-    context.fillStyle = "#505c59";
+    context.fillStyle = printGray;
     context.font = "400 21px Actay, sans-serif";
     y = wrapCanvasText(context, signal.detail, 90, y + 32, 1180, 29) + 16;
   }
@@ -287,6 +273,26 @@ function downloadReportPng(report: ScanReport): void {
     link.click();
     URL.revokeObjectURL(url);
   }, "image/png");
+}
+
+function SignalCard({ signal, className = "" }: { signal: ScanReport["aiSignals"][number]; className?: string }) {
+  return (
+    <article className={className ? `signal ${className}` : "signal"} key={signal.label}>
+      <div>
+        <strong>{signal.label}</strong>
+        <span>{signal.score}%</span>
+      </div>
+      <progress value={signal.score} max="100" aria-label={`${signal.label}: ${signal.score}%`} />
+      <p>{signal.detail}</p>
+      {signal.evidence && signal.evidence.length > 0 ? (
+        <ul className="evidence-list">
+          {signal.evidence.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      ) : null}
+    </article>
+  );
 }
 
 export default function App() {
@@ -308,7 +314,9 @@ export default function App() {
   const coverageWords = wordCount;
   const settingsMode = scanModes.find((mode) => mode.value === settings.sensitivity) ?? scanModes[1];
   const estimatedScanSeconds = useMemo(() => estimateScanSeconds(settings, wordCount), [settings, wordCount]);
-  const reportRecommendation = report ? recommendationForReport(report) : null;
+  const aiSignalSplit = report ? Math.max(1, Math.ceil(report.aiSignals.length / 2)) : 0;
+  const primaryAiSignals = report ? report.aiSignals.slice(0, aiSignalSplit) : [];
+  const secondaryAiSignals = report ? report.aiSignals.slice(aiSignalSplit) : [];
 
   useEffect(() => {
     setSettings((current) => {
@@ -485,10 +493,6 @@ export default function App() {
               <p className="hero-copy">Безкоштовна перевірка тексту на плагіат, AI-сліди та відкриті вебджерела.</p>
             </div>
           </div>
-          <div className="status-strip" aria-live="polite">
-            <span>{busy ? "Сканування..." : llmBusy ? "AI-думка аналізує..." : selectedFile ? "Файл готовий до перевірки" : "Готово до перевірки"}</span>
-            <strong>{selectedFile ? "файл" : `${formatNumber(wordCount)} слів`}</strong>
-          </div>
         </section>
 
         <form id="checker" className="workspace" onSubmit={handleSubmit}>
@@ -578,11 +582,6 @@ export default function App() {
                   ? `Автопідбір: ${settingsMode.label.toLowerCase()}, покриття ${formatNumber(coverageWords)} з ${formatNumber(wordCount)} слів, час ${formatDuration(estimatedScanSeconds)}.`
                   : "Додайте текст або файл, і параметри підлаштуються автоматично."}
               </p>
-            </div>
-
-            <div className="method-note">
-              <strong>Метод</strong>
-              <span>Пошук точних фраз, читання сторінок, n-грам збіги та розширений AI-аналіз за стилем і патернами.</span>
             </div>
 
             <button type="submit" disabled={!canScan}>
@@ -757,44 +756,13 @@ export default function App() {
                   )}
                 </section>
 
-                <div className="report-insights" aria-label="Підсумкові блоки звіту">
-                  <article className={`insight-card insight-${reportRecommendation?.tone ?? "ok"}`}>
-                    <span>Наступний крок</span>
-                    <strong>{reportRecommendation?.title}</strong>
-                    <p>{reportRecommendation?.detail}</p>
-                    {report.aiProbability >= 38 ? (
-                      <button type="button" className="secondary-button compact-action" disabled={!canHumanize} onClick={() => void handleHumanize()}>
-                        Олюднити зараз
-                      </button>
-                    ) : null}
-                  </article>
-
-                  <article className="insight-card">
-                    <span>Покриття</span>
-                    <strong>{formatNumber(report.chunksChecked)} фрагм.</strong>
-                    <p>{formatNumber(report.wordCount)} слів перевірено; кінець документа включено.</p>
-                  </article>
-
-                  <article className="insight-card">
-                    <span>AI-порівняння</span>
-                    <strong>{report.aiProbability}% локально</strong>
-                    <p>{report.aiOpinionProbability !== undefined ? `${report.aiOpinionProbability}% дала AI-думка; це окрема оцінка.` : "AI-думка підвантажується окремо й не змінює локальний відсоток."}</p>
-                  </article>
-
-                  {report.fileEvidence ? (
-                    <article className="insight-card">
-                      <span>Файл</span>
-                      <strong>{fileMethodLabel(report.fileEvidence.extractionMethod)}</strong>
-                      <p>{formatNumber(report.fileEvidence.extractedWordCount)} слів зчитано, {(report.fileEvidence.sizeBytes / 1024 / 1024).toFixed(2)} MB.</p>
-                    </article>
-                  ) : (
-                    <article className="insight-card">
-                      <span>Ввід</span>
-                      <strong>Вставлений текст</strong>
-                      <p>Звіт сформовано без файлових метаданих.</p>
-                    </article>
-                  )}
-                </div>
+                {secondaryAiSignals.length > 0 ? (
+                  <div className="signal-list signal-list-left" aria-label="Додаткові AI-сигнали">
+                    {secondaryAiSignals.map((signal) => (
+                      <SignalCard signal={signal} key={signal.label} />
+                    ))}
+                  </div>
+                ) : null}
               </div>
 
               <section aria-labelledby="ai-title">
@@ -812,32 +780,11 @@ export default function App() {
                 ) : null}
                 <p className="section-note">Це ансамбль стилістичних, структурних і патерн-ознак. Він показує підозрілі маркери та запобіжники, але не є юридичним доказом походження тексту.</p>
                 <div className="signal-list">
-                  {report.aiSignals.map((signal) => (
-                    <article className="signal" key={signal.label}>
-                      <div>
-                        <strong>{signal.label}</strong>
-                        <span>{signal.score}%</span>
-                      </div>
-                      <progress value={signal.score} max="100" aria-label={`${signal.label}: ${signal.score}%`} />
-                      <p>{signal.detail}</p>
-                      {signal.evidence && signal.evidence.length > 0 ? (
-                        <ul className="evidence-list">
-                          {signal.evidence.map((item) => (
-                            <li key={item}>{item}</li>
-                          ))}
-                        </ul>
-                      ) : null}
-                    </article>
+                  {primaryAiSignals.map((signal) => (
+                    <SignalCard signal={signal} key={signal.label} />
                   ))}
                   {report.aiOpinionSignals?.filter((signal) => !isDuplicateOpinionSignal(signal, report.aiSignals)).map((signal) => (
-                    <article className="signal opinion-signal" key={`opinion-${signal.label}`}>
-                      <div>
-                        <strong>{signal.label}</strong>
-                        <span>{signal.score}%</span>
-                      </div>
-                      <progress value={signal.score} max="100" aria-label={`${signal.label}: ${signal.score}%`} />
-                      <p>{signal.detail}</p>
-                    </article>
+                    <SignalCard signal={signal} className="opinion-signal" key={`opinion-${signal.label}`} />
                   ))}
                 </div>
               </section>
