@@ -72,12 +72,17 @@ export async function extractTextFromUpload(file) {
     const ext = extensionOf(fileName);
     const extractionMethod = extractionMethodFor(fileName, file.mimetype);
     let text = "";
+    let html;
     if (extractionMethod === "plain-text") {
         text = file.buffer.toString("utf8");
     }
     else if (extractionMethod === "docx") {
-        const result = await mammoth.extractRawText({ buffer: file.buffer });
-        text = result.value;
+        const [textResult, htmlResult] = await Promise.all([
+            mammoth.extractRawText({ buffer: file.buffer }),
+            mammoth.convertToHtml({ buffer: file.buffer })
+        ]);
+        text = textResult.value;
+        html = htmlResult.value || undefined;
     }
     else if (extractionMethod === "pdf") {
         const { PDFParse } = await loadPdfParser();
@@ -97,6 +102,7 @@ export async function extractTextFromUpload(file) {
     const wordCount = countWords(cleaned);
     return {
         text: cleaned,
+        html,
         fileName,
         wordCount,
         fileEvidence: {

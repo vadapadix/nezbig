@@ -7,6 +7,7 @@ export type ScanSettings = {
 
 export type UploadedText = {
   text: string;
+  html?: string;
   fileName: string;
   wordCount: number;
   fileEvidence?: FileEvidence;

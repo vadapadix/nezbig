@@ -1,6 +1,6 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { ClipboardEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import nezbigLogo from "./assets/nezbig-mark.png";
-import type { HumanizeResult, LlmOpinion, ScanReport, ScanSettings } from "../shared/types";
+import type { HumanizeResult, LlmOpinion, ScanReport, ScanSettings, UploadedText } from "../shared/types";
 
 const defaultSettings: ScanSettings = {
   maxChunks: 14,
@@ -96,6 +96,71 @@ function summarizeAiError(error: unknown): string {
   if (/aborted|timeout/i.test(message)) return "модель не відповіла вчасно";
   if (/empty response/i.test(message)) return "модель повернула порожню відповідь";
   return message.slice(0, 180);
+}
+
+function htmlFromPlainText(value: string): string {
+  return value
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean)
+    .map((paragraph) => `<p>${paragraph.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replace(/\n/g, "<br>")}</p>`)
+    .join("");
+}
+
+function sanitizeRichHtml(input: string): string {
+  const parser = new DOMParser();
+  const document = parser.parseFromString(`<div>${input}</div>`, "text/html");
+  const allowedTags = new Set(["P", "BR", "STRONG", "B", "EM", "I", "U", "S", "A", "UL", "OL", "LI", "H1", "H2", "H3", "H4", "TABLE", "THEAD", "TBODY", "TR", "TD", "TH", "SPAN", "DIV", "BLOCKQUOTE", "SUB", "SUP"]);
+  const allowedStyles = new Set(["font-weight", "font-style", "text-decoration", "text-align", "margin-left", "padding-left", "list-style-type", "color", "background-color", "font-size", "font-family", "line-height"]);
+
+  function clean(node: Node): Node | null {
+    if (node.nodeType === Node.TEXT_NODE) return document.createTextNode(node.textContent ?? "");
+    if (node.nodeType !== Node.ELEMENT_NODE) return null;
+
+    const element = node as HTMLElement;
+    if (!allowedTags.has(element.tagName)) {
+      const fragment = document.createDocumentFragment();
+      for (const child of Array.from(element.childNodes)) {
+        const cleaned = clean(child);
+        if (cleaned) fragment.append(cleaned);
+      }
+      return fragment;
+    }
+
+    const output = document.createElement(element.tagName.toLowerCase());
+    if (element instanceof HTMLTableCellElement && element.colSpan > 1) output.setAttribute("colspan", String(element.colSpan));
+    if (element instanceof HTMLTableCellElement && element.rowSpan > 1) output.setAttribute("rowspan", String(element.rowSpan));
+    if (element instanceof HTMLAnchorElement) {
+      const href = element.getAttribute("href") ?? "";
+      if (/^(https?:|mailto:)/i.test(href)) output.setAttribute("href", href);
+    }
+    if (element instanceof HTMLOListElement && element.start > 1) output.setAttribute("start", String(element.start));
+
+    for (const property of allowedStyles) {
+      const value = element.style.getPropertyValue(property);
+      if (value) output.style.setProperty(property, value);
+    }
+
+    for (const child of Array.from(element.childNodes)) {
+      const cleaned = clean(child);
+      if (cleaned) output.append(cleaned);
+    }
+
+    return output;
+  }
+
+  const root = document.body.firstElementChild;
+  const fragment = document.createDocumentFragment();
+  if (root) {
+    for (const child of Array.from(root.childNodes)) {
+      const cleaned = clean(child);
+      if (cleaned) fragment.append(cleaned);
+    }
+  }
+
+  const container = document.createElement("div");
+  container.append(fragment);
+  return container.innerHTML;
 }
 
 function isDuplicateOpinionSignal(signal: LlmOpinion["aiSignals"][number], localSignals: ScanReport["aiSignals"]): boolean {
@@ -306,6 +371,9 @@ export default function App() {
   const [humanizerBusy, setHumanizerBusy] = useState(false);
   const [humanized, setHumanized] = useState<HumanizeResult | null>(null);
   const [message, setMessage] = useState("");
+  const [sourceHtml, setSourceHtml] = useState("");
+  const [formattedPreviewBusy, setFormattedPreviewBusy] = useState(false);
+  const sourceEditorRef = useRef<HTMLDivElement | null>(null);
   const reportRef = useRef<HTMLElement | null>(null);
 
   const wordCount = useMemo(() => text.trim().split(/\s+/).filter(Boolean).length, [text]);
@@ -339,15 +407,95 @@ export default function App() {
     });
   }, [report?.id]);
 
+  function setEditorContent(html: string, plainText: string) {
+    setSourceHtml(html);
+    setText(plainText);
+    window.requestAnimationFrame(() => {
+      if (sourceEditorRef.current) sourceEditorRef.current.innerHTML = html;
+    });
+  }
+
+  function syncEditorFromDom(clearFile = true) {
+    const editor = sourceEditorRef.current;
+    if (!editor) return;
+    setText(editor.innerText.trim());
+    setSourceHtml(editor.innerHTML);
+    if (clearFile) {
+      setFileName("Вставлений текст");
+      setSelectedFile(null);
+    }
+    setHumanized(null);
+  }
+
+  function handleRichPaste(event: ClipboardEvent<HTMLDivElement>) {
+    event.preventDefault();
+    const html = event.clipboardData.getData("text/html");
+    const plain = event.clipboardData.getData("text/plain");
+    if (html) {
+      document.execCommand("insertHTML", false, sanitizeRichHtml(html));
+    } else {
+      document.execCommand("insertText", false, plain);
+    }
+    window.requestAnimationFrame(() => syncEditorFromDom(true));
+  }
+
+  async function loadFormattedPreview(file: File) {
+    setFormattedPreviewBusy(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await fetch("/api/extract", { method: "POST", body: formData });
+      const payload = (await response.json()) as UploadedText | { error: string };
+      if (!response.ok || "error" in payload) {
+        throw new Error("error" in payload ? payload.error : "Не вдалося прочитати форматування.");
+      }
+
+      const html = payload.html ? sanitizeRichHtml(payload.html) : htmlFromPlainText(payload.text);
+      setEditorContent(html, payload.text);
+      setMessage(
+        payload.html
+          ? `Файл прикріплено: ${payload.fileName}. Форматування Word показано в preview; перевірка піде файлом.`
+          : `Файл прикріплено: ${payload.fileName}. Форматованого preview немає, показано текст.`
+      );
+    } catch (error) {
+      setEditorContent("", "");
+      setMessage(error instanceof Error ? error.message : `Файл прикріплено: ${file.name}. Форматоване preview недоступне.`);
+    } finally {
+      setFormattedPreviewBusy(false);
+    }
+  }
+
+  async function copyHumanizedFormatted() {
+    if (!humanized) return;
+    const html = htmlFromPlainText(humanized.revisedText);
+    try {
+      if ("ClipboardItem" in window && navigator.clipboard.write) {
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            "text/html": new Blob([html], { type: "text/html" }),
+            "text/plain": new Blob([humanized.revisedText], { type: "text/plain" })
+          })
+        ]);
+      } else {
+        await navigator.clipboard.writeText(humanized.revisedText);
+      }
+      setMessage("Олюднений текст скопійовано з форматуванням для Word.");
+    } catch {
+      await navigator.clipboard.writeText(humanized.revisedText);
+      setMessage("Олюднений текст скопійовано як звичайний текст.");
+    }
+  }
+
   async function handleFile(file: File | null) {
     if (!file) return;
     setSelectedFile(file);
     setFileName(file.name);
-    setText("");
+    setEditorContent("", "");
     setReport(null);
     setHumanized(null);
     setLlmBusy(false);
-    setMessage(`Файл прикріплено: ${file.name}. Текст не вставляється в поле; перевірка піде файлом.`);
+    setMessage(`Файл прикріплено: ${file.name}. Читаю форматування для preview; перевірка піде файлом.`);
+    void loadFormattedPreview(file);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -470,7 +618,7 @@ export default function App() {
 
   function moveHumanizedTextToChecker() {
     if (!humanized) return;
-    setText(humanized.revisedText);
+    setEditorContent(htmlFromPlainText(humanized.revisedText), humanized.revisedText);
     setSelectedFile(null);
     setFileName("Олюднений текст");
     setReport(null);
@@ -516,30 +664,37 @@ export default function App() {
             <label className="text-label" htmlFor="source-text">
               Текст для перевірки
             </label>
-            <textarea
+            <div
+              ref={sourceEditorRef}
               id="source-text"
-              name="sourceText"
-              value={text}
-              onChange={(event) => {
-                setText(event.target.value);
-                setFileName("Вставлений текст");
-                setSelectedFile(null);
-                setHumanized(null);
-              }}
-              placeholder={selectedFile ? "Файл прикріплено. Для текстового режиму почніть вводити або очистіть вибір файлу..." : "Вставте текст або завантажте документ..."}
-              autoComplete="off"
-              disabled={selectedFile !== null}
+              className={selectedFile ? "rich-editor rich-editor-readonly" : "rich-editor"}
+              role="textbox"
+              aria-multiline="true"
+              aria-label="Текст для перевірки"
+              contentEditable={selectedFile === null}
+              suppressContentEditableWarning
+              data-empty={sourceHtml.trim().length === 0 ? "true" : "false"}
+              data-placeholder={
+                selectedFile
+                  ? formattedPreviewBusy
+                    ? "Читаємо форматування файлу..."
+                    : "Файл прикріплено. Форматований preview з'явиться тут, якщо формат підтримується."
+                  : "Вставте текст із Word або завантажте документ..."
+              }
+              onInput={() => syncEditorFromDom(true)}
+              onPaste={handleRichPaste}
             />
             {selectedFile ? (
               <div className="file-mode">
                 <strong>Файловий режим</strong>
-                <span>Текст не підставляється у поле. Сервер прочитає файл під час перевірки або олюднення.</span>
+                <span>Preview зберігає базове форматування Word, але сервер перевіряє саме файл.</span>
                 <button
                   type="button"
                   className="secondary-button"
                   onClick={() => {
                     setSelectedFile(null);
                     setFileName("Вставлений текст");
+                    setEditorContent("", "");
                     setMessage("Файл прибрано. Можна вставити текст вручну.");
                   }}
                 >
@@ -601,10 +756,13 @@ export default function App() {
               <h2 id="humanizer-title">Олюднений текст</h2>
               <p>{formatNumber(humanized.originalWordCount)} -&gt; {formatNumber(humanized.revisedWordCount)} слів</p>
             </div>
-            <textarea className="humanized-output" value={humanized.revisedText} readOnly />
+            <div className="humanized-output rich-output" dangerouslySetInnerHTML={{ __html: htmlFromPlainText(humanized.revisedText) }} />
             <div className="humanizer-actions">
               <button type="button" className="secondary-button" onClick={moveHumanizedTextToChecker}>
                 Перенести в перевірку
+              </button>
+              <button type="button" className="secondary-button" onClick={() => void copyHumanizedFormatted()}>
+                Копіювати у Word
               </button>
               <span>Після перенесення запустіть скан ще раз, щоб побачити новий AI-відсоток.</span>
             </div>

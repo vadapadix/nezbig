@@ -80,12 +80,17 @@ export async function extractTextFromUpload(file: Express.Multer.File): Promise<
   const ext = extensionOf(fileName);
   const extractionMethod = extractionMethodFor(fileName, file.mimetype);
   let text = "";
+  let html: string | undefined;
 
   if (extractionMethod === "plain-text") {
     text = file.buffer.toString("utf8");
   } else if (extractionMethod === "docx") {
-    const result = await mammoth.extractRawText({ buffer: file.buffer });
-    text = result.value;
+    const [textResult, htmlResult] = await Promise.all([
+      mammoth.extractRawText({ buffer: file.buffer }),
+      mammoth.convertToHtml({ buffer: file.buffer })
+    ]);
+    text = textResult.value;
+    html = htmlResult.value || undefined;
   } else if (extractionMethod === "pdf") {
     const { PDFParse } = await loadPdfParser();
     const parser = new PDFParse({ data: file.buffer });
@@ -106,6 +111,7 @@ export async function extractTextFromUpload(file: Express.Multer.File): Promise<
 
   return {
     text: cleaned,
+    html,
     fileName,
     wordCount,
     fileEvidence: {
