@@ -1024,7 +1024,7 @@ dt {
 }
 
 .match-score,
-.signal > div {
+.signal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1036,6 +1036,40 @@ dt {
   font-size: 1.04rem;
   line-height: 1.35;
   overflow-wrap: anywhere;
+}
+
+.signal-critical {
+  border-color: rgba(255, 93, 115, 0.4);
+  background: rgba(255, 93, 115, 0.05);
+}
+
+.signal-safeguard {
+  border-color: rgba(46, 196, 182, 0.5);
+  background: rgba(46, 196, 182, 0.05);
+}
+
+.signal-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.signal-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.signal-score-badge {
+  font-weight: 850;
+  background: rgba(17, 24, 23, 0.05);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+}
+
+.signal-detail {
+  font-size: 0.95rem;
+  margin-top: 8px;
 }
 
 .match-card p,
@@ -1089,6 +1123,22 @@ progress::-webkit-progress-value {
 
 progress::-moz-progress-bar {
   background: linear-gradient(90deg, var(--accent), var(--warn), var(--risk));
+}
+
+.progress-critical::-webkit-progress-value {
+  background: linear-gradient(90deg, var(--warn), var(--risk));
+}
+
+.progress-critical::-moz-progress-bar {
+  background: linear-gradient(90deg, var(--warn), var(--risk));
+}
+
+.progress-safeguard::-webkit-progress-value {
+  background: linear-gradient(90deg, var(--accent-soft), var(--accent));
+}
+
+.progress-safeguard::-moz-progress-bar {
+  background: linear-gradient(90deg, var(--accent-soft), var(--accent));
 }
 
 .empty-state {

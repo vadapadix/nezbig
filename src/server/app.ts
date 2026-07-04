@@ -6,7 +6,7 @@ import { chunkText, countWords } from "./chunking.js";
 import { prepareDocumentText } from "./documentPreprocess.js";
 import { humanizeText } from "./humanizer.js";
 import { analyzeWithLlmProviders } from "./llmOpinion.js";
-import { detectAiSignals, scoreCandidate, summarizeReport } from "./scoring.js";
+import { scoreCandidate, detectAiSignals, summarizeReport } from "./scoring.js";
 import { extractTextFromUpload } from "./textExtraction.js";
 import { hydrateSearchCandidates, searchWebCandidates } from "./webSearch.js";
 import type { FileEvidence, HumanizeRequest, LlmOpinionRequest, PlagiarismMatch, ScanReport, ScanRequest, ScanSettings } from "../shared/types.js";
