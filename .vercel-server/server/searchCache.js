@@ -7,14 +7,10 @@ export class MemoryTtlCache {
         this.maxEntries = maxEntries;
     }
     get(key) {
-        const entry = this.entries.get(key);
-        if (!entry)
-            return undefined;
-        if (entry.expiresAt < Date.now()) {
-            this.entries.delete(key);
-            return undefined;
-        }
-        return entry.value;
+        return this.getLiveEntry(key)?.value;
+    }
+    has(key) {
+        return this.getLiveEntry(key) !== undefined;
     }
     set(key, value) {
         if (this.entries.size >= this.maxEntries) {
@@ -26,5 +22,15 @@ export class MemoryTtlCache {
             expiresAt: Date.now() + this.ttlMs,
             value
         });
+    }
+    getLiveEntry(key) {
+        const entry = this.entries.get(key);
+        if (!entry)
+            return undefined;
+        if (entry.expiresAt < Date.now()) {
+            this.entries.delete(key);
+            return undefined;
+        }
+        return entry;
     }
 }

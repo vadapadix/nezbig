@@ -13,8 +13,15 @@ export function calculateConfirmedPlagiarismScore(matches) {
     const totalWeight = confirmed.reduce((sum, _match, index) => sum + Math.max(0.35, 1 - index * 0.08), 0);
     return clampScore(weighted / totalWeight);
 }
-export function summarizeReport(plagiarismScore, aiProbability, matches) {
+export function summarizeReport(plagiarismScore, aiProbability, matches, searchDiagnostics) {
     if (matches.length === 0) {
+        const attempted = searchDiagnostics?.providers.reduce((sum, provider) => sum + provider.attempted, 0) ?? 0;
+        const succeeded = searchDiagnostics?.providers.reduce((sum, provider) => sum + provider.succeeded, 0) ?? 0;
+        const circuitOpen = searchDiagnostics?.providers.some((provider) => /повторних помилок/i.test(provider.skippedReason ?? "")) ?? false;
+        if (succeeded === 0 && (attempted > 0 || circuitOpen)) {
+            const requestDetail = attempted > 0 ? `усі ${attempted} запитів завершилися помилкою` : "доступні провайдери тимчасово призупинені після помилок";
+            return `Вебпошук не завершено: ${requestDetail}. Відсутність збігів не підтверджена. Ризик ШІ: ${aiProbability}%.`;
+        }
         return `Сильних збігів у відкритих вебджерелах не знайдено. Ризик ШІ: ${aiProbability}%.`;
     }
     const confirmed = matches.filter((match) => match.confidence === "page");

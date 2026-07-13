@@ -476,6 +476,22 @@ textarea:disabled {
   padding: 12px;
 }
 
+.format-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.format-actions span {
+  min-width: 240px;
+  flex: 1;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
 .file-mode strong {
   color: var(--ink);
 }
@@ -1029,6 +1045,40 @@ dt {
   padding: 8px 10px;
   overflow-wrap: anywhere;
   animation: fade-up 360ms var(--ease-out) both;
+}
+
+.provider-health {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 16px;
+}
+
+.provider-health > span {
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  border: 1px solid rgba(46, 196, 182, 0.34);
+  border-radius: 999px;
+  background: rgba(46, 196, 182, 0.08);
+  color: var(--muted);
+  padding: 6px 10px;
+  font-size: 0.82rem;
+}
+
+.provider-health > span strong {
+  color: var(--ink);
+}
+
+.provider-health > .provider-health-issue {
+  border-color: rgba(246, 174, 45, 0.5);
+  background: rgba(246, 174, 45, 0.08);
+}
+
+.search-failed-state {
+  border-color: rgba(255, 93, 115, 0.38);
 }
 
 .match-card,

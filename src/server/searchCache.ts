@@ -12,15 +12,11 @@ export class MemoryTtlCache<T> {
   ) {}
 
   get(key: string): T | undefined {
-    const entry = this.entries.get(key);
-    if (!entry) return undefined;
+    return this.getLiveEntry(key)?.value;
+  }
 
-    if (entry.expiresAt < Date.now()) {
-      this.entries.delete(key);
-      return undefined;
-    }
-
-    return entry.value;
+  has(key: string): boolean {
+    return this.getLiveEntry(key) !== undefined;
   }
 
   set(key: string, value: T): void {
@@ -33,5 +29,17 @@ export class MemoryTtlCache<T> {
       expiresAt: Date.now() + this.ttlMs,
       value
     });
+  }
+
+  private getLiveEntry(key: string): CacheEntry<T> | undefined {
+    const entry = this.entries.get(key);
+    if (!entry) return undefined;
+
+    if (entry.expiresAt < Date.now()) {
+      this.entries.delete(key);
+      return undefined;
+    }
+
+    return entry;
   }
 }

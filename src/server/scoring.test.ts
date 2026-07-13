@@ -56,6 +56,29 @@ describe("scoreCandidate", () => {
     expect(calculateConfirmedPlagiarismScore([confirmedPage])).toBeGreaterThan(40);
     expect(summarizeReport(0, 20, [snippetLead])).toMatch(/не підтверджен/i);
   });
+
+  it("does not claim that no sources exist when every web request failed", () => {
+    const summary = summarizeReport(0, 20, [], {
+      providers: [{ provider: "DuckDuckGo", attempted: 3, succeeded: 0, failed: 3, timedOut: 2, results: 0 }],
+      pages: { attempted: 0, verified: 0, unavailable: 0, cacheHits: 0, negativeCacheHits: 0 }
+    });
+
+    expect(summary).toMatch(/не завершено|недоступн/i);
+    expect(summary).not.toMatch(/не знайдено/i);
+  });
+
+  it("keeps the search inconclusive while the only provider circuit is open", () => {
+    const summary = summarizeReport(0, 20, [], {
+      providers: [
+        { provider: "DuckDuckGo", attempted: 0, succeeded: 0, failed: 0, timedOut: 0, results: 0, skippedReason: "тимчасово призупинено після повторних помилок" },
+        { provider: "Google", attempted: 0, succeeded: 0, failed: 0, timedOut: 0, results: 0, skippedReason: "не налаштовано API-ключ" }
+      ],
+      pages: { attempted: 0, verified: 0, unavailable: 0, cacheHits: 0, negativeCacheHits: 0 }
+    });
+
+    expect(summary).toMatch(/не завершено|недоступн/i);
+    expect(summary).not.toMatch(/не знайдено/i);
+  });
 });
 
 describe("detectAiSignals", () => {

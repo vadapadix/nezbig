@@ -35,6 +35,29 @@ describe("sanitizeRichHtml", () => {
     expect(result).toContain("<table>");
     expect(result).toContain("<strong>Дані</strong>");
   });
+
+  it("keeps Word paragraph geometry and inline typography", () => {
+    const result = sanitizeRichHtml(`
+      <style>
+        p.MsoNormal { margin: 0 0 8pt 36pt; text-indent: 18pt; text-align: justify; line-height: 1.5; }
+        span.WordRun { font-family: "Times New Roman"; font-size: 14pt; text-decoration: underline; }
+      </style>
+      <p class="MsoNormal"><span class="WordRun">Форматований абзац</span></p>
+    `);
+
+    const container = document.createElement("div");
+    container.innerHTML = result;
+    const paragraph = container.querySelector("p");
+    const run = container.querySelector("span");
+
+    expect(paragraph?.style.marginLeft).toBe("36pt");
+    expect(paragraph?.style.textIndent).toBe("18pt");
+    expect(paragraph?.style.textAlign).toBe("justify");
+    expect(paragraph?.style.lineHeight).toBe("1.5");
+    expect(run?.style.fontFamily).toContain("Times New Roman");
+    expect(run?.style.fontSize).toBe("14pt");
+    expect(run?.style.textDecoration).toContain("underline");
+  });
 });
 
 describe("htmlFromPlainText", () => {

@@ -1,7 +1,7 @@
 import { scoreCandidate } from "./plagiarismScoring.js";
 import { detectAiSignals } from "./aiDetection.js";
 import { clampScore } from "./utils/textUtils.js";
-import type { PlagiarismMatch, SearchCandidate } from "../shared/types.js";
+import type { PlagiarismMatch, SearchCandidate, SearchDiagnostics } from "../shared/types.js";
 
 export { scoreCandidate, detectAiSignals };
 
@@ -17,8 +17,15 @@ export function calculateConfirmedPlagiarismScore(matches: PlagiarismMatch[]): n
   return clampScore(weighted / totalWeight);
 }
 
-export function summarizeReport(plagiarismScore: number, aiProbability: number, matches: PlagiarismMatch[]): string {
+export function summarizeReport(plagiarismScore: number, aiProbability: number, matches: PlagiarismMatch[], searchDiagnostics?: SearchDiagnostics): string {
   if (matches.length === 0) {
+    const attempted = searchDiagnostics?.providers.reduce((sum, provider) => sum + provider.attempted, 0) ?? 0;
+    const succeeded = searchDiagnostics?.providers.reduce((sum, provider) => sum + provider.succeeded, 0) ?? 0;
+    const circuitOpen = searchDiagnostics?.providers.some((provider) => /повторних помилок/i.test(provider.skippedReason ?? "")) ?? false;
+    if (succeeded === 0 && (attempted > 0 || circuitOpen)) {
+      const requestDetail = attempted > 0 ? `усі ${attempted} запитів завершилися помилкою` : "доступні провайдери тимчасово призупинені після помилок";
+      return `Вебпошук не завершено: ${requestDetail}. Відсутність збігів не підтверджена. Ризик ШІ: ${aiProbability}%.`;
+    }
     return `Сильних збігів у відкритих вебджерелах не знайдено. Ризик ШІ: ${aiProbability}%.`;
   }
 

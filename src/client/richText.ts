@@ -9,7 +9,7 @@ const DISCARDED_TAGS = new Set(["SCRIPT", "STYLE", "META", "LINK", "OBJECT", "EM
 
 const ALLOWED_STYLES = new Set([
   "font-weight", "font-style", "font-size", "font-family", "text-decoration", "text-align",
-  "text-indent", "text-transform", "line-height", "letter-spacing", "vertical-align", "white-space",
+  "text-indent", "text-transform", "font-variant", "line-height", "letter-spacing", "vertical-align", "white-space",
   "color", "background-color", "margin", "margin-top", "margin-right", "margin-bottom", "margin-left",
   "padding", "padding-top", "padding-right", "padding-bottom", "padding-left", "list-style-type",
   "border", "border-top", "border-right", "border-bottom", "border-left", "border-collapse",

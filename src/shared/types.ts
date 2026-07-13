@@ -55,6 +55,27 @@ export type SearchCandidate = {
   verifiedTextLength?: number;
 };
 
+export type SearchProviderDiagnostic = {
+  provider: string;
+  attempted: number;
+  succeeded: number;
+  failed: number;
+  timedOut: number;
+  results: number;
+  skippedReason?: string;
+};
+
+export type SearchDiagnostics = {
+  providers: SearchProviderDiagnostic[];
+  pages: {
+    attempted: number;
+    verified: number;
+    unavailable: number;
+    cacheHits: number;
+    negativeCacheHits: number;
+  };
+};
+
 export type PlagiarismMatch = SearchCandidate & {
   chunkIndex: number;
   score: number;
@@ -113,6 +134,7 @@ export type ScanReport = {
   aiOpinionNote?: string;
   aiOpinionSignals?: AiSignal[];
   scanNotes?: string[];
+  searchDiagnostics?: SearchDiagnostics;
   skippedTitleWords?: number;
   fileEvidence?: FileEvidence;
   matches: PlagiarismMatch[];

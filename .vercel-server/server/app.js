@@ -7,9 +7,10 @@ import { prepareDocumentText } from "./documentPreprocess.js";
 import { mergeRevisedTextIntoHtml } from "./formattedDocument.js";
 import { humanizeText } from "./humanizer.js";
 import { analyzeWithLlmProviders } from "./llmOpinion.js";
+import { emptySearchDiagnostics, mergeSearchDiagnostics, searchDiagnosticsNotes } from "./searchDiagnostics.js";
 import { calculateConfirmedPlagiarismScore, scoreCandidate, detectAiSignals, summarizeReport } from "./scoring.js";
 import { extractTextFromUpload } from "./textExtraction.js";
-import { hydrateSearchCandidates, searchWebCandidates } from "./webSearch.js";
+import { hydrateSearchCandidatesDetailed, searchWebCandidatesDetailed } from "./webSearch.js";
 export const app = express();
 const upload = multer({
     storage: multer.memoryStorage(),
@@ -96,25 +97,32 @@ async function runScan(request, fileEvidence) {
     const concurrency = veryLongDocumentMode ? 8 : settings.sensitivity === "deep" ? 4 : 5;
     const matchedByChunk = await mapWithConcurrency(chunks, concurrency, async (chunk) => {
         try {
-            const candidates = await searchWebCandidates(chunk.text, searchLimit, settings.sensitivity === "deep", {
+            const search = await searchWebCandidatesDetailed(chunk.text, searchLimit, settings.sensitivity === "deep", {
                 hydrateLimit: longDocumentMode ? 0 : undefined,
                 includeAcademic: settings.sensitivity === "deep" && !veryLongDocumentMode,
                 queryLimit: veryLongDocumentMode ? 1 : longDocumentMode ? 2 : undefined
             });
-            return candidates.map((candidate) => ({ chunkText: chunk.text, match: scoreCandidate(chunk.text, candidate, chunk.index) }));
+            return {
+                matches: search.candidates.map((candidate) => ({ chunkText: chunk.text, match: scoreCandidate(chunk.text, candidate, chunk.index) })),
+                diagnostics: search.diagnostics
+            };
         }
         catch (error) {
             console.warn(error);
-            return [];
+            const diagnostics = emptySearchDiagnostics();
+            diagnostics.providers.push({ provider: "Пошуковий pipeline", attempted: 1, succeeded: 0, failed: 1, timedOut: 0, results: 0 });
+            return { matches: [], diagnostics };
         }
     });
-    const preliminaryMatches = matchedByChunk.flat();
+    const preliminaryMatches = matchedByChunk.flatMap((result) => result.matches);
+    let searchDiagnostics = mergeSearchDiagnostics(...matchedByChunk.map((result) => result.diagnostics));
     const hydrationTargets = preliminaryMatches
         .filter(({ match }) => match.confidence === "snippet" && (match.score >= thresholdFor(settings) - 10 || match.longestRun >= 7))
         .sort((a, b) => b.match.score - a.match.score || b.match.longestRun - a.match.longestRun)
         .slice(0, veryLongDocumentMode ? 32 : longDocumentMode ? 48 : 80);
-    const hydratedCandidates = await hydrateSearchCandidates(hydrationTargets.map(({ match }) => match), hydrationTargets.length);
-    const hydratedMatches = hydratedCandidates.map((candidate, index) => scoreCandidate(hydrationTargets[index].chunkText, candidate, hydrationTargets[index].match.chunkIndex));
+    const hydration = await hydrateSearchCandidatesDetailed(hydrationTargets.map(({ match }) => match), hydrationTargets.length);
+    searchDiagnostics = mergeSearchDiagnostics(searchDiagnostics, hydration.diagnostics);
+    const hydratedMatches = hydration.candidates.map((candidate, index) => scoreCandidate(hydrationTargets[index].chunkText, candidate, hydrationTargets[index].match.chunkIndex));
     const allMatches = [...preliminaryMatches.map(({ match }) => match), ...hydratedMatches];
     const matches = uniqueMatches(allMatches)
         .filter((match) => match.score >= thresholdFor(settings) || match.longestRun >= 10)
@@ -123,6 +131,7 @@ async function runScan(request, fileEvidence) {
     const plagiarismScore = calculateConfirmedPlagiarismScore(matches);
     const localAi = detectAiSignals(text);
     const scanNotes = [...prepared.notes];
+    scanNotes.push(...searchDiagnosticsNotes(searchDiagnostics));
     if (fileEvidence) {
         const sizeKb = Math.max(1, Math.round(fileEvidence.sizeBytes / 1024));
         scanNotes.push(`Файл перевірено напряму: ${fileEvidence.fileName}, ${sizeKb} KB, метод ${fileEvidence.extractionMethod}, витягнуто ${fileEvidence.extractedWordCount} слів.`);
@@ -144,11 +153,12 @@ async function runScan(request, fileEvidence) {
         aiModel: undefined,
         aiNote: "Базовий звіт згенеровано локально. AI-думка підвантажується окремо після звіту.",
         scanNotes,
+        searchDiagnostics,
         skippedTitleWords: prepared.skippedTitleWords,
         fileEvidence,
         matches,
         aiSignals: fileEvidence ? [...fileEvidence.signals, ...localAi.signals] : localAi.signals,
-        summary: summarizeReport(plagiarismScore, localAi.probability, matches)
+        summary: summarizeReport(plagiarismScore, localAi.probability, matches, searchDiagnostics)
     };
 }
 app.use(cors());

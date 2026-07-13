@@ -1,6 +1,7 @@
 import { ClipboardEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import nezbigLogo from "./assets/nezbig-mark.png";
 import { htmlFromPlainText, plainTextFromRichHtml, sanitizeRichHtml } from "./richText";
+import { downloadWordDocument } from "./wordDocument";
 import type { HumanizeResult, LlmOpinion, ScanReport, ScanSettings, UploadedText } from "../shared/types";
 
 const defaultSettings: ScanSettings = {
@@ -99,6 +100,12 @@ function reportSummaryText(report: ScanReport): string {
 
 function confidenceLabel(value: "snippet" | "page"): string {
   return value === "page" ? "сторінку прочитано" : "лише уривок пошуку";
+}
+
+function providerDiagnosticLabel(provider: NonNullable<ScanReport["searchDiagnostics"]>["providers"][number]): string {
+  if (provider.attempted === 0) return provider.skippedReason?.startsWith("не налаштовано") ? "не підключено" : "пропущено";
+  if (provider.succeeded === 0) return "недоступний";
+  return `${provider.succeeded}/${provider.attempted} · ${provider.results} рез.`;
 }
 
 function summarizeAiError(error: unknown): string {
@@ -344,6 +351,10 @@ export default function App() {
   const secondaryAiSignals = report ? report.aiSignals.slice(aiSignalSplit) : [];
   const confirmedMatchCount = report?.matches.filter((match) => match.confidence === "page").length ?? 0;
   const leadMatchCount = (report?.matches.length ?? 0) - confirmedMatchCount;
+  const searchAttemptCount = report?.searchDiagnostics?.providers.reduce((sum, provider) => sum + provider.attempted, 0) ?? 0;
+  const searchSuccessCount = report?.searchDiagnostics?.providers.reduce((sum, provider) => sum + provider.succeeded, 0) ?? 0;
+  const searchCircuitOpen = report?.searchDiagnostics?.providers.some((provider) => /повторних помилок/i.test(provider.skippedReason ?? "")) ?? false;
+  const allSearchProvidersFailed = searchSuccessCount === 0 && (searchAttemptCount > 0 || searchCircuitOpen);
 
   useEffect(() => {
     setSettings((current) => {
@@ -430,22 +441,31 @@ export default function App() {
   async function copyHumanizedFormatted() {
     if (!humanized) return;
     const html = sanitizeRichHtml(humanized.revisedHtml ?? htmlFromPlainText(humanized.revisedText));
+    await copyFormattedForWord(html, humanized.revisedText);
+  }
+
+  async function copyFormattedForWord(html: string, plainText: string) {
     try {
       if ("ClipboardItem" in window && navigator.clipboard.write) {
         await navigator.clipboard.write([
           new ClipboardItem({
             "text/html": new Blob([html], { type: "text/html" }),
-            "text/plain": new Blob([humanized.revisedText], { type: "text/plain" })
+            "text/plain": new Blob([plainText], { type: "text/plain" })
           })
         ]);
       } else {
-        await navigator.clipboard.writeText(humanized.revisedText);
+        await navigator.clipboard.writeText(plainText);
       }
-      setMessage("Відредагований текст скопійовано з форматуванням для Word.");
+      setMessage("Текст скопійовано разом із форматуванням для Word.");
     } catch {
-      await navigator.clipboard.writeText(humanized.revisedText);
-      setMessage("Відредагований текст скопійовано як звичайний текст.");
+      await navigator.clipboard.writeText(plainText);
+      setMessage("Браузер дозволив скопіювати лише звичайний текст.");
     }
+  }
+
+  function downloadFormattedForWord(html: string, sourceName: string) {
+    downloadWordDocument(sanitizeRichHtml(html), sourceName);
+    setMessage("Форматований документ підготовлено для відкриття у Word.");
   }
 
   async function handleFile(file: File | null) {
@@ -646,6 +666,17 @@ export default function App() {
               onInput={() => syncEditorFromDom(true)}
               onPaste={handleRichPaste}
             />
+            {sourceHtml.trim() ? (
+              <div className="format-actions" aria-label="Дії з форматованим текстом">
+                <button type="button" className="secondary-button" onClick={() => void copyFormattedForWord(sanitizeRichHtml(sourceHtml), text)}>
+                  Копіювати у Word
+                </button>
+                <button type="button" className="secondary-button" onClick={() => downloadFormattedForWord(sourceHtml, fileName)}>
+                  Завантажити для Word
+                </button>
+                <span>Шрифти, розміри, вирівнювання, відступи, списки й таблиці зберігаються окремо від тексту для аналізу.</span>
+              </div>
+            ) : null}
             {selectedFile ? (
               <div className="file-mode">
                 <strong>Файловий режим</strong>
@@ -725,6 +756,13 @@ export default function App() {
               </button>
               <button type="button" className="secondary-button" onClick={() => void copyHumanizedFormatted()}>
                 Копіювати у Word
+              </button>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => downloadFormattedForWord(humanized.revisedHtml ?? htmlFromPlainText(humanized.revisedText), fileName)}
+              >
+                Завантажити для Word
               </button>
               <span>Після перенесення перевірте факти й запустіть аналіз повторно.</span>
             </div>
@@ -826,8 +864,30 @@ export default function App() {
                     <h3 id="matches-title">Ймовірні джерела</h3>
                     <span>{report.matches.length ? `${formatNumber(confirmedMatchCount)} підтвердж. · ${formatNumber(leadMatchCount)} підказ.` : "0 збігів"}</span>
                   </div>
+                  {report.searchDiagnostics ? (
+                    <div className="provider-health" aria-label="Стан пошукових провайдерів">
+                      {report.searchDiagnostics.providers.map((provider) => (
+                        <span
+                          className={provider.succeeded === 0 ? "provider-health-issue" : ""}
+                          key={provider.provider}
+                          title={provider.skippedReason ?? `${provider.failed} помилок, ${provider.timedOut} timeout`}
+                        >
+                          <strong>{provider.provider}</strong>
+                          {providerDiagnosticLabel(provider)}
+                        </span>
+                      ))}
+                      <span title="Сторінки, текст яких сервер зміг прочитати для підтвердження збігу">
+                        <strong>Сторінки</strong>
+                        {report.searchDiagnostics.pages.verified} підтвердж. · {report.searchDiagnostics.pages.unavailable} недоступ.
+                      </span>
+                    </div>
+                  ) : null}
                   {report.matches.length === 0 ? (
-                    <p className="empty-state compact-empty">Сильних збігів у відкритих вебджерелах не знайдено.</p>
+                    <p className={`empty-state compact-empty${allSearchProvidersFailed ? " search-failed-state" : ""}`}>
+                      {allSearchProvidersFailed
+                        ? "Вебпошук не завершено: доступні індекси не відповіли. Відсутність збігів не підтверджена."
+                        : "Сильних збігів у відкритих вебджерелах не знайдено."}
+                    </p>
                   ) : (
                     <div className="match-list">
                       {report.matches.map((match) => (

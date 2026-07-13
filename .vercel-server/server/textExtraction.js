@@ -2,6 +2,7 @@ import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 import mammoth from "mammoth";
 import { countWords } from "./chunking.js";
+import { createWordHtmlOptions, withWordFormattingStyles } from "./wordFormatting.js";
 const TEXT_EXTENSIONS = new Set([".txt", ".md", ".markdown", ".csv", ".json", ".rtf"]);
 const require = createRequire(import.meta.url);
 const pdfWorkerUrl = pathToFileURL(require.resolve("pdfjs-dist/legacy/build/pdf.worker.mjs")).href;
@@ -85,12 +86,13 @@ export async function extractTextFromUpload(file) {
         text = file.buffer.toString("utf8");
     }
     else if (extractionMethod === "docx") {
+        const wordHtmlOptions = createWordHtmlOptions();
         const [textResult, htmlResult] = await Promise.all([
             mammoth.extractRawText({ buffer: file.buffer }),
-            mammoth.convertToHtml({ buffer: file.buffer })
+            mammoth.convertToHtml({ buffer: file.buffer }, wordHtmlOptions)
         ]);
         text = textResult.value;
-        html = htmlResult.value || undefined;
+        html = htmlResult.value ? withWordFormattingStyles(htmlResult.value, wordHtmlOptions) : undefined;
     }
     else if (extractionMethod === "pdf") {
         const { PDFParse } = await loadPdfParser();

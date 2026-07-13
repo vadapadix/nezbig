@@ -1,18 +1,40 @@
 import * as cheerio from "cheerio";
 import { excerptForSearch, normalizeWhitespace } from "./chunking.js";
+import { ProviderCircuitBreaker } from "./providerCircuitBreaker.js";
+import { ProviderTaskScheduler } from "./providerTaskScheduler.js";
 import { MemoryTtlCache } from "./searchCache.js";
-import type { SearchCandidate } from "../shared/types.js";
+import { emptySearchDiagnostics, mergeSearchDiagnostics } from "./searchDiagnostics.js";
+import type { SearchCandidate, SearchDiagnostics, SearchProviderDiagnostic } from "../shared/types.js";
 
 const SEARCH_TIMEOUT_MS = 9000;
 const PAGE_TIMEOUT_MS = 8500;
 const MAX_PAGE_CHARS = 120_000;
 const searchCache = new MemoryTtlCache<SearchCandidate[]>(1000 * 60 * 30, 500);
 const pageCache = new MemoryTtlCache<string | undefined>(1000 * 60 * 60, 500);
+const providerCircuit = new ProviderCircuitBreaker(3, 60_000);
+const providerScheduler = new ProviderTaskScheduler(3);
 
 export type SearchProfile = {
   hydrateLimit?: number;
   includeAcademic?: boolean;
   queryLimit?: number;
+};
+
+export type WebSearchResult = {
+  candidates: SearchCandidate[];
+  diagnostics: SearchDiagnostics;
+};
+
+type ProviderTask = {
+  provider: string;
+  run: () => Promise<SearchCandidate[]>;
+};
+
+type PageReadResult = {
+  text?: string;
+  attempted: boolean;
+  cacheHit: boolean;
+  negativeCacheHit: boolean;
 };
 
 function decodeDuckDuckGoUrl(href: string): string {
@@ -35,6 +57,38 @@ function withTimeout(ms: number): AbortSignal {
   return controller.signal;
 }
 
+function isTimeoutError(error: unknown): boolean {
+  return error instanceof Error && (error.name === "AbortError" || /abort|timeout/i.test(error.message));
+}
+
+function skippedProvider(provider: string, skippedReason: string): SearchProviderDiagnostic {
+  return { provider, attempted: 0, succeeded: 0, failed: 0, timedOut: 0, results: 0, skippedReason };
+}
+
+async function runProviderTask(task: ProviderTask): Promise<{ candidates: SearchCandidate[]; diagnostic: SearchProviderDiagnostic }> {
+  return providerScheduler.run(task.provider, async () => {
+    if (!providerCircuit.canRequest(task.provider)) {
+      return { candidates: [], diagnostic: skippedProvider(task.provider, "тимчасово призупинено після повторних помилок") };
+    }
+
+    try {
+      const candidates = await task.run();
+      providerCircuit.recordSuccess(task.provider);
+      return {
+        candidates,
+        diagnostic: { provider: task.provider, attempted: 1, succeeded: 1, failed: 0, timedOut: 0, results: candidates.length }
+      };
+    } catch (error) {
+      providerCircuit.recordFailure(task.provider);
+      const timedOut = isTimeoutError(error) ? 1 : 0;
+      return {
+        candidates: [],
+        diagnostic: { provider: task.provider, attempted: 1, succeeded: 0, failed: 1, timedOut, results: 0 }
+      };
+    }
+  });
+}
+
 function dedupeByUrl(candidates: SearchCandidate[]): SearchCandidate[] {
   const seen = new Set<string>();
   const deduped: SearchCandidate[] = [];
@@ -47,6 +101,17 @@ function dedupeByUrl(candidates: SearchCandidate[]): SearchCandidate[] {
   }
 
   return deduped;
+}
+
+function interleaveCandidates(groups: SearchCandidate[][]): SearchCandidate[] {
+  const interleaved: SearchCandidate[] = [];
+  const longest = Math.max(0, ...groups.map((group) => group.length));
+  for (let index = 0; index < longest; index += 1) {
+    for (const group of groups) {
+      if (group[index]) interleaved.push(group[index]);
+    }
+  }
+  return interleaved;
 }
 
 function phraseScore(words: string[]): number {
@@ -165,7 +230,7 @@ async function searchGoogleCustom(query: string, maxResults: number): Promise<Se
     }
   });
 
-  if (!response.ok) return [];
+  if (!response.ok) throw new Error(`Google Search HTTP ${response.status}`);
 
   const payload = (await response.json()) as {
     items?: Array<{
@@ -184,6 +249,54 @@ async function searchGoogleCustom(query: string, maxResults: number): Promise<Se
       snippet: normalizeWhitespace(item.snippet ?? ""),
       query,
       provider: "Google"
+    }));
+
+  searchCache.set(key, results);
+  return results;
+}
+
+async function searchBrave(query: string, maxResults: number): Promise<SearchCandidate[]> {
+  const apiKey = process.env.BRAVE_SEARCH_API_KEY?.trim();
+  if (!apiKey) return [];
+
+  const key = cacheKey("brave", query, maxResults);
+  const cached = searchCache.get(key);
+  if (cached) return cached;
+
+  const url = new URL("https://api.search.brave.com/res/v1/web/search");
+  url.searchParams.set("q", query);
+  url.searchParams.set("count", String(Math.min(20, maxResults)));
+  url.searchParams.set("extra_snippets", "true");
+
+  const response = await fetch(url, {
+    signal: withTimeout(SEARCH_TIMEOUT_MS),
+    headers: {
+      "x-subscription-token": apiKey,
+      "user-agent": "Mozilla/5.0 Nezbig/1.0 (+local plagiarism checker)",
+      accept: "application/json"
+    }
+  });
+  if (!response.ok) throw new Error(`Brave Search HTTP ${response.status}`);
+
+  const payload = (await response.json()) as {
+    web?: {
+      results?: Array<{
+        title?: string;
+        url?: string;
+        description?: string;
+        extra_snippets?: string[];
+      }>;
+    };
+  };
+  const results = (payload.web?.results ?? [])
+    .filter((item) => item.title && item.url && (item.description || item.extra_snippets?.length))
+    .slice(0, maxResults)
+    .map((item): SearchCandidate => ({
+      title: normalizeWhitespace(item.title ?? ""),
+      url: item.url ?? "",
+      snippet: normalizeWhitespace([item.description, ...(item.extra_snippets ?? [])].filter(Boolean).join(" ")),
+      query,
+      provider: "Brave"
     }));
 
   searchCache.set(key, results);
@@ -211,7 +324,7 @@ async function searchSemanticScholar(query: string, maxResults: number): Promise
     }
   });
 
-  if (!response.ok) return [];
+  if (!response.ok) throw new Error(`Semantic Scholar HTTP ${response.status}`);
 
   const payload = (await response.json()) as {
     data?: Array<{
@@ -277,7 +390,7 @@ async function searchOpenAlex(query: string, maxResults: number): Promise<Search
       accept: "application/json"
     }
   });
-  if (!response.ok) return [];
+  if (!response.ok) throw new Error(`OpenAlex HTTP ${response.status}`);
 
   const payload = (await response.json()) as {
     results?: Array<{
@@ -314,13 +427,18 @@ async function searchOpenAlex(query: string, maxResults: number): Promise<Search
   return results;
 }
 
-async function fetchReadablePageText(url: string): Promise<string | undefined> {
-  const cached = pageCache.get(url);
-  if (cached !== undefined) return cached;
+async function fetchReadablePageText(url: string): Promise<PageReadResult> {
+  if (pageCache.has(url)) {
+    const text = pageCache.get(url);
+    return { text, attempted: false, cacheHit: text !== undefined, negativeCacheHit: text === undefined };
+  }
 
   try {
     const parsed = new URL(url);
-    if (!["http:", "https:"].includes(parsed.protocol)) return undefined;
+    if (!["http:", "https:"].includes(parsed.protocol)) {
+      pageCache.set(url, undefined);
+      return { attempted: false, cacheHit: false, negativeCacheHit: false };
+    }
 
     const response = await fetch(url, {
       signal: withTimeout(PAGE_TIMEOUT_MS),
@@ -333,19 +451,19 @@ async function fetchReadablePageText(url: string): Promise<string | undefined> {
 
     if (!response.ok) {
       pageCache.set(url, undefined);
-      return undefined;
+      return { attempted: true, cacheHit: false, negativeCacheHit: false };
     }
     const contentType = response.headers.get("content-type") ?? "";
     if (!/text\/html|text\/plain|application\/xhtml\+xml/i.test(contentType)) {
       pageCache.set(url, undefined);
-      return undefined;
+      return { attempted: true, cacheHit: false, negativeCacheHit: false };
     }
 
     const raw = (await response.text()).slice(0, MAX_PAGE_CHARS);
     if (/text\/plain/i.test(contentType)) {
       const plain = normalizeWhitespace(raw).slice(0, MAX_PAGE_CHARS);
       pageCache.set(url, plain);
-      return plain;
+      return { text: plain, attempted: true, cacheHit: false, negativeCacheHit: false };
     }
 
     const $ = cheerio.load(raw);
@@ -353,63 +471,93 @@ async function fetchReadablePageText(url: string): Promise<string | undefined> {
     const text = normalizeWhitespace($("article, main, body").text());
     const readable = text.length > 160 ? text.slice(0, MAX_PAGE_CHARS) : undefined;
     pageCache.set(url, readable);
-    return readable;
+    return { text: readable, attempted: true, cacheHit: false, negativeCacheHit: false };
   } catch {
     pageCache.set(url, undefined);
-    return undefined;
+    return { attempted: true, cacheHit: false, negativeCacheHit: false };
   }
 }
 
-export async function searchWebCandidates(chunkText: string, maxResults = 5, deep = false, profile: SearchProfile = {}): Promise<SearchCandidate[]> {
+export async function searchWebCandidatesDetailed(chunkText: string, maxResults = 5, deep = false, profile: SearchProfile = {}): Promise<WebSearchResult> {
   const perQuery = deep ? 7 : maxResults;
   const queries = buildSearchQueries(chunkText, deep).slice(0, profile.queryLimit ?? (deep ? 5 : 3));
-  const searches = await Promise.allSettled(
-    queries.flatMap((query) => [
-      searchDuckDuckGo(query, perQuery),
-      searchGoogleCustom(query, perQuery),
-      ...(deep && profile.includeAcademic !== false
-        ? [
-            searchSemanticScholar(query, Math.min(5, perQuery)),
-            searchOpenAlex(query, Math.min(5, perQuery))
-          ]
-        : [])
-    ])
+  const tasks: ProviderTask[] = [];
+  const diagnostics = emptySearchDiagnostics();
+  const googleConfigured = Boolean(process.env.GOOGLE_SEARCH_API_KEY?.trim() && process.env.GOOGLE_SEARCH_ENGINE_ID?.trim());
+  const braveConfigured = Boolean(process.env.BRAVE_SEARCH_API_KEY?.trim());
+  const academicEnabled = deep && profile.includeAcademic !== false;
+  const openAlexConfigured = Boolean(process.env.OPENALEX_API_KEY?.trim());
+
+  for (const query of queries) {
+    tasks.push({ provider: "DuckDuckGo", run: () => searchDuckDuckGo(query, perQuery) });
+    if (googleConfigured) tasks.push({ provider: "Google", run: () => searchGoogleCustom(query, perQuery) });
+    if (braveConfigured) tasks.push({ provider: "Brave", run: () => searchBrave(query, perQuery) });
+    if (academicEnabled) {
+      tasks.push({ provider: "Semantic Scholar", run: () => searchSemanticScholar(query, Math.min(5, perQuery)) });
+      if (openAlexConfigured) tasks.push({ provider: "OpenAlex", run: () => searchOpenAlex(query, Math.min(5, perQuery)) });
+    }
+  }
+
+  if (!googleConfigured) diagnostics.providers.push(skippedProvider("Google", "не налаштовано API-ключ і Search Engine ID"));
+  if (!braveConfigured) diagnostics.providers.push(skippedProvider("Brave", "не налаштовано API-ключ"));
+  if (deep && !academicEnabled) {
+    diagnostics.providers.push(skippedProvider("Semantic Scholar", "вимкнено профілем довгого сканування"));
+    diagnostics.providers.push(skippedProvider("OpenAlex", "вимкнено профілем довгого сканування"));
+  } else if (academicEnabled && !openAlexConfigured) {
+    diagnostics.providers.push(skippedProvider("OpenAlex", "не налаштовано API-ключ"));
+  }
+
+  const taskResults = await Promise.all(tasks.map(runProviderTask));
+  const providerDiagnostics = mergeSearchDiagnostics(
+    diagnostics,
+    ...taskResults.map(({ diagnostic }) => ({ ...emptySearchDiagnostics(), providers: [diagnostic] }))
   );
-  const candidates = dedupeByUrl(searches.flatMap((result) => (result.status === "fulfilled" ? result.value : []))).slice(0, deep ? 18 : 10);
+  const candidates = dedupeByUrl(interleaveCandidates(taskResults.map(({ candidates: group }) => group)))
+    .slice(0, deep ? 18 : 10)
+    .slice(0, maxResults);
   const hydrateLimit = Math.min(candidates.length, profile.hydrateLimit ?? candidates.length);
+  const hydration = await hydrateSearchCandidatesDetailed(candidates.slice(0, hydrateLimit), hydrateLimit);
+  const hydrated = [...hydration.candidates, ...candidates.slice(hydrateLimit)];
 
-  const hydrated = await Promise.all(
-    candidates.map(async (candidate, index) => {
-      if (index >= hydrateLimit) return candidate;
-      const sourceText = await fetchReadablePageText(candidate.url);
-      return {
-        ...candidate,
-        sourceText,
-        verifiedTextLength: sourceText?.length
-      };
-    })
-  );
-
-  return hydrated.slice(0, maxResults);
+  return { candidates: hydrated, diagnostics: mergeSearchDiagnostics(providerDiagnostics, hydration.diagnostics) };
 }
 
-export async function hydrateSearchCandidates(candidates: SearchCandidate[], maxPages: number): Promise<SearchCandidate[]> {
+export async function searchWebCandidates(chunkText: string, maxResults = 5, deep = false, profile: SearchProfile = {}): Promise<SearchCandidate[]> {
+  return (await searchWebCandidatesDetailed(chunkText, maxResults, deep, profile)).candidates;
+}
+
+export async function hydrateSearchCandidatesDetailed(candidates: SearchCandidate[], maxPages: number): Promise<WebSearchResult> {
   const selected = candidates.slice(0, maxPages);
-  const sourceByUrl = new Map<string, Promise<string | undefined>>();
+  const sourceByUrl = new Map<string, Promise<PageReadResult>>();
 
   const hydrated = await Promise.all(
     selected.map(async (candidate) => {
+      if (candidate.sourceText && candidate.sourceText.length > 160) return candidate;
       const key = candidate.url.replace(/#.*$/, "").replace(/\/$/, "");
       const sourcePromise = sourceByUrl.get(key) ?? fetchReadablePageText(candidate.url);
       sourceByUrl.set(key, sourcePromise);
-      const sourceText = await sourcePromise;
+      const page = await sourcePromise;
       return {
         ...candidate,
-        sourceText: sourceText ?? candidate.sourceText,
-        verifiedTextLength: sourceText?.length ?? candidate.verifiedTextLength
+        sourceText: page.text ?? candidate.sourceText,
+        verifiedTextLength: page.text?.length ?? candidate.verifiedTextLength
       };
     })
   );
 
-  return hydrated;
+  const pageResults = await Promise.all(sourceByUrl.values());
+  const diagnostics = emptySearchDiagnostics();
+  diagnostics.pages = {
+    attempted: pageResults.filter((page) => page.attempted).length,
+    verified: pageResults.filter((page) => page.text !== undefined).length,
+    unavailable: pageResults.filter((page) => page.text === undefined).length,
+    cacheHits: pageResults.filter((page) => page.cacheHit).length,
+    negativeCacheHits: pageResults.filter((page) => page.negativeCacheHit).length
+  };
+
+  return { candidates: hydrated, diagnostics };
+}
+
+export async function hydrateSearchCandidates(candidates: SearchCandidate[], maxPages: number): Promise<SearchCandidate[]> {
+  return (await hydrateSearchCandidatesDetailed(candidates, maxPages)).candidates;
 }
