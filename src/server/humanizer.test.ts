@@ -26,16 +26,28 @@ describe("humanizeText", () => {
     expect(result.revisedText.toLowerCase()).toContain("перевірка ролей");
   });
 
-  it("reduces cautious wording and repeated sentences", () => {
+  it("removes repeated sentences without erasing factual modality", () => {
     const result = humanizeText(
       "Документ може містити багато позицій для обліку поставок. Документ може містити багато позицій для обліку поставок. Цей важливий комплексний блок може показувати роботу системи. Користувач часто може бути не впевнений у результаті перевірки."
     );
 
-    expect(result.revisedText.toLowerCase()).not.toContain("може містити");
-    expect(result.revisedText.toLowerCase()).not.toContain("може показувати");
+    expect(result.revisedText.toLowerCase()).toContain("може містити");
+    expect(result.revisedText.toLowerCase()).toContain("може показувати");
     expect(result.revisedText.toLowerCase()).not.toContain("важливий комплексний");
     expect(result.revisedText.match(/обліку поставок/giu)?.length ?? 0).toBe(1);
     expect(result.changes.some((change) => change.label === "Прибрано повторені речення")).toBe(true);
+  });
+
+  it("preserves paragraphs, typographic quotes, and dashes", () => {
+    const source = `Перший абзац містить “авторську цитату” — її пунктуацію не можна ламати. Він також пояснює, чому формулювання може бути обережним.
+
+Другий абзац містить щонайменше двадцять слів і продовжує думку без декоративних шаблонів або службових фраз.`;
+
+    const result = humanizeText(source);
+
+    expect(result.revisedText).toContain("\n\n");
+    expect(result.revisedText).toContain("“авторську цитату” —");
+    expect(result.revisedText).toContain("може бути");
   });
 
   it("targets local AI scoring markers in templated coursework prose", () => {
@@ -63,7 +75,6 @@ describe("humanizeText", () => {
     expect(revisedLower).not.toContain("через тому");
     expect(revisedLower).toContain("тема актуальна через те, що");
     expect(result.changes.some((change) => change.label === "Переписано академічні заготовки")).toBe(true);
-    expect(result.changes.some((change) => change.label === "Урізноманітнено початки речень")).toBe(true);
   });
 
   it("rejects text that is too short for reliable editing", () => {

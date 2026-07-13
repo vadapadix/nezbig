@@ -155,7 +155,7 @@ function calculateTextEntropy(tokens: string[]): number {
   return entropy / Math.log2(total);
 }
 
-export function detectAiSignals(text: string): { probability: number; signals: AiSignal[] } {
+function analyzeSinglePass(text: string): { probability: number; signals: AiSignal[] } {
   const normalized = normalizeWhitespace(text);
   const lower = normalized.toLowerCase();
   const words = tokenize(normalized, true);
@@ -297,4 +297,77 @@ export function detectAiSignals(text: string): { probability: number; signals: A
   });
 
   return { probability, signals };
+}
+
+function buildAnalysisWindows(text: string, targetWords = 240, overlapWords = 48): string[] {
+  const words = normalizeWhitespace(text).split(/\s+/).filter(Boolean);
+  if (words.length <= targetWords + overlapWords) return [words.join(" ")];
+
+  const windows: string[] = [];
+  const step = Math.max(80, targetWords - overlapWords);
+  for (let start = 0; start < words.length; start += step) {
+    const window = words.slice(start, start + targetWords);
+    if (window.length < 80 && windows.length > 0) {
+      const previousStart = Math.max(0, words.length - targetWords);
+      const tail = words.slice(previousStart).join(" ");
+      if (tail !== windows.at(-1)) windows.push(tail);
+      break;
+    }
+    windows.push(window.join(" "));
+    if (start + targetWords >= words.length) break;
+  }
+
+  return windows;
+}
+
+function percentile(values: number[], ratio: number): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const index = Math.min(sorted.length - 1, Math.max(0, Math.ceil(sorted.length * ratio) - 1));
+  return sorted[index];
+}
+
+export function detectAiSignals(text: string): { probability: number; signals: AiSignal[] } {
+  const documentResult = analyzeSinglePass(text);
+  const windows = buildAnalysisWindows(text);
+  if (windows.length <= 1) return documentResult;
+
+  const windowResults = windows.map((window) => analyzeSinglePass(window));
+  const windowScores = windowResults.map((result) => result.probability);
+  const median = percentile(windowScores, 0.5);
+  const upperQuartile = percentile(windowScores, 0.75);
+  const strongest = Math.max(...windowScores);
+  const suspiciousWindows = windowScores.filter((score) => score >= 45).length;
+  const suspiciousCoverage = suspiciousWindows / windowScores.length;
+
+  const ensembleScore =
+    documentResult.probability * 0.42 +
+    median * 0.18 +
+    upperQuartile * 0.28 +
+    suspiciousCoverage * 100 * 0.12;
+  const localizedFloor = suspiciousCoverage >= 0.25
+    ? upperQuartile * 0.82
+    : strongest >= 68
+      ? strongest * 0.52
+      : 0;
+  const probability = clampScore(Math.max(ensembleScore, localizedFloor));
+
+  const segmentSignal: AiSignal = {
+    label: "Сегментна узгодженість AI-ознак",
+    score: clampScore(upperQuartile),
+    category: "statistical",
+    detail: suspiciousWindows > 0
+      ? `Підозрілі ознаки зосереджені у ${suspiciousWindows} з ${windowScores.length} повністю перевірених сегментів. Підсумок враховує весь документ і не маскує локальні ділянки середнім значенням.`
+      : `У ${windowScores.length} сегментах немає стійкого кластера AI-ознак; оцінка залишається низькою або невизначеною.`,
+    evidence: [...windowScores]
+      .map((score, index) => ({ score, index }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 4)
+      .map(({ score, index }) => `сегмент ${index + 1}: ${score}%`)
+  };
+
+  return {
+    probability,
+    signals: [segmentSignal, ...documentResult.signals].slice(0, 21)
+  };
 }

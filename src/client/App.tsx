@@ -485,10 +485,10 @@ export default function App() {
       } else {
         await navigator.clipboard.writeText(humanized.revisedText);
       }
-      setMessage("Олюднений текст скопійовано з форматуванням для Word.");
+      setMessage("Відредагований текст скопійовано з форматуванням для Word.");
     } catch {
       await navigator.clipboard.writeText(humanized.revisedText);
-      setMessage("Олюднений текст скопійовано як звичайний текст.");
+      setMessage("Відредагований текст скопійовано як звичайний текст.");
     }
   }
 
@@ -591,13 +591,13 @@ export default function App() {
 
   async function handleHumanize() {
     if (!canHumanize) {
-      setMessage("Для олюднення додайте файл або щонайменше 20 слів.");
+      setMessage("Для редагування додайте файл або щонайменше 20 слів.");
       return;
     }
 
     setHumanizerBusy(true);
     setHumanized(null);
-    setMessage(selectedFile ? "Олюднюю текст із файлу..." : "Олюднюю вставлений текст...");
+    setMessage(selectedFile ? "Редагую стиль тексту з файлу..." : "Редагую стиль вставленого тексту...");
 
     try {
       const response = selectedFile ? await humanizeSelectedFile(selectedFile) : await fetch("/api/humanize", {
@@ -606,11 +606,11 @@ export default function App() {
         body: JSON.stringify({ text })
       });
       const payload = (await response.json()) as HumanizeResult | { error: string };
-      if (!response.ok || "error" in payload) throw new Error("error" in payload ? payload.error : "Олюднення не вдалося.");
+      if (!response.ok || "error" in payload) throw new Error("error" in payload ? payload.error : "Редагування не вдалося.");
       setHumanized(payload);
-      setMessage(`Олюднення готове: ${payload.changes.length} груп змін.`);
+      setMessage(`Редагування готове: ${payload.changes.length} груп змін.`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Олюднення не вдалося.");
+      setMessage(error instanceof Error ? error.message : "Редагування не вдалося.");
     } finally {
       setHumanizerBusy(false);
     }
@@ -626,9 +626,9 @@ export default function App() {
     if (!humanized) return;
     setEditorContent(htmlFromPlainText(humanized.revisedText), humanized.revisedText);
     setSelectedFile(null);
-    setFileName("Олюднений текст");
+    setFileName("Відредагований текст");
     setReport(null);
-    setMessage("Олюднений текст перенесено в поле. Запустіть повторну перевірку.");
+    setMessage("Відредагований текст перенесено в поле. Перевірте факти й запустіть повторний аналіз.");
     window.requestAnimationFrame(() => {
       document.getElementById("checker")?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
@@ -749,7 +749,7 @@ export default function App() {
               {busy ? "Перевірка..." : "Запустити перевірку"}
             </button>
             <button type="button" className="secondary-button humanize-button" disabled={!canHumanize} onClick={() => void handleHumanize()}>
-              {humanizerBusy ? "Олюднення..." : "Олюднити текст"}
+              {humanizerBusy ? "Редагування..." : "Покращити стиль"}
             </button>
             <p className="message" aria-live="polite">{message}</p>
           </aside>
@@ -758,8 +758,8 @@ export default function App() {
         {humanized ? (
           <section className="humanizer-result" aria-labelledby="humanizer-title">
             <div>
-              <p className="eyebrow">Humanizer</p>
-              <h2 id="humanizer-title">Олюднений текст</h2>
+              <p className="eyebrow">Редактор стилю</p>
+              <h2 id="humanizer-title">Відредагований текст</h2>
               <p>{formatNumber(humanized.originalWordCount)} -&gt; {formatNumber(humanized.revisedWordCount)} слів</p>
             </div>
             <div className="humanized-output rich-output" dangerouslySetInnerHTML={{ __html: htmlFromPlainText(humanized.revisedText) }} />
@@ -770,7 +770,7 @@ export default function App() {
               <button type="button" className="secondary-button" onClick={() => void copyHumanizedFormatted()}>
                 Копіювати у Word
               </button>
-              <span>Після перенесення запустіть скан ще раз, щоб побачити новий AI-відсоток.</span>
+              <span>Після перенесення перевірте факти й запустіть аналіз повторно.</span>
             </div>
             <div className="humanizer-grid">
               <section>
@@ -840,7 +840,7 @@ export default function App() {
               <article>
                 <span>ШІ-аналіз</span>
                 <strong>{report.aiProbability}%</strong>
-                <small>{riskLabel(report.aiProbability)} рівень з локального аналізу</small>
+                <small>{riskLabel(report.aiProbability)} рівень сегментного ансамблю</small>
               </article>
               <article>
                 <span>AI-думка</span>
@@ -898,7 +898,7 @@ export default function App() {
                               <dd>{match.longestRun} слів</dd>
                             </div>
                             <div>
-                              <dt>Хеші</dt>
+                              <dt>Winnowing</dt>
                               <dd>{match.hashOverlapPercent}%</dd>
                             </div>
                             <div>
@@ -942,7 +942,7 @@ export default function App() {
                     {report.aiOpinionNote ? <p>{report.aiOpinionNote}</p> : null}
                   </div>
                 ) : null}
-                <p className="section-note">Це ансамбль стилістичних, структурних і патерн-ознак. Він показує підозрілі маркери та запобіжники, але не є юридичним доказом походження тексту.</p>
+                <p className="section-note">Локальний ансамбль перевіряє документ повністю й окремими сегментами, щоб сильні локальні ознаки не губилися у середньому. Це індикатор ризику, а не доказ авторства.</p>
                 <div className="signal-list">
                   {primaryAiSignals.map((signal) => (
                     <SignalCard signal={signal} key={signal.label} />

@@ -18,6 +18,22 @@ describe("scoreCandidate", () => {
     expect(result.confidence).toBe("page");
     expect(result.ngramOverlapPercent).toBeGreaterThan(25);
   });
+
+  it("detects a copied passage after unrelated text is inserted around it", () => {
+    const source = "The experimental protocol records every calibration step before the sensor readings are compared with the archived baseline measurements.";
+    const candidate = {
+      title: "Laboratory protocol",
+      url: "https://example.com/protocol",
+      snippet: "A protocol for calibrated sensor measurements.",
+      sourceText: `Background material appears before the copied passage. ${source} Additional commentary and references appear after the copied passage.`
+    };
+
+    const result = scoreCandidate(source, candidate, 1);
+
+    expect(result.longestRun).toBeGreaterThanOrEqual(12);
+    expect(result.hashOverlapPercent).toBeGreaterThan(45);
+    expect(result.score).toBeGreaterThan(55);
+  });
 });
 
 describe("detectAiSignals", () => {
@@ -111,5 +127,20 @@ describe("detectAiSignals", () => {
 
     expect(result.probability).toBeGreaterThan(45);
     expect(result.signals.some((signal) => /академічної генерації|Безособова/.test(signal.label))).toBe(true);
+  });
+
+  it("keeps localized AI-style sections visible inside a long mixed document", () => {
+    const humanSection = Array.from({ length: 8 }, (_, index) =>
+      `During interview ${index + 1}, I recorded ${18 + index} observations and compared them with the archived measurements from 2021 [${index + 1}]. The notes include disagreements, corrections, and several unresolved questions that require another visit.`
+    ).join(" ");
+    const generatedSection = Array.from({ length: 7 }, () =>
+      "Moreover, it is important to note that this comprehensive and innovative approach not only enhances efficiency but also unlocks significant potential. Furthermore, the robust framework facilitates seamless optimization and underscores the pivotal role of transformative solutions."
+    ).join(" ");
+
+    const result = detectAiSignals(`${humanSection} ${generatedSection} ${humanSection}`);
+
+    expect(result.probability).toBeGreaterThanOrEqual(28);
+    expect(result.signals.some((signal) => signal.label === "Сегментна узгодженість AI-ознак")).toBe(true);
+    expect(result.signals.find((signal) => signal.label === "Сегментна узгодженість AI-ознак")?.evidence?.length).toBeGreaterThan(1);
   });
 });

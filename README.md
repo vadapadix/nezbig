@@ -22,4 +22,10 @@ The React client runs on port `5173`; the Express API runs on `8787`.
 
 ## Notes
 
-The plagiarism check performs web-wide search queries over document chunks and scores snippets returned by search results. It does not claim to crawl or index the entire internet locally. AI detection is a transparent heuristic estimate, not a definitive authorship verdict.
+The plagiarism check covers the whole document, searches multiple open-web providers, hydrates promising pages, and compares them with n-grams, winnowing fingerprints, longest runs, and a local full-text index. It does not claim to crawl or index the entire internet locally.
+
+AI detection is a transparent segment-based heuristic ensemble with a separate optional LLM opinion. Neither value is a definitive authorship verdict.
+
+## Architecture
+
+The Ukrainian diploma-style architecture description is available in [`docs/ARCHITECTURE_UA.md`](docs/ARCHITECTURE_UA.md).

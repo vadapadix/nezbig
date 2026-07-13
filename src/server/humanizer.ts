@@ -102,25 +102,6 @@ const RULES: Rule[] = [
     }
   },
   {
-    label: "Зменшено обережні формулювання",
-    detail: "Послаблено часті 'може...', які детектори сприймають як розмиту позицію.",
-    pattern: /(?<![\p{L}\p{N}_])(може|можуть)\s+(?:містити|використовувати|показувати|забезпечувати|впливати|свідчити|бути|розмивати|створювати|мати)(?![\p{L}\p{N}_])/giu,
-    replacement: (match) => {
-      const lower = match.toLowerCase();
-      if (lower.includes("містити")) return lower.includes("можуть") ? "містять" : "містить";
-      if (lower.includes("використовувати")) return lower.includes("можуть") ? "використовують" : "використовує";
-      if (lower.includes("показувати")) return lower.includes("можуть") ? "показують" : "показує";
-      if (lower.includes("забезпечувати")) return lower.includes("можуть") ? "забезпечують" : "забезпечує";
-      if (lower.includes("впливати")) return lower.includes("можуть") ? "впливають" : "впливає";
-      if (lower.includes("свідчити")) return lower.includes("можуть") ? "свідчать" : "свідчить";
-      if (lower.includes("бути")) return lower.includes("можуть") ? "є" : "є";
-      if (lower.includes("розмивати")) return lower.includes("можуть") ? "розмивають" : "розмиває";
-      if (lower.includes("створювати")) return lower.includes("можуть") ? "створюють" : "створює";
-      if (lower.includes("мати")) return lower.includes("можуть") ? "мають" : "має";
-      return match;
-    }
-  },
-  {
     label: "Спрощено типову AI-лексику",
     detail: "Замінено слова, які часто створюють канцелярний або згенерований тон.",
     pattern: /(?<![\p{L}\p{N}_])(?:важливий|важлива|важливе|важливі|ефективний|ефективна|ефективне|ефективні|комплексний|комплексна|комплексне|комплексні|практичне значення|теоретичне значення|ключовий|ключова|ключове|ключові|унікальний|унікальна|унікальне|унікальні|інноваційний|інноваційна|інноваційне|інноваційні)(?![\p{L}\p{N}_])/giu,
@@ -196,15 +177,9 @@ const RULES: Rule[] = [
   },
   {
     label: "Прибрано зайве форматування",
-    detail: "Знято механічний markdown-жирний, emoji та декоративні довгі тире.",
-    pattern: /(\*\*|__|[🚀✅💡🔥⭐️✨]|—|–)/gu,
-    replacement: (match) => (match === "—" || match === "–" ? "," : "")
-  },
-  {
-    label: "Нормалізовано лапки",
-    detail: "Криві лапки замінено на прості.",
-    pattern: /[“”„«»]/gu,
-    replacement: "\""
+    detail: "Знято механічний markdown-жирний та декоративні emoji; авторську пунктуацію збережено.",
+    pattern: /(\*\*|__|[🚀✅💡🔥⭐️✨])/gu,
+    replacement: ""
   },
   {
     label: "Розширено українські синоніми",
@@ -226,48 +201,6 @@ const RULES: Rule[] = [
       };
       return map[match.toLowerCase()] ?? match;
     }
-  },
-  {
-    label: "Олюднення структури речень",
-    detail: "Додано розмовні частки або змінено порядок для менш формального тону.",
-    pattern: /(?<![\p{L}\p{N}_])(загалом|насправді|очевидно|безумовно),?\s+/giu,
-    replacement: (match: string) => {
-       const word = match.trim().replace(/,$/, "");
-       const map: Record<string, string> = {
-         загалом: "як правило,",
-         насправді: "як виявилося,",
-         очевидно: "мабуть,",
-         безумовно: "звісно,"
-       };
-       return map[word.toLowerCase()] ?? match;
-    }
-  },
-  {
-    label: "Згладжування категоричних тверджень",
-    detail: "Додано вставні слова для створення менш штучного тону.",
-    pattern: /(?<![\p{L}\p{N}_])(?:це\s+свідчить|це\s+доводить|це\s+підтверджує|це\s+означає|що\s+свідчить|що\s+підтверджує)(?![\p{L}\p{N}_])/giu,
-    replacement: (match: string) => {
-      const lower = match.toLowerCase();
-      if (lower.startsWith("що")) return `${lower}, ймовірно,`;
-      return `${lower}, скоріш за все,`;
-    }
-  },
-  {
-    label: "Урізноманітнення дієслів",
-    detail: "Заміна частих дієслів на більш живі аналоги.",
-    pattern: /(?<![\p{L}\p{N}_])(?:використовувати|використовується|використовуються|дозволяє|дозволяють|забезпечує|забезпечують)(?![\p{L}\p{N}_])/giu,
-    replacement: (match: string) => {
-      const map: Record<string, string> = {
-        використовувати: "застосовувати",
-        використовується: "застосовується",
-        використовуються: "застосовуються",
-        дозволяє: "дає змогу",
-        дозволяють: "дають змогу",
-        забезпечує: "гарантує",
-        забезпечують: "гарантують"
-      };
-      return map[match.toLowerCase()] ?? match;
-    }
   }
 ];
 
@@ -284,6 +217,15 @@ function applyRule(text: string, rule: Rule): { text: string; count: number } {
   return { text: revised, count };
 }
 
+function normalizeParagraphs(text: string): string {
+  return text
+    .replace(/\r\n?/g, "\n")
+    .split(/\n{2,}/)
+    .map((paragraph) => normalizeWhitespace(paragraph))
+    .filter(Boolean)
+    .join("\n\n");
+}
+
 function softenRigidSentences(text: string): { text: string; count: number } {
   let count = 0;
   const revised = text.replace(/([.!?])\s+(Furthermore|Moreover|Additionally|Therefore|Отже|Таким чином|Крім того),?\s+/gu, (_match, punctuation: string, transition: string) => {
@@ -296,73 +238,71 @@ function softenRigidSentences(text: string): { text: string; count: number } {
 }
 
 function removeDuplicateSentences(text: string): { text: string; count: number } {
-  const sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/gu) ?? [text];
   const seen = new Set<string>();
-  const kept: string[] = [];
   let count = 0;
+  const paragraphs = text.split(/\n{2,}/).map((paragraph) => {
+    const sentences = paragraph.match(/[^.!?]+[.!?]+|[^.!?]+$/gu) ?? [paragraph];
+    const kept: string[] = [];
 
-  for (const sentence of sentences) {
-    const trimmed = sentence.trim();
-    const normalized = trimmed
-      .toLowerCase()
-      .replace(/\d+/g, "#")
-      .replace(/[^\p{L}\p{N}\s#]/gu, " ")
-      .replace(/\s+/g, " ")
-      .trim();
+    for (const sentence of sentences) {
+      const trimmed = sentence.trim();
+      const normalized = trimmed
+        .toLowerCase()
+        .replace(/\d+/g, "#")
+        .replace(/[^\p{L}\p{N}\s#]/gu, " ")
+        .replace(/\s+/g, " ")
+        .trim();
 
-    if (normalized.split(" ").length >= 7 && seen.has(normalized)) {
-      count += 1;
-      continue;
+      if (normalized.split(" ").length >= 7 && seen.has(normalized)) {
+        count += 1;
+        continue;
+      }
+
+      if (normalized) seen.add(normalized);
+      kept.push(trimmed);
     }
 
-    if (normalized) seen.add(normalized);
-    kept.push(trimmed);
-  }
+    return kept.join(" ");
+  }).filter(Boolean);
 
-  return { text: kept.join(" "), count };
+  return { text: paragraphs.join("\n\n"), count };
 }
 
 function varyRepeatedSentenceStarts(text: string): { text: string; count: number } {
-  const sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/gu) ?? [text];
   const counts = new Map<string, number>();
-  const revised: string[] = [];
   let count = 0;
+  const paragraphs = text.split(/\n{2,}/).map((paragraph) => {
+    const sentences = paragraph.match(/[^.!?]+[.!?]+|[^.!?]+$/gu) ?? [paragraph];
+    const revised: string[] = [];
 
-  for (const sentence of sentences) {
-    const trimmed = sentence.trim();
-    const tokens = trimmed
-      .toLowerCase()
-      .replace(/[^\p{L}\p{N}\s'-]/gu, " ")
-      .split(/\s+/)
-      .filter(Boolean);
-    const start = tokens.slice(0, 3).join(" ");
-    const seen = counts.get(start) ?? 0;
-    counts.set(start, seen + 1);
+    for (const sentence of sentences) {
+      const trimmed = sentence.trim();
+      const tokens = trimmed
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}\s'-]/gu, " ")
+        .split(/\s+/)
+        .filter(Boolean);
+      const start = tokens.slice(0, 3).join(" ");
+      const seen = counts.get(start) ?? 0;
+      counts.set(start, seen + 1);
 
-    if (seen > 0 && start.length > 6) {
-      const words = trimmed.split(/\s+/);
-      if (/^(у|в)\s+роботі\b/iu.test(trimmed)) {
+      if (seen > 0 && start.length > 6 && /^(у|в)\s+роботі\b/iu.test(trimmed)) {
         revised.push(trimmed.replace(/^(у|в)\s+роботі\s+/iu, "У цьому контексті "));
         count += 1;
         continue;
       }
-      if (words.length > 8) {
-        const leads = ["Крім того,", "Варто додати, що", "Також", "Водночас,"];
-        const lead = leads[seen % leads.length];
-        revised.push(`${lead} ${words[0].toLowerCase()}${words.length > 1 ? ' ' + words.slice(1).join(" ") : ""}`);
-        count += 1;
-        continue;
-      }
+
+      revised.push(trimmed);
     }
 
-    revised.push(trimmed);
-  }
+    return revised.join(" ");
+  });
 
-  return { text: revised.join(" "), count };
+  return { text: paragraphs.join("\n\n"), count };
 }
 
 export function humanizeText(input: string): HumanizeResult {
-  const original = normalizeWhitespace(input);
+  const original = normalizeParagraphs(input);
   if (countWords(original) < 20) {
     throw new Error("Додайте щонайменше 20 слів для олюднення.");
   }
@@ -408,14 +348,18 @@ export function humanizeText(input: string): HumanizeResult {
     });
   }
 
-  revised = normalizeWhitespace(revised)
-    .replace(/\s+([,.;:!?])/g, "$1")
-    .replace(/,\s*,/g, ",")
-    .replace(/\s{2,}/g, " ")
-    .trim();
+  revised = revised
+    .split(/\n{2,}/)
+    .map((paragraph) => normalizeWhitespace(paragraph)
+      .replace(/\s+([,.;:!?])/g, "$1")
+      .replace(/,\s*,/g, ",")
+      .trim())
+    .filter(Boolean)
+    .join("\n\n");
 
   const notes = [
-    "Олюднення не гарантує проходження AI-детекторів; воно прибирає типові стилістичні маркери та робить текст природнішим.",
+    "Редагування не доводить людське авторство і не гарантує результату AI-детекторів; воно прибирає шаблонні формули та покращує читабельність.",
+    "Модальність, тире, лапки й абзаци збережено, щоб не спотворювати авторський зміст.",
     "Факти, цитати й посилання треба перевірити вручну після редагування."
   ];
 

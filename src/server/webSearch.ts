@@ -49,18 +49,50 @@ function dedupeByUrl(candidates: SearchCandidate[]): SearchCandidate[] {
   return deduped;
 }
 
-function buildQueries(chunkText: string, deep: boolean): string[] {
-  const words = normalizeWhitespace(chunkText).split(" ").filter(Boolean);
-  const middle = excerptForSearch(chunkText);
-  const start = words.slice(0, 14).join(" ");
-  const end = words.slice(Math.max(0, words.length - 14)).join(" ");
-  const compact = words
-    .filter((word) => word.length > 5)
-    .slice(0, 10)
-    .join(" ");
+function phraseScore(words: string[]): number {
+  const normalized = words.map((word) => word.toLowerCase().replace(/[^\p{L}\p{N}'-]/gu, "")).filter(Boolean);
+  const uniqueRatio = new Set(normalized).size / Math.max(1, normalized.length);
+  const informative = normalized.filter((word) => word.length >= 7 || /\d/.test(word)).length;
+  const averageLength = normalized.reduce((sum, word) => sum + word.length, 0) / Math.max(1, normalized.length);
+  return uniqueRatio * 10 + informative * 1.8 + averageLength;
+}
 
-  const queries = [`"${middle}"`, `"${start}"`, compact].filter((query) => query.replaceAll('"', "").trim().length > 20);
-  if (deep && end && end !== start) queries.push(`"${end}"`);
+export function buildSearchQueries(chunkText: string, deep: boolean): string[] {
+  const words = normalizeWhitespace(chunkText).split(" ").filter(Boolean);
+  if (words.length === 0) return [];
+
+  const phraseWords = deep ? 12 : 10;
+  const stride = Math.max(5, Math.floor(phraseWords / 2));
+  const phraseCandidates: Array<{ phrase: string; score: number; bucket: number }> = [];
+  for (let start = 0; start <= Math.max(0, words.length - phraseWords); start += stride) {
+    const slice = words.slice(start, start + phraseWords);
+    if (slice.length < Math.min(7, phraseWords)) continue;
+    phraseCandidates.push({
+      phrase: slice.join(" "),
+      score: phraseScore(slice),
+      bucket: Math.min(3, Math.floor((start / Math.max(1, words.length - phraseWords)) * 4))
+    });
+  }
+
+  const distributedCandidates = [0, 1, 2, 3]
+    .map((bucket) => phraseCandidates.filter((candidate) => candidate.bucket === bucket).sort((a, b) => b.score - a.score)[0])
+    .filter((candidate): candidate is NonNullable<typeof candidate> => Boolean(candidate));
+  const exactQueries = distributedCandidates
+    .sort((a, b) => b.score - a.score)
+    .filter((candidate, index, all) => all.findIndex((other) => other.phrase.toLowerCase() === candidate.phrase.toLowerCase()) === index)
+    .slice(0, deep ? 4 : 2)
+    .map(({ phrase }) => `"${phrase}"`);
+
+  const keywordQuery = [...new Set(words
+    .map((word) => word.replace(/[^\p{L}\p{N}'-]/gu, ""))
+    .filter((word) => word.length >= 7 || /\d/.test(word)))]
+    .sort((a, b) => b.length - a.length)
+    .slice(0, deep ? 12 : 9)
+    .join(" ");
+  const fallback = excerptForSearch(chunkText);
+  const queries = [...exactQueries, keywordQuery, `"${fallback}"`]
+    .filter((query) => query.replaceAll('"', "").trim().length > 20);
+
   return [...new Set(queries)];
 }
 
@@ -260,7 +292,7 @@ async function fetchReadablePageText(url: string): Promise<string | undefined> {
 
 export async function searchWebCandidates(chunkText: string, maxResults = 5, deep = false, profile: SearchProfile = {}): Promise<SearchCandidate[]> {
   const perQuery = deep ? 7 : maxResults;
-  const queries = buildQueries(chunkText, deep).slice(0, profile.queryLimit ?? (deep ? 4 : 3));
+  const queries = buildSearchQueries(chunkText, deep).slice(0, profile.queryLimit ?? (deep ? 5 : 3));
   const searches = await Promise.allSettled(
     queries.flatMap((query) => [
       searchDuckDuckGo(query, perQuery),
