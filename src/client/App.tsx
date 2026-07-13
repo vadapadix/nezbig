@@ -1,5 +1,6 @@
 import { ClipboardEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import nezbigLogo from "./assets/nezbig-mark.png";
+import { htmlFromPlainText, plainTextFromRichHtml, sanitizeRichHtml } from "./richText";
 import type { HumanizeResult, LlmOpinion, ScanReport, ScanSettings, UploadedText } from "../shared/types";
 
 const defaultSettings: ScanSettings = {
@@ -80,6 +81,17 @@ function riskLabel(value: number): string {
   return "Низький";
 }
 
+function reliabilityLabel(level: ScanReport["aiReliability"]["level"]): string {
+  if (level === "high") return "висока";
+  if (level === "medium") return "середня";
+  return "низька";
+}
+
+function aiMetricCaption(report: ScanReport): string {
+  if (report.aiReliability.level === "low") return `Невизначено · надійність ${report.aiReliability.score}/100`;
+  return `${riskLabel(report.aiProbability)} ризик · надійність ${report.aiReliability.score}/100`;
+}
+
 function reportSummaryText(report: ScanReport): string {
   if (report.aiOpinionProbability === undefined) return report.summary;
   return `${report.summary} AI-думка показана окремо: ${report.aiOpinionProbability}%.`;
@@ -96,71 +108,6 @@ function summarizeAiError(error: unknown): string {
   if (/aborted|timeout/i.test(message)) return "модель не відповіла вчасно";
   if (/empty response/i.test(message)) return "модель повернула порожню відповідь";
   return message.slice(0, 180);
-}
-
-function htmlFromPlainText(value: string): string {
-  return value
-    .split(/\n{2,}/)
-    .map((paragraph) => paragraph.trim())
-    .filter(Boolean)
-    .map((paragraph) => `<p>${paragraph.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replace(/\n/g, "<br>")}</p>`)
-    .join("");
-}
-
-function sanitizeRichHtml(input: string): string {
-  const parser = new DOMParser();
-  const document = parser.parseFromString(`<div>${input}</div>`, "text/html");
-  const allowedTags = new Set(["P", "BR", "STRONG", "B", "EM", "I", "U", "S", "A", "UL", "OL", "LI", "H1", "H2", "H3", "H4", "TABLE", "THEAD", "TBODY", "TR", "TD", "TH", "SPAN", "DIV", "BLOCKQUOTE", "SUB", "SUP"]);
-  const allowedStyles = new Set(["font-weight", "font-style", "text-decoration", "text-align", "margin-left", "padding-left", "list-style-type", "color", "background-color", "font-size", "font-family", "line-height"]);
-
-  function clean(node: Node): Node | null {
-    if (node.nodeType === Node.TEXT_NODE) return document.createTextNode(node.textContent ?? "");
-    if (node.nodeType !== Node.ELEMENT_NODE) return null;
-
-    const element = node as HTMLElement;
-    if (!allowedTags.has(element.tagName)) {
-      const fragment = document.createDocumentFragment();
-      for (const child of Array.from(element.childNodes)) {
-        const cleaned = clean(child);
-        if (cleaned) fragment.append(cleaned);
-      }
-      return fragment;
-    }
-
-    const output = document.createElement(element.tagName.toLowerCase());
-    if (element instanceof HTMLTableCellElement && element.colSpan > 1) output.setAttribute("colspan", String(element.colSpan));
-    if (element instanceof HTMLTableCellElement && element.rowSpan > 1) output.setAttribute("rowspan", String(element.rowSpan));
-    if (element instanceof HTMLAnchorElement) {
-      const href = element.getAttribute("href") ?? "";
-      if (/^(https?:|mailto:)/i.test(href)) output.setAttribute("href", href);
-    }
-    if (element instanceof HTMLOListElement && element.start > 1) output.setAttribute("start", String(element.start));
-
-    for (const property of allowedStyles) {
-      const value = element.style.getPropertyValue(property);
-      if (value) output.style.setProperty(property, value);
-    }
-
-    for (const child of Array.from(element.childNodes)) {
-      const cleaned = clean(child);
-      if (cleaned) output.append(cleaned);
-    }
-
-    return output;
-  }
-
-  const root = document.body.firstElementChild;
-  const fragment = document.createDocumentFragment();
-  if (root) {
-    for (const child of Array.from(root.childNodes)) {
-      const cleaned = clean(child);
-      if (cleaned) fragment.append(cleaned);
-    }
-  }
-
-  const container = document.createElement("div");
-  container.append(fragment);
-  return container.innerHTML;
 }
 
 function isDuplicateOpinionSignal(signal: LlmOpinion["aiSignals"][number], localSignals: ScanReport["aiSignals"]): boolean {
@@ -232,7 +179,7 @@ function downloadReportPng(report: ScanReport): void {
   const cardWidth = 280;
   const cards = [
     ["Плагіат", `${report.plagiarismScore}%`, `${riskLabel(report.plagiarismScore)} ризик`],
-    ["ШІ-аналіз", `${report.aiProbability}%`, `${riskLabel(report.aiProbability)} рівень`],
+    ["ШІ-аналіз", `${report.aiProbability}%`, `Надійність ${report.aiReliability.score}/100`],
     ["AI-думка", report.aiOpinionProbability !== undefined ? `${report.aiOpinionProbability}%` : "...", report.aiOpinionProbability !== undefined ? `${riskLabel(report.aiOpinionProbability)} рівень` : "очікує модель"],
     ["Фрагменти", formatNumber(report.chunksChecked), `${formatNumber(report.wordCount)} слів`]
   ];
@@ -424,8 +371,9 @@ export default function App() {
   function syncEditorFromDom(clearFile = true) {
     const editor = sourceEditorRef.current;
     if (!editor) return;
-    setText(editor.innerText.trim());
-    setSourceHtml(editor.innerHTML);
+    const html = sanitizeRichHtml(editor.innerHTML);
+    setText(plainTextFromRichHtml(html));
+    setSourceHtml(html);
     if (clearFile) {
       setFileName("Вставлений текст");
       setSelectedFile(null);
@@ -439,8 +387,10 @@ export default function App() {
     const plain = event.clipboardData.getData("text/plain");
     if (html) {
       document.execCommand("insertHTML", false, sanitizeRichHtml(html));
+      setMessage("Текст вставлено разом із форматуванням Word.");
     } else {
       document.execCommand("insertText", false, plain);
+      setMessage("Текст вставлено без форматування.");
     }
     window.requestAnimationFrame(() => syncEditorFromDom(true));
   }
@@ -473,7 +423,7 @@ export default function App() {
 
   async function copyHumanizedFormatted() {
     if (!humanized) return;
-    const html = htmlFromPlainText(humanized.revisedText);
+    const html = sanitizeRichHtml(humanized.revisedHtml ?? htmlFromPlainText(humanized.revisedText));
     try {
       if ("ClipboardItem" in window && navigator.clipboard.write) {
         await navigator.clipboard.write([
@@ -603,7 +553,7 @@ export default function App() {
       const response = selectedFile ? await humanizeSelectedFile(selectedFile) : await fetch("/api/humanize", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ text })
+        body: JSON.stringify({ text, html: sourceHtml })
       });
       const payload = (await response.json()) as HumanizeResult | { error: string };
       if (!response.ok || "error" in payload) throw new Error("error" in payload ? payload.error : "Редагування не вдалося.");
@@ -624,7 +574,7 @@ export default function App() {
 
   function moveHumanizedTextToChecker() {
     if (!humanized) return;
-    setEditorContent(htmlFromPlainText(humanized.revisedText), humanized.revisedText);
+    setEditorContent(sanitizeRichHtml(humanized.revisedHtml ?? htmlFromPlainText(humanized.revisedText)), humanized.revisedText);
     setSelectedFile(null);
     setFileName("Відредагований текст");
     setReport(null);
@@ -693,7 +643,7 @@ export default function App() {
             {selectedFile ? (
               <div className="file-mode">
                 <strong>Файловий режим</strong>
-                <span>Preview зберігає базове форматування Word, але сервер перевіряє саме файл.</span>
+                <span>Preview і редактор зберігають абзаци, заголовки, списки, таблиці та базові стилі Word; перевірка йде оригінальним файлом.</span>
                 <button
                   type="button"
                   className="secondary-button"
@@ -762,7 +712,7 @@ export default function App() {
               <h2 id="humanizer-title">Відредагований текст</h2>
               <p>{formatNumber(humanized.originalWordCount)} -&gt; {formatNumber(humanized.revisedWordCount)} слів</p>
             </div>
-            <div className="humanized-output rich-output" dangerouslySetInnerHTML={{ __html: htmlFromPlainText(humanized.revisedText) }} />
+            <div className="humanized-output rich-output" dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(humanized.revisedHtml ?? htmlFromPlainText(humanized.revisedText)) }} />
             <div className="humanizer-actions">
               <button type="button" className="secondary-button" onClick={moveHumanizedTextToChecker}>
                 Перенести в перевірку
@@ -840,7 +790,7 @@ export default function App() {
               <article>
                 <span>ШІ-аналіз</span>
                 <strong>{report.aiProbability}%</strong>
-                <small>{riskLabel(report.aiProbability)} рівень сегментного ансамблю</small>
+                <small>{aiMetricCaption(report)}</small>
               </article>
               <article>
                 <span>AI-думка</span>
@@ -934,6 +884,11 @@ export default function App() {
                 <p className="model-badge">
                   {llmBusy ? "AI-думка: очікування відповіді..." : "Локальний AI-відсоток незалежний від LLM"}
                 </p>
+                <div className={`reliability-line reliability-${report.aiReliability.level}`}>
+                  <strong>Надійність оцінки: {reliabilityLabel(report.aiReliability.level)} ({report.aiReliability.score}/100)</strong>
+                  <span>{report.aiReliability.segmentCount} сегм. · розкид {report.aiReliability.segmentSpread} п.п.</span>
+                  <p>{report.aiReliability.reason}</p>
+                </div>
                 {report.aiNote ? <p className="provider-note">{report.aiNote}</p> : null}
                 {report.aiOpinionProbability !== undefined ? (
                   <div className="opinion-panel">

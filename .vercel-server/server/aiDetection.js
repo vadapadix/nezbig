@@ -289,13 +289,41 @@ function percentile(values, ratio) {
     const index = Math.min(sorted.length - 1, Math.max(0, Math.ceil(sorted.length * ratio) - 1));
     return sorted[index];
 }
+function estimateReliability(wordCount, windowScores, evidenceSignals) {
+    const segmentCount = windowScores.length;
+    const minimum = windowScores.length ? Math.min(...windowScores) : 0;
+    const maximum = windowScores.length ? Math.max(...windowScores) : 0;
+    const segmentSpread = maximum - minimum;
+    const lengthScore = clampScore(Math.min(1, Math.max(0, wordCount - 60) / 740) * 100);
+    const segmentScore = clampScore(Math.min(1, segmentCount / 6) * 100);
+    const agreementScore = clampScore(100 - Math.min(100, segmentSpread * 1.45));
+    const strongEvidence = evidenceSignals.filter((signal) => signal.category !== "safeguard" && signal.score >= 30).length;
+    const evidenceScore = clampScore(Math.min(1, strongEvidence / 4) * 100);
+    let score = clampScore(lengthScore * 0.42 + segmentScore * 0.2 + agreementScore * 0.23 + evidenceScore * 0.15);
+    if (wordCount < 120)
+        score = Math.min(score, 30);
+    else if (wordCount < 240)
+        score = Math.min(score, 48);
+    const level = score >= 72 ? "high" : score >= 45 ? "medium" : "low";
+    const reason = wordCount < 120
+        ? "Текст надто короткий для стійкого стилометричного висновку."
+        : segmentSpread >= 45
+            ? "Сегменти сильно відрізняються між собою; документ може мати змішане походження або різні жанри."
+            : segmentCount < 3
+                ? "Для перевірки доступно мало незалежних сегментів."
+                : level === "high"
+                    ? "Обсяг достатній, а сегментні оцінки узгоджені."
+                    : "Оцінка має помірну доказовість і потребує ручної перевірки сигналів.";
+    return { level, score, segmentCount, segmentSpread, reason };
+}
 export function detectAiSignals(text) {
     const documentResult = analyzeSinglePass(text);
     const windows = buildAnalysisWindows(text);
-    if (windows.length <= 1)
-        return documentResult;
     const windowResults = windows.map((window) => analyzeSinglePass(window));
     const windowScores = windowResults.map((result) => result.probability);
+    const reliability = estimateReliability(tokenize(text, true).length, windowScores, documentResult.signals);
+    if (windows.length <= 1)
+        return { ...documentResult, reliability };
     const median = percentile(windowScores, 0.5);
     const upperQuartile = percentile(windowScores, 0.75);
     const strongest = Math.max(...windowScores);
@@ -326,6 +354,7 @@ export function detectAiSignals(text) {
     };
     return {
         probability,
-        signals: [segmentSignal, ...documentResult.signals].slice(0, 21)
+        signals: [segmentSignal, ...documentResult.signals].slice(0, 21),
+        reliability
     };
 }

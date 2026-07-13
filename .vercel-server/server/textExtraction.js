@@ -1,7 +1,7 @@
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 import mammoth from "mammoth";
-import { countWords, normalizeWhitespace } from "./chunking.js";
+import { countWords } from "./chunking.js";
 const TEXT_EXTENSIONS = new Set([".txt", ".md", ".markdown", ".csv", ".json", ".rtf"]);
 const require = createRequire(import.meta.url);
 const pdfWorkerUrl = pathToFileURL(require.resolve("pdfjs-dist/legacy/build/pdf.worker.mjs")).href;
@@ -53,6 +53,14 @@ export function decodeUploadFileName(fileName) {
         return fileName;
     }
 }
+export function normalizeExtractedText(text) {
+    return text
+        .replace(/\r\n?/g, "\n")
+        .replace(/[^\S\n]+/g, " ")
+        .replace(/ *\n */g, "\n")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+}
 async function loadPdfParser() {
     const globals = globalThis;
     if (!globals.DOMMatrix || !globals.DOMPoint || !globals.ImageData || !globals.Path2D) {
@@ -95,7 +103,7 @@ export async function extractTextFromUpload(file) {
             await parser.destroy();
         }
     }
-    const cleaned = normalizeWhitespace(text);
+    const cleaned = normalizeExtractedText(text);
     if (!cleaned) {
         throw new Error("Файл не містить тексту, який можна перевірити.");
     }

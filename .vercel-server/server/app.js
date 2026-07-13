@@ -4,6 +4,7 @@ import express from "express";
 import multer from "multer";
 import { chunkText, countWords } from "./chunking.js";
 import { prepareDocumentText } from "./documentPreprocess.js";
+import { mergeRevisedTextIntoHtml } from "./formattedDocument.js";
 import { humanizeText } from "./humanizer.js";
 import { analyzeWithLlmProviders } from "./llmOpinion.js";
 import { scoreCandidate, detectAiSignals, summarizeReport } from "./scoring.js";
@@ -144,6 +145,7 @@ async function runScan(request, fileEvidence) {
         chunksChecked: chunks.length,
         plagiarismScore,
         aiProbability: localAi.probability,
+        aiReliability: localAi.reliability,
         aiProvider: "local",
         aiModel: undefined,
         aiNote: "Базовий звіт згенеровано локально. AI-думка підвантажується окремо після звіту.",
@@ -246,7 +248,11 @@ app.post("/api/ai-opinion-file", upload.single("file"), async (request, response
 app.post("/api/humanize", async (request, response) => {
     try {
         const body = request.body;
-        response.json(humanizeText(body.text));
+        const result = humanizeText(body.text);
+        response.json({
+            ...result,
+            revisedHtml: body.html?.trim() ? mergeRevisedTextIntoHtml(body.html, result.revisedText) : undefined
+        });
     }
     catch (error) {
         response.status(400).json({ error: error instanceof Error ? error.message : "Не вдалося олюднити текст." });
@@ -259,10 +265,15 @@ app.post("/api/humanize-file", upload.single("file"), async (request, response) 
             return;
         }
         const extracted = await extractTextFromUpload(request.file);
-        const result = humanizeText(prepareDocumentText(extracted.text).text);
+        const result = humanizeText(extracted.text);
         response.json({
             ...result,
-            notes: [`Файл прочитано напряму: ${extracted.fileName}.`, ...result.notes]
+            revisedHtml: extracted.html ? mergeRevisedTextIntoHtml(extracted.html, result.revisedText) : undefined,
+            notes: [
+                `Файл прочитано напряму: ${extracted.fileName}.`,
+                extracted.html ? "Абзаци, списки, таблиці та інлайн-форматування Word збережено у відредагованій версії." : "Для цього формату доступне лише текстове представлення.",
+                ...result.notes
+            ]
         });
     }
     catch (error) {

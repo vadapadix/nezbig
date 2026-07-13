@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildSearchQueries } from "./webSearch.js";
+import { abstractFromInvertedIndex, buildSearchQueries } from "./webSearch.js";
 
 describe("buildSearchQueries", () => {
   it("selects distinctive exact phrases from across the whole fragment", () => {
@@ -20,5 +20,18 @@ describe("buildSearchQueries", () => {
 
   it("returns no empty or tiny queries", () => {
     expect(buildSearchQueries("short text", false)).toEqual([]);
+  });
+
+  it("reconstructs OpenAlex abstracts from positional indexes", () => {
+    const abstract = abstractFromInvertedIndex({
+      calibration: [3],
+      sensor: [2],
+      The: [0],
+      requires: [4],
+      optical: [1]
+    });
+
+    expect(abstract).toBe("The optical sensor calibration requires");
+    expect(abstractFromInvertedIndex(null)).toBeUndefined();
   });
 });

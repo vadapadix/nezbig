@@ -27,6 +27,7 @@ export type LlmOpinionRequest = {
 
 export type HumanizeRequest = {
   text: string;
+  html?: string;
 };
 
 export type HumanizeChange = {
@@ -39,6 +40,7 @@ export type HumanizeResult = {
   originalWordCount: number;
   revisedWordCount: number;
   revisedText: string;
+  revisedHtml?: string;
   changes: HumanizeChange[];
   notes: string[];
 };
@@ -73,6 +75,14 @@ export type AiSignal = {
   evidence?: string[];
 };
 
+export type AiReliability = {
+  level: "low" | "medium" | "high";
+  score: number;
+  segmentCount: number;
+  segmentSpread: number;
+  reason: string;
+};
+
 export type FileEvidence = {
   fileName: string;
   mimeType: string;
@@ -92,6 +102,7 @@ export type ScanReport = {
   chunksChecked: number;
   plagiarismScore: number;
   aiProbability: number;
+  aiReliability: AiReliability;
   aiProvider: "local" | "openrouter" | "nvidia-nim";
   aiModel?: string;
   aiNote?: string;

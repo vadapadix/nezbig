@@ -1,7 +1,7 @@
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 import mammoth from "mammoth";
-import { countWords, normalizeWhitespace } from "./chunking.js";
+import { countWords } from "./chunking.js";
 import type { AiSignal, FileEvidence, UploadedText } from "../shared/types.js";
 
 const TEXT_EXTENSIONS = new Set([".txt", ".md", ".markdown", ".csv", ".json", ".rtf"]);
@@ -58,6 +58,15 @@ export function decodeUploadFileName(fileName: string): string {
   }
 }
 
+export function normalizeExtractedText(text: string): string {
+  return text
+    .replace(/\r\n?/g, "\n")
+    .replace(/[^\S\n]+/g, " ")
+    .replace(/ *\n */g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 async function loadPdfParser() {
   const globals = globalThis as Record<string, unknown>;
 
@@ -102,7 +111,7 @@ export async function extractTextFromUpload(file: Express.Multer.File): Promise<
     }
   }
 
-  const cleaned = normalizeWhitespace(text);
+  const cleaned = normalizeExtractedText(text);
   if (!cleaned) {
     throw new Error("Файл не містить тексту, який можна перевірити.");
   }

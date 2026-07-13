@@ -68,6 +68,7 @@ describe("detectAiSignals", () => {
     expect(result.probability).toBeLessThanOrEqual(100);
     expect(result.signals.length).toBeGreaterThanOrEqual(3);
     expect(result.signals.some((signal) => signal.label === "Запобіжники від false positive")).toBe(true);
+    expect(result.reliability.level).toBe("low");
   });
 
   it("does not treat lorem ipsum as generated prose", () => {
@@ -142,5 +143,19 @@ describe("detectAiSignals", () => {
     expect(result.probability).toBeGreaterThanOrEqual(28);
     expect(result.signals.some((signal) => signal.label === "Сегментна узгодженість AI-ознак")).toBe(true);
     expect(result.signals.find((signal) => signal.label === "Сегментна узгодженість AI-ознак")?.evidence?.length).toBeGreaterThan(1);
+    expect(result.reliability.segmentCount).toBeGreaterThan(2);
+    expect(result.reliability.segmentSpread).toBeGreaterThan(0);
+  });
+
+  it("calculates reliability from length and segment agreement", () => {
+    const text = Array.from({ length: 14 }, (_, index) =>
+      `Interview block ${index + 1} records the same measurement procedure, identifies the observer, lists the archive reference, and explains why the result was accepted after manual verification.`
+    ).join(" ");
+
+    const result = detectAiSignals(text);
+
+    expect(result.reliability.segmentCount).toBeGreaterThanOrEqual(2);
+    expect(result.reliability.score).toBeGreaterThan(40);
+    expect(result.reliability.reason.length).toBeGreaterThan(20);
   });
 });

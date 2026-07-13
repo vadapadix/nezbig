@@ -244,6 +244,76 @@ async function searchSemanticScholar(query: string, maxResults: number): Promise
   return results;
 }
 
+export function abstractFromInvertedIndex(index?: Record<string, number[]> | null): string | undefined {
+  if (!index) return undefined;
+  const positioned = Object.entries(index).flatMap(([word, positions]) =>
+    positions.map((position) => ({ word, position }))
+  );
+  if (positioned.length === 0) return undefined;
+  return normalizeWhitespace(positioned.sort((a, b) => a.position - b.position).map(({ word }) => word).join(" "));
+}
+
+async function searchOpenAlex(query: string, maxResults: number): Promise<SearchCandidate[]> {
+  const apiKey = process.env.OPENALEX_API_KEY?.trim();
+  if (!apiKey) return [];
+
+  const key = cacheKey("openalex", query, maxResults);
+  const cached = searchCache.get(key);
+  if (cached) return cached;
+
+  const plainQuery = query.replaceAll('"', "").trim();
+  if (plainQuery.length < 24) return [];
+
+  const url = new URL("https://api.openalex.org/works");
+  url.searchParams.set("api_key", apiKey);
+  url.searchParams.set("search", plainQuery);
+  url.searchParams.set("per_page", String(Math.min(10, maxResults)));
+  url.searchParams.set("select", "id,doi,display_name,publication_year,authorships,abstract_inverted_index,best_oa_location,primary_location");
+
+  const response = await fetch(url, {
+    signal: withTimeout(SEARCH_TIMEOUT_MS),
+    headers: {
+      "user-agent": "Mozilla/5.0 Nezbig/1.0 (+academic originality checker)",
+      accept: "application/json"
+    }
+  });
+  if (!response.ok) return [];
+
+  const payload = (await response.json()) as {
+    results?: Array<{
+      id?: string;
+      doi?: string;
+      display_name?: string;
+      publication_year?: number;
+      authorships?: Array<{ author?: { display_name?: string } }>;
+      abstract_inverted_index?: Record<string, number[]> | null;
+      best_oa_location?: { landing_page_url?: string; pdf_url?: string } | null;
+      primary_location?: { landing_page_url?: string } | null;
+    }>;
+  };
+
+  const results = (payload.results ?? []).flatMap((work): SearchCandidate[] => {
+    const title = normalizeWhitespace(work.display_name ?? "");
+    const abstract = abstractFromInvertedIndex(work.abstract_inverted_index);
+    const url = work.doi ?? work.best_oa_location?.landing_page_url ?? work.primary_location?.landing_page_url ?? work.id ?? "";
+    if (!title || !url || !abstract) return [];
+    const authors = work.authorships?.slice(0, 3).map((authorship) => authorship.author?.display_name).filter(Boolean).join(", ");
+    const metadata = [authors, work.publication_year].filter(Boolean).join(", ");
+    return [{
+      title,
+      url,
+      snippet: normalizeWhitespace(metadata ? `${metadata}. ${abstract}` : abstract),
+      query,
+      provider: "OpenAlex",
+      sourceText: abstract,
+      verifiedTextLength: abstract.length
+    }];
+  }).slice(0, maxResults);
+
+  searchCache.set(key, results);
+  return results;
+}
+
 async function fetchReadablePageText(url: string): Promise<string | undefined> {
   const cached = pageCache.get(url);
   if (cached !== undefined) return cached;
@@ -297,7 +367,12 @@ export async function searchWebCandidates(chunkText: string, maxResults = 5, dee
     queries.flatMap((query) => [
       searchDuckDuckGo(query, perQuery),
       searchGoogleCustom(query, perQuery),
-      ...(deep && profile.includeAcademic !== false ? [searchSemanticScholar(query, Math.min(5, perQuery))] : [])
+      ...(deep && profile.includeAcademic !== false
+        ? [
+            searchSemanticScholar(query, Math.min(5, perQuery)),
+            searchOpenAlex(query, Math.min(5, perQuery))
+          ]
+        : [])
     ])
   );
   const candidates = dedupeByUrl(searches.flatMap((result) => (result.status === "fulfilled" ? result.value : []))).slice(0, deep ? 18 : 10);
