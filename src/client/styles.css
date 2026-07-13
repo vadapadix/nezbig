@@ -1122,6 +1122,32 @@ dt {
   overflow-wrap: anywhere;
 }
 
+.match-evidence {
+  margin-top: 14px;
+  border-left: 3px solid var(--accent);
+  padding-left: 12px;
+}
+
+.match-evidence strong {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 0.88rem;
+}
+
+.match-evidence blockquote {
+  margin: 0 0 7px;
+  color: var(--ink);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.match-lead-note {
+  margin-top: 12px;
+  border-left: 3px solid var(--warn);
+  padding-left: 12px;
+  font-size: 0.9rem;
+}
+
 dl {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

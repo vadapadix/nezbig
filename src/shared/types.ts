@@ -65,6 +65,8 @@ export type PlagiarismMatch = SearchCandidate & {
   longestRun: number;
   confidence: "snippet" | "page";
   excerpt: string;
+  submittedEvidence?: string;
+  sourceEvidence?: string;
 };
 
 export type AiSignal = {

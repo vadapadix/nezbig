@@ -87,6 +87,16 @@ function hasAcademicStructure(text: string): boolean {
   return /(?<![\p{L}\p{N}_])(зміст|вступ|розділ\s+(?:[0-9]+|[ivx]+)|висновки|список\s+використаних\s+джерел)(?![\p{L}\p{N}_])/iu.test(text);
 }
 
+function isSectionHeading(sentence: string): boolean {
+  const normalized = sentence
+    .toLowerCase()
+    .replace(/[.!?:;]+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (tokenize(normalized, true).length > 8) return false;
+  return /^(?:зміст|вступ|висновки|список використаних джерел|розділ\s+(?:[0-9]+|[ivx]+)(?:\s+.+)?|introduction|conclusion|references|chapter\s+(?:[0-9]+|[ivx]+)(?:\s+.+)?)$/iu.test(normalized);
+}
+
 function sentenceStartRepetition(sentences: string[]): { score: number; evidence: string[] } {
   const starts = sentences
     .map((sentence) => tokenize(sentence, true).slice(0, 3).join(" "))
@@ -161,12 +171,13 @@ function analyzeSinglePass(text: string): { probability: number; signals: AiSign
   const words = tokenize(normalized, true);
   const contentWords = tokenize(normalized);
   const sentences = splitSentences(normalized);
+  const proseSentences = sentences.filter((sentence) => !isSectionHeading(sentence));
   const wordCount = words.length;
   
   if (wordCount < 10) return { probability: 0, signals: [] };
 
   const uniqueRatio = wordCount === 0 ? 0 : new Set(words).size / wordCount;
-  const sentenceLengths = sentences.map((sentence) => tokenize(sentence, true).length).filter(Boolean);
+  const sentenceLengths = proseSentences.map((sentence) => tokenize(sentence, true).length).filter(Boolean);
   const averageSentence = sentenceLengths.reduce((sum, value) => sum + value, 0) / Math.max(1, sentenceLengths.length);
   const sentenceCv = coefficientOfVariation(sentenceLengths);
   const transitionDensity = words.filter((word) => TRANSITIONS.has(word)).length / Math.max(1, wordCount);
@@ -174,7 +185,7 @@ function analyzeSinglePass(text: string): { probability: number; signals: AiSign
   
   const placeholderText = looksLikePlaceholderText(normalized);
   const academicStructure = hasAcademicStructure(normalized);
-  const repeatedStarts = sentenceStartRepetition(sentences);
+  const repeatedStarts = sentenceStartRepetition(proseSentences);
   const repeatedNgrams = ngramRepetition(contentWords);
   const impersonalVoice = impersonalAcademicVoice(normalized, wordCount);
   const safeguards = safeguardScore(normalized, wordCount, placeholderText, academicStructure);
@@ -182,7 +193,7 @@ function analyzeSinglePass(text: string): { probability: number; signals: AiSign
   const entropy = calculateTextEntropy(words); // 0.85-0.95+ for human text, often lower for AI
 
   // Метрики "Burstiness" - як варіюється довжина речень
-  const rhythmScore = clampScore((1 - Math.min(1, sentenceCv / 0.55)) * 100 * (sentences.length >= 4 ? 1 : 0.6));
+  const rhythmScore = clampScore((1 - Math.min(1, sentenceCv / 0.55)) * 100 * (proseSentences.length >= 4 ? 1 : 0.6));
   const lexicalScore = clampScore(Math.max(0, 0.65 - uniqueRatio) * 150 + repeatedNgrams.score * 0.3 + Math.max(0, 0.85 - entropy) * 200);
   const transitionScore = clampScore(transitionDensity * 3500);
   const hedgeScore = clampScore(hedgeDensity * 3500);
@@ -239,6 +250,14 @@ function analyzeSinglePass(text: string): { probability: number; signals: AiSign
       weight: 0.85
     },
     {
+      label: "Обережні формулювання",
+      score: hedgeScore,
+      category: "pattern",
+      detail: hedgeScore >= 40 ? "У тексті часто повторюються модальні або обережні слова; ця ознака враховується лише разом з іншими сигналами." : "Обережні формулювання не домінують.",
+      evidence: sampleEvidence(words.filter((word) => HEDGES.has(word))),
+      weight: 0.45
+    },
+    {
       label: "Повтори на початку речень",
       score: repeatedStarts.score,
       category: "structure",
@@ -273,14 +292,18 @@ function analyzeSinglePass(text: string): { probability: number; signals: AiSign
   const corroboration = evidenceSignals.length <= 1 ? 0.7 : evidenceSignals.length === 2 ? 0.9 : 1.1;
   const lengthAdjust = wordCount < 60 ? 0.6 : wordCount < 120 ? 0.8 : wordCount < 200 ? 0.95 : 1.0;
   
-  let rawProbability = (weightedRaw * corroboration * lengthAdjust) - (safeguards.score * 0.18);
+  const safeguardDeduction = evidenceSignals.length >= 2
+    ? Math.min(6, safeguards.score * 0.06)
+    : Math.min(12, safeguards.score * 0.12);
+  let rawProbability = (weightedRaw * corroboration * lengthAdjust) - safeguardDeduction;
   
   // Бонуси за кластери ознак
   if (evidenceSignals.filter(s => s.category === "pattern").length >= 2) rawProbability += 15;
   if (evidenceSignals.filter(s => s.category === "pattern").length >= 3) rawProbability += 25;
   if (academicStructure && impersonalVoice.score > 50) rawProbability += 10;
 
-  const probability = clampScore(placeholderText ? Math.min(10, weightedRaw) : Math.max(rawProbability, corroboratedFloor));
+  const evidenceFloor = evidenceSignals.length >= 3 ? 12 : evidenceSignals.length >= 1 ? 4 : 0;
+  const probability = clampScore(placeholderText ? Math.min(10, weightedRaw) : Math.max(rawProbability, corroboratedFloor, evidenceFloor));
 
   const signals: AiSignal[] = signalDrafts
     .map(({ weight: _weight, ...signal }) => signal)
@@ -292,7 +315,7 @@ function analyzeSinglePass(text: string): { probability: number; signals: AiSign
     label: "Запобіжники від false positive",
     score: safeguards.score,
     category: "safeguard",
-    detail: "Фактори, що свідчать про людське авторство.",
+    detail: "Контекстні фактори, що знижують надійність автоматичного висновку, але не доводять людське авторство.",
     evidence: safeguards.evidence
   });
 

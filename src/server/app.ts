@@ -7,7 +7,7 @@ import { prepareDocumentText } from "./documentPreprocess.js";
 import { mergeRevisedTextIntoHtml } from "./formattedDocument.js";
 import { humanizeText } from "./humanizer.js";
 import { analyzeWithLlmProviders } from "./llmOpinion.js";
-import { scoreCandidate, detectAiSignals, summarizeReport } from "./scoring.js";
+import { calculateConfirmedPlagiarismScore, scoreCandidate, detectAiSignals, summarizeReport } from "./scoring.js";
 import { extractTextFromUpload } from "./textExtraction.js";
 import { hydrateSearchCandidates, searchWebCandidates } from "./webSearch.js";
 import type { FileEvidence, HumanizeRequest, LlmOpinionRequest, PlagiarismMatch, ScanReport, ScanRequest, ScanSettings } from "../shared/types.js";
@@ -141,16 +141,7 @@ async function runScan(request: ScanRequest, fileEvidence?: FileEvidence): Promi
     .sort((a, b) => b.score - a.score || b.longestRun - a.longestRun)
     .slice(0, 24);
 
-  const weightedTop = matches.slice(0, 8);
-  const plagiarismScore =
-    weightedTop.length === 0
-      ? 0
-      : Math.round(
-          weightedTop.reduce((sum, match, index) => {
-            const weight = Math.max(0.35, 1 - index * 0.08);
-            return sum + match.score * weight;
-          }, 0) / weightedTop.reduce((sum, _match, index) => sum + Math.max(0.35, 1 - index * 0.08), 0)
-        );
+  const plagiarismScore = calculateConfirmedPlagiarismScore(matches);
   const localAi = detectAiSignals(text);
   const scanNotes = [...prepared.notes];
   if (fileEvidence) {

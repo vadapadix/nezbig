@@ -39,4 +39,17 @@ describe("filterProseText", () => {
     expect(result.text).toContain("авторизацію користувача");
     expect(result.text).toContain("структури бази даних");
   });
+
+  it("preserves ordinary academic phrases that contain programming keywords", () => {
+    const result = filterProseText(
+      `function of education is broader than assessment.
+class of models describes a type of analysis used in social research.
+The type of analysis remains part of the academic explanation. A real call like calculateScore(value) should be omitted.`
+    );
+
+    expect(result.text).toContain("function of education");
+    expect(result.text).toContain("class of models");
+    expect(result.text).toContain("type of analysis");
+    expect(result.text).not.toContain("calculateScore(value)");
+  });
 });

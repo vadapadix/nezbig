@@ -250,7 +250,11 @@ function downloadReportPng(report: ScanReport): void {
       y = wrapCanvasText(context, `${match.score}% - ${match.title}`, 70, y, 1220, 32);
       context.fillStyle = printGray;
       context.font = "400 21px Actay, sans-serif";
-      y = wrapCanvasText(context, `${match.url} | слова ${match.overlapPercent}%, хеші ${match.hashOverlapPercent}%, full-text ${match.fullTextRank}%`, 90, y + 6, 1180, 29);
+      const evidenceLabel = match.confidence === "page" ? "підтверджено сторінкою" : "пошукова підказка";
+      y = wrapCanvasText(context, `${match.url} | ${evidenceLabel} | слова ${match.overlapPercent}%, хеші ${match.hashOverlapPercent}%, full-text ${match.fullTextRank}%`, 90, y + 6, 1180, 29);
+      if (match.confidence === "page" && match.submittedEvidence) {
+        y = wrapCanvasText(context, `Спільний уривок: ${match.submittedEvidence}`, 90, y + 4, 1180, 29);
+      }
       y += 18;
     }
   }
@@ -338,6 +342,8 @@ export default function App() {
   const aiSignalSplit = report ? Math.max(1, Math.ceil(report.aiSignals.length / 2)) : 0;
   const primaryAiSignals = report ? report.aiSignals.slice(0, aiSignalSplit) : [];
   const secondaryAiSignals = report ? report.aiSignals.slice(aiSignalSplit) : [];
+  const confirmedMatchCount = report?.matches.filter((match) => match.confidence === "page").length ?? 0;
+  const leadMatchCount = (report?.matches.length ?? 0) - confirmedMatchCount;
 
   useEffect(() => {
     setSettings((current) => {
@@ -818,7 +824,7 @@ export default function App() {
                 <section className="source-panel" aria-labelledby="matches-title">
                   <div className="section-heading-row">
                     <h3 id="matches-title">Ймовірні джерела</h3>
-                    <span>{report.matches.length ? `${formatNumber(report.matches.length)} збігів` : "0 збігів"}</span>
+                    <span>{report.matches.length ? `${formatNumber(confirmedMatchCount)} підтвердж. · ${formatNumber(leadMatchCount)} підказ.` : "0 збігів"}</span>
                   </div>
                   {report.matches.length === 0 ? (
                     <p className="empty-state compact-empty">Сильних збігів у відкритих вебджерелах не знайдено.</p>
@@ -834,6 +840,17 @@ export default function App() {
                             <a href={match.url} target="_blank" rel="noreferrer">{match.title}</a>
                           </h4>
                           <p>{match.snippet}</p>
+                          {match.confidence === "page" && match.submittedEvidence ? (
+                            <div className="match-evidence">
+                              <strong>Підтверджений спільний уривок</strong>
+                              <blockquote>{match.submittedEvidence}</blockquote>
+                              {match.sourceEvidence && match.sourceEvidence !== match.submittedEvidence ? (
+                                <blockquote>{match.sourceEvidence}</blockquote>
+                              ) : null}
+                            </div>
+                          ) : (
+                            <p className="match-lead-note">Пошукова підказка: сторінку ще не підтверджено, тому цей результат не впливає на загальний відсоток плагіату.</p>
+                          )}
                           <dl>
                             <div>
                               <dt>Слова</dt>

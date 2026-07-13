@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectAiSignals, scoreCandidate } from "./scoring.js";
+import { calculateConfirmedPlagiarismScore, detectAiSignals, scoreCandidate, summarizeReport } from "./scoring.js";
 
 describe("scoreCandidate", () => {
   it("gives a high score to overlapping source pages", () => {
@@ -33,6 +33,28 @@ describe("scoreCandidate", () => {
     expect(result.longestRun).toBeGreaterThanOrEqual(12);
     expect(result.hashOverlapPercent).toBeGreaterThan(45);
     expect(result.score).toBeGreaterThan(55);
+    expect(result.submittedEvidence).toMatch(/experimental protocol records/i);
+    expect(result.sourceEvidence).toMatch(/experimental protocol records/i);
+  });
+
+  it("does not turn a search snippet echo into confirmed plagiarism", () => {
+    const source = "Academic integrity depends on careful citation transparent methods and original synthesis across several independent sources.";
+    const snippetLead = scoreCandidate(source, {
+      title: "Search result",
+      url: "https://example.com/lead",
+      snippet: source
+    }, 0);
+    const confirmedPage = scoreCandidate(source, {
+      title: "Verified source",
+      url: "https://example.com/page",
+      snippet: "A source about academic integrity.",
+      sourceText: `Introductory material. ${source} Additional verified page content.`
+    }, 0);
+
+    expect(snippetLead.confidence).toBe("snippet");
+    expect(calculateConfirmedPlagiarismScore([snippetLead])).toBe(0);
+    expect(calculateConfirmedPlagiarismScore([confirmedPage])).toBeGreaterThan(40);
+    expect(summarizeReport(0, 20, [snippetLead])).toMatch(/не підтверджен/i);
   });
 });
 
@@ -102,6 +124,27 @@ describe("detectAiSignals", () => {
 
     expect(result.signals.at(-1)?.evidence?.join(" ")).toMatch(/академічна структура/i);
     expect(result.probability).toBeLessThan(50);
+  });
+
+  it("keeps sentence rhythm stable when coursework headings are added", () => {
+    const body = "The archived observations describe a repeatable procedure for collecting measurements. Each participant then reviews the record and explains any disagreement with the result. Researchers compare those comments with the earlier dataset before they accept a conclusion. The final discussion identifies limitations that require another round of field work.";
+    const withoutHeadings = detectAiSignals(body);
+    const withHeadings = detectAiSignals(`INTRODUCTION. ${body} CONCLUSION.`);
+    const rhythm = (result: ReturnType<typeof detectAiSignals>) => result.signals.find((signal) => signal.label === "Рівномірність речень (Low Burstiness)")?.score ?? 0;
+
+    expect(Math.abs(rhythm(withHeadings) - rhythm(withoutHeadings))).toBeLessThanOrEqual(5);
+  });
+
+  it("does not let citations and coursework structure force corroborated evidence to zero", () => {
+    const result = detectAiSignals(`
+      INTRODUCTION. The analysis presents a comprehensive framework for improving the information system in a consistent and efficient manner.
+      Moreover, the proposed approach facilitates reliable optimization and provides a structured basis for future development [1].
+      The 2024 experiment recorded 42 observations, while Table 2 lists 18 repeated scenarios and three validation stages.
+      In conclusion, this robust solution represents an important step toward a seamless and scalable workflow.
+    `);
+
+    expect(result.probability).toBeGreaterThan(0);
+    expect(result.signals.some((signal) => signal.category === "safeguard")).toBe(true);
   });
 
   it("does not treat double hyphens as an AI punctuation signal", () => {

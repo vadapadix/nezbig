@@ -50,6 +50,26 @@ describe("humanizeText", () => {
     expect(result.revisedText).toContain("може бути");
   });
 
+  it("preserves evidence nouns and technical terms instead of cascading synonyms", () => {
+    const result = humanizeText(
+      "Дослідження показують, що унікальний ідентифікатор забезпечує цілісність запису в інформаційній системі. Дані показують стабільний результат у 24 незалежних вимірюваннях, а ефективний алгоритм зберігає початкову точність обчислень."
+    );
+    const revised = result.revisedText.toLowerCase();
+
+    expect(revised).not.toContain("ці показують");
+    expect(revised).toContain("дані показують");
+    expect(revised).toContain("унікальний ідентифікатор");
+    expect(revised).toContain("забезпечує цілісність");
+    expect(revised).toContain("ефективний алгоритм");
+  });
+
+  it("keeps repeated list-like paragraphs that may be valid document structure", () => {
+    const repeatedItem = "Однакова назва позиції може бути коректним значенням у різних рядках таблиці документа.";
+    const result = humanizeText(`${repeatedItem}\n\n${repeatedItem}\n\nТретій абзац пояснює, чому редактор не повинен видаляти структурно окремі рядки з однаковим текстом.`);
+
+    expect(result.revisedText.match(/Однакова назва позиції/gu)).toHaveLength(2);
+  });
+
   it("targets local AI scoring markers in templated coursework prose", () => {
     const source = `
       Метою роботи є теоретичне обґрунтування та практичний аналіз особливостей функціонування відповідної системи.

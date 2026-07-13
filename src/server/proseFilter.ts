@@ -8,9 +8,12 @@ export type ProseFilterResult = {
 };
 
 const CODE_LINE_PATTERNS = [
-  /^\s*(import|export|const|let|var|function|class|interface|type|enum|return|if|else|for|while|switch|case|try|catch)\b/,
-  /^\s*(public|private|protected|async|await|def|from|package|using|namespace)\b/,
-  /^\s*(sub|end\s+sub|private\s+sub|public\s+sub|function|end\s+function|private\s+function|public\s+function|dim|set|call|then|next|loop|with|end\s+with)\b/i,
+  /^\s*(?:import\s+.+\s+from\s+|export\s+(?:default\s+)?(?:function|class|const|let|var)\b)/,
+  /^\s*(?:const|let|var)\s+[A-Za-z_$][\w$]*\s*(?:=|:)/,
+  /^\s*(?:function\s+[A-Za-z_$][\w$]*\s*\(|class\s+[A-Za-z_$][\w$]*(?:\s+extends\s+[A-Za-z_$][\w$]*)?\s*\{|(?:interface|type|enum)\s+[A-Za-z_$][\w$]*\s*(?:\{|=))/,
+  /^\s*(?:return\b|if\s*\(|else\s*\{|for\s*\(|while\s*\(|switch\s*\(|case\s+.+:|try\s*\{|catch\s*\()/,
+  /^\s*(?:(?:public|private|protected)\s+(?:async\s+)?[A-Za-z_$][\w$]*\s*(?:\(|:|=)|def\s+[A-Za-z_][\w]*\s*\(|from\s+[\w.]+\s+import\s+|(?:package|using|namespace)\s+[\w.]+)/,
+  /^\s*(?:end\s+(?:sub|function|with)|(?:private|public)\s+(?:sub|function)\s+\w+|(?:sub|function)\s+\w+\s*\(|dim\s+\w+(?:\s+as\b|\s*=)|set\s+\w+\s*=|call\s+\w+\s*\(|next\b|loop\b)/i,
   /^\s*[{}()[\];,.<>/]*\s*$/,
   /^\s*<\/?[a-z][^>]*>\s*$/i,
   /^\s*["']?[A-Za-z0-9_$-]+["']?\s*:\s*["'{[\d]/,
@@ -20,8 +23,11 @@ const CODE_LINE_PATTERNS = [
 const INLINE_CODE_PHRASES = [
   /\b(?:end\s+sub|private\s+sub|public\s+sub|end\s+function|private\s+function|public\s+function)\b/gi,
   /\b(?:console\.log|document\.querySelector|addEventListener|return\s+false|return\s+true)\b/gi,
-  /\b(?:const|let|var|function|class|interface|type)\s+[A-Za-z_$][\w$]*\b/g,
-  /\b[A-Za-z_$][\w$]*\s*\([^)]{0,80}\)\s*(?:=>|\{)?/g
+  /\b(?:const|let|var)\s+[A-Za-z_$][\w$]*\s*(?:=|:\s*(?:string|number|boolean|unknown|object)\b)/g,
+  /\bfunction\s+[A-Za-z_$][\w$]*\s*\([^)]{0,80}\)/g,
+  /\b(?:class|interface)\s+[A-Za-z_$][\w$]*\s*(?:extends\s+[A-Za-z_$][\w$]*\s*)?\{/g,
+  /\btype\s+[A-Za-z_$][\w$]*\s*=/g,
+  /\b[a-z_$][\w$]{1,}\s*\([^)]{0,80}\)\s*(?:=>|\{)?/g
 ];
 
 function looksLikeCodeLine(line: string): boolean {

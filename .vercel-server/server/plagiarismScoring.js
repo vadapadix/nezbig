@@ -1,20 +1,31 @@
 import { normalizeWhitespace } from "./chunking.js";
 import { FullTextIndex } from "./fullTextIndex.js";
 import { tokenize, clampScore, stableHash, overlapRatio, buildNgrams, } from "./utils/textUtils.js";
-// Additional utilities used only here or not yet moved
 function longestCommonRun(source, candidate) {
-    const previous = new Array(candidate.length + 1).fill(0);
-    const current = new Array(candidate.length + 1).fill(0);
-    let longest = 0;
-    for (let i = 1; i <= source.length; i += 1) {
-        for (let j = 1; j <= candidate.length; j += 1) {
-            current[j] = source[i - 1] === candidate[j - 1] ? previous[j - 1] + 1 : 0;
-            longest = Math.max(longest, current[j]);
+    const candidatePositions = new Map();
+    candidate.forEach((token, index) => {
+        const positions = candidatePositions.get(token) ?? [];
+        positions.push(index);
+        candidatePositions.set(token, positions);
+    });
+    let previous = new Map();
+    let best = { length: 0, sourceStart: 0, candidateStart: 0 };
+    source.forEach((token, sourceIndex) => {
+        const current = new Map();
+        for (const candidateIndex of candidatePositions.get(token) ?? []) {
+            const length = (previous.get(candidateIndex - 1) ?? 0) + 1;
+            current.set(candidateIndex, length);
+            if (length > best.length) {
+                best = {
+                    length,
+                    sourceStart: sourceIndex - length + 1,
+                    candidateStart: candidateIndex - length + 1
+                };
+            }
         }
-        previous.splice(0, previous.length, ...current);
-        current.fill(0);
-    }
-    return longest;
+        previous = current;
+    });
+    return best;
 }
 function sourceForCandidate(candidate) {
     const pageText = candidate.sourceText?.trim();
@@ -75,7 +86,8 @@ export function scoreCandidate(chunkText, candidate, chunkIndex) {
     const fiveGramOverlap = overlapRatio(buildNgrams(sourceRunTokens, 5), buildNgrams(candidateRunTokens, 5));
     const hashOverlap = setOverlapPercent(winnowFingerprints(sourceRunTokens), winnowFingerprints(candidateRunTokens));
     const fullTextRank = candidateIndex.rank(sourceTokens);
-    const longestRun = longestCommonRun(sourceRunTokens, candidateRunTokens);
+    const commonRun = longestCommonRun(sourceRunTokens, candidateRunTokens);
+    const longestRun = commonRun.length;
     const runScore = Math.min(1, longestRun / 15);
     const phraseScore = Math.max(threeGramOverlap * 0.75, fiveGramOverlap);
     const pageBonus = candidate.sourceText ? 1 : 0.72;
@@ -94,6 +106,12 @@ export function scoreCandidate(chunkText, candidate, chunkIndex) {
         fullTextRank: clampScore(fullTextRank * 100),
         longestRun,
         confidence: candidate.sourceText ? "page" : "snippet",
-        excerpt: normalizeWhitespace(chunkText).split(" ").slice(0, 48).join(" ")
+        excerpt: normalizeWhitespace(chunkText).split(" ").slice(0, 48).join(" "),
+        submittedEvidence: longestRun >= 5
+            ? sourceRunTokens.slice(commonRun.sourceStart, commonRun.sourceStart + longestRun).join(" ")
+            : undefined,
+        sourceEvidence: longestRun >= 5 && candidate.sourceText
+            ? candidateRunTokens.slice(commonRun.candidateStart, commonRun.candidateStart + longestRun).join(" ")
+            : undefined
     };
 }
