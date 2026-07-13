@@ -9,6 +9,11 @@ export default defineConfig({
       "/api": "http://127.0.0.1:8787"
     }
   },
+  preview: {
+    proxy: {
+      "/api": "http://127.0.0.1:8787"
+    }
+  },
   test: {
     environment: "jsdom",
     globals: true,
