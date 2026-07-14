@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createWordDocumentHtml, wordFileName } from "./wordDocument";
+import { createWordDocumentHtml, revisedDocxFileName, wordFileName } from "./wordDocument";
 
 describe("Word document export", () => {
   it("wraps the formatted fragment in a Word-compatible UTF-8 document", () => {
@@ -13,5 +13,9 @@ describe("Word document export", () => {
 
   it("uses a safe .doc name without duplicating the source extension", () => {
     expect(wordFileName("Курсова робота.docx")).toBe("Курсова робота-formatted.doc");
+  });
+
+  it("keeps a real DOCX extension for an edited uploaded document", () => {
+    expect(revisedDocxFileName("Курсова робота.docx")).toBe("Курсова робота-edited.docx");
   });
 });

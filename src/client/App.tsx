@@ -1,8 +1,9 @@
 import { ClipboardEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import nezbigLogo from "./assets/nezbig-mark.png";
+import { insertRichHtmlAtSelection } from "./richPaste";
 import { htmlFromPlainText, plainTextFromRichHtml, sanitizeRichHtml } from "./richText";
 import { copyRichTextForWord } from "./wordClipboard";
-import { downloadWordDocument } from "./wordDocument";
+import { downloadWordDocument, revisedDocxFileName } from "./wordDocument";
 import type { HumanizeResult, LlmOpinion, ScanReport, ScanSettings, UploadedText } from "../shared/types";
 
 const defaultSettings: ScanSettings = {
@@ -334,6 +335,7 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [llmBusy, setLlmBusy] = useState(false);
   const [humanizerBusy, setHumanizerBusy] = useState(false);
+  const [wordDownloadBusy, setWordDownloadBusy] = useState(false);
   const [humanized, setHumanized] = useState<HumanizeResult | null>(null);
   const [message, setMessage] = useState("");
   const [sourceHtml, setSourceHtml] = useState("");
@@ -400,11 +402,14 @@ export default function App() {
   }
 
   function handleRichPaste(event: ClipboardEvent<HTMLDivElement>) {
-    const hasRichHtml = event.clipboardData.types.includes("text/html");
-    window.requestAnimationFrame(() => {
-      syncEditorFromDom(true);
-      setMessage(hasRichHtml ? "Текст вставлено разом із форматуванням Word." : "Текст вставлено без форматування.");
-    });
+    event.preventDefault();
+    const clipboardHtml = event.clipboardData.getData("text/html");
+    const clipboardText = event.clipboardData.getData("text/plain");
+    const hasRichHtml = clipboardHtml.trim().length > 0;
+    const html = hasRichHtml ? sanitizeRichHtml(clipboardHtml) : htmlFromPlainText(clipboardText);
+    insertRichHtmlAtSelection(event.currentTarget, html);
+    syncEditorFromDom(true);
+    setMessage(hasRichHtml ? "Текст вставлено разом із форматуванням Word." : "Текст вставлено без форматування.");
   }
 
   async function loadFormattedPreview(file: File) {
@@ -451,6 +456,40 @@ export default function App() {
   function downloadFormattedForWord(html: string, sourceName: string) {
     downloadWordDocument(sanitizeRichHtml(html), sourceName);
     setMessage("Форматований документ підготовлено для відкриття у Word.");
+  }
+
+  async function downloadHumanizedForWord() {
+    if (!humanized) return;
+    if (!selectedFile || !/\.docx$/i.test(selectedFile.name)) {
+      downloadFormattedForWord(humanized.revisedHtml ?? htmlFromPlainText(humanized.revisedText), fileName);
+      return;
+    }
+
+    setWordDownloadBusy(true);
+    setMessage("Збираю відредагований DOCX зі стилями оригінального файла...");
+    try {
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+      formData.append("revisedText", humanized.revisedText);
+      const response = await fetch("/api/export-docx", { method: "POST", body: formData });
+      if (!response.ok) {
+        const payload = (await response.json()) as { error?: string };
+        throw new Error(payload.error ?? "Не вдалося зібрати DOCX.");
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = revisedDocxFileName(selectedFile.name);
+      link.click();
+      URL.revokeObjectURL(url);
+      setMessage("DOCX готовий: форматування, таблиці, зображення та стилі оригіналу збережено.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Не вдалося завантажити відредагований DOCX.");
+    } finally {
+      setWordDownloadBusy(false);
+    }
   }
 
   async function handleFile(file: File | null) {
@@ -745,9 +784,10 @@ export default function App() {
               <button
                 type="button"
                 className="secondary-button"
-                onClick={() => downloadFormattedForWord(humanized.revisedHtml ?? htmlFromPlainText(humanized.revisedText), fileName)}
+                disabled={wordDownloadBusy}
+                onClick={() => void downloadHumanizedForWord()}
               >
-                Завантажити для Word
+                {wordDownloadBusy ? "Збираю DOCX..." : selectedFile && /\.docx$/i.test(selectedFile.name) ? "Завантажити DOCX" : "Завантажити для Word"}
               </button>
               <span>Після перенесення перевірте факти й запустіть аналіз повторно.</span>
             </div>

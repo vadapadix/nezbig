@@ -5,11 +5,12 @@ import multer from "multer";
 import { chunkText, countWords } from "./chunking.js";
 import { prepareDocumentText } from "./documentPreprocess.js";
 import { mergeRevisedTextIntoHtml } from "./formattedDocument.js";
+import { mergeRevisedTextIntoDocx } from "./formattedDocx.js";
 import { humanizeText } from "./humanizer.js";
 import { analyzeWithLlmProviders } from "./llmOpinion.js";
 import { emptySearchDiagnostics, mergeSearchDiagnostics, searchDiagnosticsNotes } from "./searchDiagnostics.js";
 import { calculateConfirmedPlagiarismScore, scoreCandidate, detectAiSignals, summarizeReport } from "./scoring.js";
-import { extractTextFromUpload } from "./textExtraction.js";
+import { decodeUploadFileName, extractTextFromUpload } from "./textExtraction.js";
 import { hydrateSearchCandidatesDetailed, searchWebCandidatesDetailed } from "./webSearch.js";
 export const app = express();
 const upload = multer({
@@ -282,5 +283,32 @@ app.post("/api/humanize-file", upload.single("file"), async (request, response) 
     }
     catch (error) {
         response.status(400).json({ error: error instanceof Error ? error.message : "Не вдалося олюднити файл." });
+    }
+});
+app.post("/api/export-docx", upload.single("file"), async (request, response) => {
+    try {
+        if (!request.file) {
+            response.status(400).json({ error: "Додайте вихідний DOCX-файл." });
+            return;
+        }
+        const fileName = decodeUploadFileName(request.file.originalname);
+        if (!/\.docx$/i.test(fileName)) {
+            response.status(400).json({ error: "Точне збереження форматування доступне для DOCX-файлів." });
+            return;
+        }
+        const revisedText = typeof request.body.revisedText === "string" ? request.body.revisedText : "";
+        if (!revisedText.trim()) {
+            response.status(400).json({ error: "Відредагований текст порожній." });
+            return;
+        }
+        const output = await mergeRevisedTextIntoDocx(request.file.buffer, revisedText);
+        const baseName = fileName.replace(/\.docx$/i, "").trim() || "nezbig-document";
+        const outputName = `${baseName}-edited.docx`;
+        response.type("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+        response.setHeader("Content-Disposition", `attachment; filename="nezbig-edited.docx"; filename*=UTF-8''${encodeURIComponent(outputName)}`);
+        response.send(output);
+    }
+    catch (error) {
+        response.status(400).json({ error: error instanceof Error ? error.message : "Не вдалося зібрати відредагований DOCX." });
     }
 });

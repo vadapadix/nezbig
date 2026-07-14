@@ -20,6 +20,8 @@ The React client runs on port `5173`; the Express API runs on `8787`.
 - `.docx`
 - `.pdf`
 
+Word formatting is retained for rich clipboard paste/copy. Humanized uploaded `.docx` files can be downloaded again as real OOXML documents while keeping the original package styles, tables, media, and layout metadata.
+
 ## Notes
 
 The plagiarism check covers the whole document, searches multiple open-web providers, hydrates promising pages, and compares them with n-grams, winnowing fingerprints, longest runs, and a local full-text index. It does not claim to crawl or index the entire internet locally.

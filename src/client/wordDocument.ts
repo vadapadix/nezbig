@@ -7,6 +7,11 @@ export function wordFileName(sourceName: string): string {
   return `${base}-formatted.doc`;
 }
 
+export function revisedDocxFileName(sourceName: string): string {
+  const base = sourceName.replace(/\.[^.]+$/, "").trim() || "nezbig-document";
+  return `${base}-edited.docx`;
+}
+
 export function createWordDocumentHtml(fragment: string, title: string): string {
   return `<!doctype html>
 <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" lang="uk">
