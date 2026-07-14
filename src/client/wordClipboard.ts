@@ -1,3 +1,5 @@
+import { createWordClipboardHtml } from "./wordDocument";
+
 export type WordCopyMode = "rich" | "plain";
 
 function copyFormattedSelection(html: string): boolean {
@@ -36,7 +38,7 @@ export async function copyRichTextForWord(html: string, plainText: string): Prom
     try {
       await navigator.clipboard.write([
         new ClipboardItem({
-          "text/html": new Blob([html], { type: "text/html" }),
+          "text/html": new Blob([createWordClipboardHtml(html)], { type: "text/html" }),
           "text/plain": new Blob([plainText], { type: "text/plain" })
         })
       ]);

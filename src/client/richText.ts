@@ -115,6 +115,37 @@ function collectWordStyles(document: Document): WeakMap<Element, Map<string, str
   return stylesByElement;
 }
 
+function copySafeAttribute(source: Element, target: Element, name: string, pattern: RegExp): void {
+  const value = source.getAttribute(name)?.trim() ?? "";
+  if (value && pattern.test(value)) target.setAttribute(name, value);
+}
+
+function copyWordLayoutAttributes(source: HTMLElement, target: HTMLElement): void {
+  const dimension = /^(?:\d+(?:\.\d+)?(?:px|pt|pc|in|cm|mm|%)?|auto)$/i;
+  const smallInteger = /^(?:0|[1-9]\d{0,3})$/;
+
+  if (["TABLE", "TD", "TH", "COL", "COLGROUP", "TR"].includes(source.tagName)) {
+    copySafeAttribute(source, target, "width", dimension);
+    copySafeAttribute(source, target, "height", dimension);
+  }
+  if (source.tagName === "TABLE") {
+    copySafeAttribute(source, target, "cellspacing", smallInteger);
+    copySafeAttribute(source, target, "cellpadding", smallInteger);
+    copySafeAttribute(source, target, "border", smallInteger);
+  }
+  if (source.tagName === "COL" || source.tagName === "COLGROUP") {
+    copySafeAttribute(source, target, "span", /^[1-9]\d{0,3}$/);
+  }
+  if (["TABLE", "TR", "TD", "TH"].includes(source.tagName)) {
+    copySafeAttribute(source, target, "align", /^(?:left|center|right|justify)$/i);
+  }
+  if (["TR", "TD", "TH"].includes(source.tagName)) {
+    copySafeAttribute(source, target, "valign", /^(?:top|middle|bottom|baseline)$/i);
+  }
+  if (source.tagName === "OL") copySafeAttribute(source, target, "type", /^(?:1|a|A|i|I)$/);
+  if (source.tagName === "UL") copySafeAttribute(source, target, "type", /^(?:disc|circle|square)$/i);
+}
+
 export function sanitizeRichHtml(input: string): string {
   const parser = new DOMParser();
   const document = parser.parseFromString(input, "text/html");
@@ -163,6 +194,7 @@ export function sanitizeRichHtml(input: string): string {
       if (element.width > 0) output.setAttribute("width", String(element.width));
       if (element.height > 0) output.setAttribute("height", String(element.height));
     }
+    copyWordLayoutAttributes(element, output);
 
     const declarations = stylesByElement.get(element);
     if (declarations && declarations.size > 0) {
@@ -184,6 +216,22 @@ export function sanitizeRichHtml(input: string): string {
   }
 
   const container = document.createElement("div");
-  container.append(fragment);
+  const bodyDeclarations = stylesByElement.get(document.body);
+  const bodyClasses = Array.from(document.body.classList).filter((className) => SAFE_WORD_CLASS.test(className));
+  if ((bodyDeclarations && bodyDeclarations.size > 0) || bodyClasses.length > 0) {
+    const wordRoot = document.createElement("div");
+    if (bodyClasses.length > 0) wordRoot.className = bodyClasses.join(" ");
+    if (bodyDeclarations && bodyDeclarations.size > 0) {
+      wordRoot.setAttribute("style", Array.from(bodyDeclarations, ([property, value]) => `${property}:${value}`).join(";"));
+    }
+    const language = document.body.getAttribute("lang") ?? "";
+    if (/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(language)) wordRoot.setAttribute("lang", language);
+    const direction = document.body.getAttribute("dir")?.toLowerCase();
+    if (direction === "ltr" || direction === "rtl" || direction === "auto") wordRoot.setAttribute("dir", direction);
+    wordRoot.append(fragment);
+    container.append(wordRoot);
+  } else {
+    container.append(fragment);
+  }
   return container.innerHTML;
 }

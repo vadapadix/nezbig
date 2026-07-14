@@ -30,6 +30,10 @@ export function createWordDocumentHtml(fragment: string, title: string): string 
 </html>`;
 }
 
+export function createWordClipboardHtml(fragment: string): string {
+  return createWordDocumentHtml(`<!--StartFragment-->${fragment}<!--EndFragment-->`, "Незбіг");
+}
+
 export function downloadWordDocument(fragment: string, sourceName: string): void {
   const html = createWordDocumentHtml(fragment, sourceName.replace(/\.[^.]+$/, ""));
   const blob = new Blob(["\ufeff", html], { type: "application/msword;charset=utf-8" });

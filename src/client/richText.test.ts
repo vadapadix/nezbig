@@ -92,6 +92,45 @@ describe("sanitizeRichHtml", () => {
     expect(result).toContain('id="_ftn1"');
     expect(result).not.toContain("javascript:");
   });
+
+  it("keeps Word document defaults and table geometry from a full clipboard document", () => {
+    const result = sanitizeRichHtml(`
+      <html>
+        <head>
+          <style>
+            .WordSection1 { font-family: "Times New Roman"; font-size: 14pt; line-height: 1.5; }
+          </style>
+        </head>
+        <body class="WordSection1">
+          <p>Основний текст</p>
+          <table width="100%" cellspacing="0" cellpadding="6" border="1">
+            <colgroup><col span="2" width="120"></colgroup>
+            <tr><td width="60%" valign="top">Ліва</td><td width="40%">Права</td></tr>
+          </table>
+        </body>
+      </html>
+    `);
+
+    const container = document.createElement("div");
+    container.innerHTML = result;
+    const root = container.firstElementChild as HTMLElement | null;
+    const table = container.querySelector("table");
+    const column = container.querySelector("col");
+    const cell = container.querySelector("td");
+
+    expect(root?.classList.contains("WordSection1")).toBe(true);
+    expect(root?.style.fontFamily).toContain("Times New Roman");
+    expect(root?.style.fontSize).toBe("14pt");
+    expect(root?.style.lineHeight).toBe("1.5");
+    expect(table?.getAttribute("width")).toBe("100%");
+    expect(table?.getAttribute("cellspacing")).toBe("0");
+    expect(table?.getAttribute("cellpadding")).toBe("6");
+    expect(table?.getAttribute("border")).toBe("1");
+    expect(column?.getAttribute("span")).toBe("2");
+    expect(column?.getAttribute("width")).toBe("120");
+    expect(cell?.getAttribute("width")).toBe("60%");
+    expect(cell?.getAttribute("valign")).toBe("top");
+  });
 });
 
 describe("htmlFromPlainText", () => {

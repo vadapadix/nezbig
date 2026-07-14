@@ -20,6 +20,15 @@ describe("copyRichTextForWord", () => {
     expect(write).toHaveBeenCalledTimes(1);
     const item = write.mock.calls[0][0][0] as ClipboardItemMock;
     expect(Object.keys(item.items).sort()).toEqual(["text/html", "text/plain"]);
+    const clipboardHtml = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsText(item.items["text/html"]);
+    });
+    expect(clipboardHtml).toContain("<!doctype html>");
+    expect(clipboardHtml).toContain("<!--StartFragment-->");
+    expect(clipboardHtml).toContain("<p><strong>Назва</strong></p>");
 
     Object.defineProperty(globalThis, "ClipboardItem", { configurable: true, value: OriginalClipboardItem });
   });

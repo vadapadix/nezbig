@@ -12,6 +12,8 @@ async function sourceDocx(): Promise<Buffer> {
   const zip = new JSZip();
   zip.file("[Content_Types].xml", "<Types />");
   zip.file("word/styles.xml", '<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:styleId="Title" /></w:styles>');
+  zip.file("word/numbering.xml", '<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="0" /></w:numbering>');
+  zip.file("word/header1.xml", '<w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:r><w:t>Незмінний колонтитул</w:t></w:r></w:p></w:hdr>');
   zip.file("word/media/image1.png", Buffer.from([1, 2, 3, 4]));
   zip.file("word/document.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
     <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -38,6 +40,8 @@ describe("mergeRevisedTextIntoDocx", () => {
     expect(documentXml).toContain("<w:i/>");
     expect(documentXml).toContain('w:val="center"');
     expect(await zip.file("word/styles.xml")!.async("string")).toContain('w:styleId="Title"');
+    expect(await zip.file("word/numbering.xml")!.async("string")).toContain('w:abstractNumId="0"');
+    expect(await zip.file("word/header1.xml")!.async("string")).toContain("Незмінний колонтитул");
     expect(Array.from(await zip.file("word/media/image1.png")!.async("uint8array"))).toEqual([1, 2, 3, 4]);
   });
 

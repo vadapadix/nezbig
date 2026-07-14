@@ -473,6 +473,16 @@ export default function App() {
     setMessage("Форматований документ підготовлено для відкриття у Word.");
   }
 
+  function downloadOriginalFile(file: File) {
+    const url = URL.createObjectURL(file);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = file.name;
+    link.click();
+    URL.revokeObjectURL(url);
+    setMessage(`Оригінальний файл ${file.name} завантажено без перетворення, тому його форматування не змінено.`);
+  }
+
   async function downloadHumanizedForWord() {
     if (!humanized) return;
     if (!selectedFile || !/\.docx$/i.test(selectedFile.name)) {
@@ -710,10 +720,16 @@ export default function App() {
                 <button type="button" className="secondary-button" onClick={() => void copyFormattedForWord(sanitizeRichHtml(sourceHtml), text)}>
                   Копіювати у Word
                 </button>
-                <button type="button" className="secondary-button" onClick={() => downloadFormattedForWord(sourceHtml, fileName)}>
-                  Завантажити для Word
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => selectedFile ? downloadOriginalFile(selectedFile) : downloadFormattedForWord(sourceHtml, fileName)}
+                >
+                  {selectedFile ? "Завантажити оригінал" : "Завантажити для Word"}
                 </button>
-                <span>Шрифти, розміри, вирівнювання, відступи, списки й таблиці зберігаються окремо від тексту для аналізу.</span>
+                <span>{selectedFile
+                  ? "Оригінальний файл не перетворюється; preview і текст для аналізу зберігаються окремо."
+                  : "Шрифти, розміри, вирівнювання, відступи, списки й таблиці зберігаються окремо від тексту для аналізу."}</span>
               </div>
             ) : null}
             {selectedFile ? (
