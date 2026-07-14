@@ -90,9 +90,24 @@ function reliabilityLabel(level: ScanReport["aiReliability"]["level"]): string {
   return "низька";
 }
 
+function aiVerdictLabel(verdict: ScanReport["aiVerdict"]): string {
+  if (verdict === "insufficient") return "Недостатньо даних";
+  if (verdict === "mixed") return "Змішаний документ";
+  if (verdict === "uncertain") return "Невизначений результат";
+  if (verdict === "high") return "Високий ризик";
+  if (verdict === "elevated") return "Підвищений ризик";
+  return "Низький ризик";
+}
+
+function languageLabel(code: ScanReport["aiLanguage"]["code"]): string {
+  if (code === "uk") return "українська";
+  if (code === "en") return "англійська";
+  if (code === "mixed") return "українська + англійська";
+  return "обмежене покриття";
+}
+
 function aiMetricCaption(report: ScanReport): string {
-  if (report.aiReliability.level === "low") return `Невизначено · надійність ${report.aiReliability.score}/100`;
-  return `${riskLabel(report.aiProbability)} ризик · надійність ${report.aiReliability.score}/100`;
+  return `${aiVerdictLabel(report.aiVerdict)} · надійність ${report.aiReliability.score}/100`;
 }
 
 function reportSummaryText(report: ScanReport): string {
@@ -188,8 +203,8 @@ function downloadReportPng(report: ScanReport): void {
   const cardWidth = 280;
   const cards = [
     ["Плагіат", `${report.plagiarismScore}%`, `${riskLabel(report.plagiarismScore)} ризик`],
-    ["ШІ-аналіз", `${report.aiProbability}%`, `Надійність ${report.aiReliability.score}/100`],
-    ["AI-думка", report.aiOpinionProbability !== undefined ? `${report.aiOpinionProbability}%` : "...", report.aiOpinionProbability !== undefined ? `${riskLabel(report.aiOpinionProbability)} рівень` : "очікує модель"],
+    ["ШІ-аналіз", report.aiVerdict === "insufficient" ? "—" : `${report.aiProbability}%`, aiVerdictLabel(report.aiVerdict)],
+    ["AI-думка", report.aiOpinionProbability !== undefined ? `${report.aiOpinionProbability}%` : "…", report.aiOpinionProbability !== undefined ? `${riskLabel(report.aiOpinionProbability)} рівень` : "очікує модель"],
     ["Фрагменти", formatNumber(report.chunksChecked), `${formatNumber(report.wordCount)} слів`]
   ];
 
@@ -308,7 +323,7 @@ function SignalCard({ signal, className = "" }: { signal: ScanReport["aiSignals"
     <article className={`signal ${className} ${isCritical ? "signal-critical" : ""} ${isSafeguard ? "signal-safeguard" : ""}`.trim()} key={signal.label}>
       <div className="signal-header">
         <div className="signal-title-group">
-          <span className="signal-icon" aria-hidden="true">{isSafeguard ? "🛡️" : isCritical ? "⚠️" : "🔍"}</span>
+          <span className="signal-icon" aria-hidden="true" />
           <strong>{signal.label}</strong>
         </div>
         <span className="signal-score-badge">{signal.score}%</span>
@@ -466,7 +481,7 @@ export default function App() {
     }
 
     setWordDownloadBusy(true);
-    setMessage("Збираю відредагований DOCX зі стилями оригінального файла...");
+    setMessage("Збираю відредагований DOCX зі стилями оригінального файла…");
     try {
       const formData = new FormData();
       formData.append("file", selectedFile);
@@ -528,7 +543,7 @@ export default function App() {
       const payload = (await response.json()) as ScanReport | { error: string };
       if (!response.ok || "error" in payload) throw new Error("error" in payload ? payload.error : "Перевірка не вдалася.");
       setReport(payload);
-      setMessage("Базовий звіт готовий. AI-думка підвантажується окремо...");
+      setMessage("Базовий звіт готовий. AI-думка підвантажується окремо…");
       void loadLlmOpinion(payload, text, selectedFile);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Перевірка не вдалася.");
@@ -597,7 +612,7 @@ export default function App() {
 
     setHumanizerBusy(true);
     setHumanized(null);
-    setMessage(selectedFile ? "Редагую стиль тексту з файлу..." : "Редагую стиль вставленого тексту...");
+    setMessage(selectedFile ? "Редагую стиль тексту з файлу…" : "Редагую стиль вставленого тексту…");
 
     try {
       const response = selectedFile ? await humanizeSelectedFile(selectedFile) : await fetch("/api/humanize", {
@@ -640,7 +655,7 @@ export default function App() {
       <main className="app-shell">
         <section className="intro" aria-labelledby="page-title">
           <div className="brand-lockup">
-            <img src={nezbigLogo} alt="" />
+            <img src={nezbigLogo} alt="" width="136" height="136" />
             <div>
               <p className="eyebrow">Text originality forensics</p>
               <h1 id="page-title">Незбіг</h1>
@@ -683,9 +698,9 @@ export default function App() {
               data-placeholder={
                 selectedFile
                   ? formattedPreviewBusy
-                    ? "Читаємо форматування файлу..."
+                    ? "Читаємо форматування файлу…"
                     : "Файл прикріплено. Форматований preview з'явиться тут, якщо формат підтримується."
-                  : "Вставте текст із Word або завантажте документ..."
+                  : "Вставте текст із Word або завантажте документ…"
               }
               onInput={() => syncEditorFromDom(true)}
               onPaste={handleRichPaste}
@@ -757,10 +772,10 @@ export default function App() {
             </div>
 
             <button type="submit" disabled={!canScan}>
-              {busy ? "Перевірка..." : "Запустити перевірку"}
+              {busy ? "Перевірка…" : "Запустити перевірку"}
             </button>
             <button type="button" className="secondary-button humanize-button" disabled={!canHumanize} onClick={() => void handleHumanize()}>
-              {humanizerBusy ? "Редагування..." : "Покращити стиль"}
+              {humanizerBusy ? "Редагування…" : "Покращити стиль"}
             </button>
             <p className="message" aria-live="polite">{message}</p>
           </aside>
@@ -787,7 +802,7 @@ export default function App() {
                 disabled={wordDownloadBusy}
                 onClick={() => void downloadHumanizedForWord()}
               >
-                {wordDownloadBusy ? "Збираю DOCX..." : selectedFile && /\.docx$/i.test(selectedFile.name) ? "Завантажити DOCX" : "Завантажити для Word"}
+                {wordDownloadBusy ? "Збираю DOCX…" : selectedFile && /\.docx$/i.test(selectedFile.name) ? "Завантажити DOCX" : "Завантажити для Word"}
               </button>
               <span>Після перенесення перевірте факти й запустіть аналіз повторно.</span>
             </div>
@@ -858,12 +873,12 @@ export default function App() {
               </article>
               <article>
                 <span>ШІ-аналіз</span>
-                <strong>{report.aiProbability}%</strong>
+                <strong>{report.aiVerdict === "insufficient" ? "—" : `${report.aiProbability}%`}</strong>
                 <small>{aiMetricCaption(report)}</small>
               </article>
               <article>
                 <span>AI-думка</span>
-                <strong>{report.aiOpinionProbability !== undefined ? `${report.aiOpinionProbability}%` : "..."}</strong>
+                <strong>{report.aiOpinionProbability !== undefined ? `${report.aiOpinionProbability}%` : "…"}</strong>
                 <small>{report.aiOpinionProbability !== undefined ? `${riskLabel(report.aiOpinionProbability)} рівень від моделі` : llmBusy ? "модель ще думає" : "немає відповіді моделі"}</small>
               </article>
               <article>
@@ -972,6 +987,30 @@ export default function App() {
                   )}
                 </section>
 
+                {report.aiSuspiciousSegments.length > 0 ? (
+                  <section className="segment-panel" aria-labelledby="segments-title">
+                    <div className="section-heading-row">
+                      <h3 id="segments-title">Підозрілі фрагменти</h3>
+                      <span>{report.aiSuspiciousSegments.length} для перевірки</span>
+                    </div>
+                    <p className="section-note">Це найсильніші локальні сигнали, а не твердження про авторство всього документа.</p>
+                    <div className="segment-list">
+                      {report.aiSuspiciousSegments.map((segment) => (
+                        <article className="segment-card" key={`${segment.index}-${segment.startWord}`}>
+                          <div>
+                            <strong>Слова {formatNumber(segment.startWord)}–{formatNumber(segment.endWord)}</strong>
+                            <span>{segment.score}%</span>
+                          </div>
+                          <blockquote>{segment.excerpt}</blockquote>
+                          <ul>
+                            {segment.evidence.map((evidence) => <li key={evidence}>{evidence}</li>)}
+                          </ul>
+                        </article>
+                      ))}
+                    </div>
+                  </section>
+                ) : null}
+
                 {secondaryAiSignals.length > 0 ? (
                   <div className="signal-list signal-list-left" aria-label="Додаткові AI-сигнали">
                     {secondaryAiSignals.map((signal) => (
@@ -984,12 +1023,20 @@ export default function App() {
               <section aria-labelledby="ai-title">
                 <h3 id="ai-title">Розширений AI-аналіз</h3>
                 <p className="model-badge">
-                  {llmBusy ? "AI-думка: очікування відповіді..." : "Локальний AI-відсоток незалежний від LLM"}
+                  {llmBusy ? "AI-думка: очікування відповіді…" : "Локальний AI-відсоток незалежний від LLM"}
                 </p>
                 <div className={`reliability-line reliability-${report.aiReliability.level}`}>
                   <strong>Надійність оцінки: {reliabilityLabel(report.aiReliability.level)} ({report.aiReliability.score}/100)</strong>
                   <span>{report.aiReliability.segmentCount} сегм. · розкид {report.aiReliability.segmentSpread} п.п.</span>
                   <p>{report.aiReliability.reason}</p>
+                </div>
+                <div className="ai-context-strip" aria-label="Контекст локального AI-аналізу">
+                  <span><strong>Мова</strong>{languageLabel(report.aiLanguage.code)} · {report.aiLanguage.supportedPercent}% покриття</span>
+                  <span><strong>Проаналізовано</strong>{formatNumber(report.aiExclusions.analyzedWords)} слів</span>
+                  {report.aiExclusions.codeWords > 0 ? <span><strong>Код вилучено</strong>{formatNumber(report.aiExclusions.codeWords)} слів</span> : null}
+                  {report.aiExclusions.quotedWords + report.aiExclusions.referenceWords > 0 ? (
+                    <span><strong>Цитати й джерела</strong>{formatNumber(report.aiExclusions.quotedWords + report.aiExclusions.referenceWords)} слів</span>
+                  ) : null}
                 </div>
                 {report.aiNote ? <p className="provider-note">{report.aiNote}</p> : null}
                 {report.aiOpinionProbability !== undefined ? (
@@ -999,7 +1046,7 @@ export default function App() {
                     {report.aiOpinionNote ? <p>{report.aiOpinionNote}</p> : null}
                   </div>
                 ) : null}
-                <p className="section-note">Локальний ансамбль перевіряє документ повністю й окремими сегментами, щоб сильні локальні ознаки не губилися у середньому. Це індикатор ризику, а не доказ авторства.</p>
+                <p className="section-note">Локальний ансамбль перевіряє авторський текст повністю й окремими сегментами. Відсоток є евристичним індикатором ризику, а не каліброваною ймовірністю чи доказом авторства.</p>
                 <div className="signal-list">
                   {primaryAiSignals.map((signal) => (
                     <SignalCard signal={signal} key={signal.label} />

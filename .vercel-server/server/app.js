@@ -149,7 +149,11 @@ async function runScan(request, fileEvidence) {
         chunksChecked: chunks.length,
         plagiarismScore,
         aiProbability: localAi.probability,
+        aiVerdict: localAi.verdict,
         aiReliability: localAi.reliability,
+        aiLanguage: localAi.language,
+        aiExclusions: localAi.exclusions,
+        aiSuspiciousSegments: localAi.suspiciousSegments,
         aiProvider: "local",
         aiModel: undefined,
         aiNote: "Базовий звіт згенеровано локально. AI-думка підвантажується окремо після звіту.",
@@ -159,7 +163,7 @@ async function runScan(request, fileEvidence) {
         fileEvidence,
         matches,
         aiSignals: fileEvidence ? [...fileEvidence.signals, ...localAi.signals] : localAi.signals,
-        summary: summarizeReport(plagiarismScore, localAi.probability, matches, searchDiagnostics)
+        summary: summarizeReport(plagiarismScore, localAi.probability, matches, searchDiagnostics, localAi.verdict)
     };
 }
 app.use(cors());

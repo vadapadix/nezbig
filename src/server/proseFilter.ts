@@ -27,7 +27,7 @@ const INLINE_CODE_PHRASES = [
   /\bfunction\s+[A-Za-z_$][\w$]*\s*\([^)]{0,80}\)/g,
   /\b(?:class|interface)\s+[A-Za-z_$][\w$]*\s*(?:extends\s+[A-Za-z_$][\w$]*\s*)?\{/g,
   /\btype\s+[A-Za-z_$][\w$]*\s*=/g,
-  /\b[a-z_$][\w$]{1,}\s*\([^)]{0,80}\)\s*(?:=>|\{)?/g
+  /\b(?:[a-z_$][\w$]*\.[a-z_$][\w$]*|[a-z]+(?:[A-Z][A-Za-z0-9_$]*)+|[a-z_$][\w$]*_[a-z_$][\w$]*)\s*\([^)]{0,80}\)\s*(?:=>|\{)?/g
 ];
 
 function looksLikeCodeLine(line: string): boolean {
@@ -63,7 +63,10 @@ export function filterProseText(rawText: string): ProseFilterResult {
   let pendingCodeRun: string[] = [];
 
   function flushCodeRun(): void {
-    if (pendingCodeRun.length >= 2) {
+    const containsHighConfidenceLine = pendingCodeRun.some((line) =>
+      /(?:\b(?:const|let|var)\s+[A-Za-z_$][\w$]*\s*=|=>|===|!==|\.\w+\(|^\s*(?:import|export|function|class|def)\b)/.test(line)
+    );
+    if (pendingCodeRun.length >= 2 || containsHighConfidenceLine) {
       removed.push(...pendingCodeRun);
       removedCodeBlocks += 1;
     } else {

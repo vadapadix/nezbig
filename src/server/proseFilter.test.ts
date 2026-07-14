@@ -52,4 +52,29 @@ The type of analysis remains part of the academic explanation. A real call like 
     expect(result.text).toContain("type of analysis");
     expect(result.text).not.toContain("calculateScore(value)");
   });
+
+  it("removes a single high-confidence code line instead of leaking punctuation into prose", () => {
+    const result = filterProseText(`
+      Перший абзац описує методику спостереження та перевірки результатів.
+      const result = calculateScore(input);
+      Другий абзац пояснює обмеження вибірки та спосіб ручної перевірки.
+    `);
+
+    expect(result.text).toContain("Перший абзац");
+    expect(result.text).toContain("Другий абзац");
+    expect(result.text).not.toContain("calculateScore");
+    expect(result.text).not.toContain(";");
+    expect(result.removedCodeBlocks).toBe(1);
+  });
+
+  it("keeps academic parentheticals while removing actual function calls", () => {
+    const result = filterProseText(
+      "The study included participants (n=42), used data from study (2021), and compared the method (qualitative) with calculateScore(value)."
+    );
+
+    expect(result.text).toContain("participants (n=42)");
+    expect(result.text).toContain("study (2021)");
+    expect(result.text).toContain("method (qualitative)");
+    expect(result.text).not.toContain("calculateScore(value)");
+  });
 });

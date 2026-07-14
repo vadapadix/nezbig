@@ -106,6 +106,30 @@ export type AiReliability = {
   reason: string;
 };
 
+export type AiVerdict = "insufficient" | "low" | "uncertain" | "mixed" | "elevated" | "high";
+
+export type AiLanguageCoverage = {
+  code: "uk" | "en" | "mixed" | "limited";
+  supportedPercent: number;
+  reason: string;
+};
+
+export type AiContentExclusions = {
+  analyzedWords: number;
+  codeWords: number;
+  quotedWords: number;
+  referenceWords: number;
+};
+
+export type AiSuspiciousSegment = {
+  index: number;
+  startWord: number;
+  endWord: number;
+  score: number;
+  excerpt: string;
+  evidence: string[];
+};
+
 export type FileEvidence = {
   fileName: string;
   mimeType: string;
@@ -125,7 +149,11 @@ export type ScanReport = {
   chunksChecked: number;
   plagiarismScore: number;
   aiProbability: number;
+  aiVerdict: AiVerdict;
   aiReliability: AiReliability;
+  aiLanguage: AiLanguageCoverage;
+  aiExclusions: AiContentExclusions;
+  aiSuspiciousSegments: AiSuspiciousSegment[];
   aiProvider: "local" | "openrouter" | "nvidia-nim";
   aiModel?: string;
   aiNote?: string;

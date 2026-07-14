@@ -1,5 +1,14 @@
 import { normalizeWhitespace } from "./chunking.js";
-import type { AiReliability, AiSignal } from "../shared/types.js";
+import { detectAiLanguageCoverage } from "./aiLanguage.js";
+import { prepareAiAnalysisText } from "./aiTextPreprocess.js";
+import type {
+  AiContentExclusions,
+  AiLanguageCoverage,
+  AiReliability,
+  AiSignal,
+  AiSuspiciousSegment,
+  AiVerdict
+} from "../shared/types.js";
 import {
   tokenize,
   splitSentences,
@@ -13,6 +22,16 @@ type SignalDraft = AiSignal & {
   weight: number;
 };
 
+export type AiDetectionResult = {
+  probability: number;
+  verdict: AiVerdict;
+  signals: AiSignal[];
+  reliability: AiReliability;
+  language: AiLanguageCoverage;
+  exclusions: AiContentExclusions;
+  suspiciousSegments: AiSuspiciousSegment[];
+};
+
 const TRANSITIONS = new Set([
   "therefore", "however", "moreover", "furthermore", "additionally", "consequently", "overall",
   "важливо", "отже", "проте", "однак", "таким", "загалом", "водночас", "натомість", "по-перше", "по-друге", "насамкінець"
@@ -24,19 +43,18 @@ const AI_PATTERN_GROUPS = [
   {
     label: "AI-лексика і канцелярит",
     category: "pattern" as const,
-    weight: 1.35,
+    weight: 0.7,
     patterns: [
       /(?:crucial|pivotal|vibrant|valuable|seamless|robust|innovative|transformative|groundbreaking|comprehensive|meticulous|unwavering|versatile|alignment|synergy)/gi,
       /(?:delve|leverage|utilize|enhance|underscore|showcase|foster|facilitate|optimize|navigate the complexities|tapestry of|testament to|evolving landscape|rapidly changing)/gi,
-      /(?:ключов(?:ий|а|е|і)|важлив(?:ий|а|е|і)|комплексн(?:ий|а|е|і)|ефективн(?:ий|а|е|і)|інноваційн(?:ий|а|е|і)|унікальн(?:ий|а|е|і)|перспектив(?:ний|на|не|ні)|значн(?:ий|а|е|і)|активн(?:о|ий|а|е|і))/gi,
-      /(?:підкреслює|відіграє ключову роль|сприяє|забезпечує|оптимізує|покращує|розкриває потенціал|важливо розуміти|варто відмітити|варто зауважити|відіграє роль|має значення|вимагає уваги)/gi,
-      /(?:актуальність\s+теми|мета\s+роботи\s+полягає|об['’]єктом\s+дослідження|предметом\s+дослідження|практичне\s+значення|теоретичне\s+значення)/gi
+      /(?:ключов(?:ий|а|е|і)|важлив(?:ий|а|е|і)|комплексн(?:ий|а|е|і)|ефективн(?:ий|а|е|і)|інноваційн(?:ий|а|е|і))[^.!?]{0,70}(?:підхід|рішення|роль|значення|розвиток|система)/gi,
+      /(?:підкреслює|відіграє ключову роль|розкриває потенціал|важливо розуміти|варто відмітити|варто зауважити|вимагає уваги)/gi
     ]
   },
   {
     label: "Шаблонні переходи та зв'язки",
     category: "pattern" as const,
-    weight: 1.2,
+    weight: 0.85,
     patterns: [
       /(?:moreover|furthermore|additionally|nevertheless|in conclusion|to summarize|it is important to note|it is worth noting|lastly|first and foremost|on the other hand|consequently)/gi,
       /(?:варто зазначити|слід зазначити|важливо підкреслити|таким чином|у підсумку|на завершення|з огляду на це|по-перше|зокрема|з іншого боку|крім того|водночас)/gi
@@ -58,7 +76,7 @@ const AI_PATTERN_GROUPS = [
   {
     label: "Шаблон академічної генерації",
     category: "pattern" as const,
-    weight: 1.3,
+    weight: 0.55,
     patterns: [
       /(?:у\s+роботі\s+(?:розглянуто|проаналізовано|досліджено|визначено|узагальнено))/gi,
       /(?:метою\s+(?:роботи|дослідження)\s+є|завданнями\s+(?:роботи|дослідження)\s+є|робота\s+складається\s+з)/gi,
@@ -131,7 +149,7 @@ function impersonalAcademicVoice(text: string, wordCount: number): { score: numb
 function safeguardScore(normalized: string, wordCount: number, placeholderText: boolean, academicStructure: boolean): { score: number; evidence: string[] } {
   const citations = countRegexMatches(normalized, /\[[0-9]{1,3}\]|\([A-ZА-ЯІЇЄҐ][\p{L}'-]+,\s*20[0-9]{2}\)|https?:\/\/\S+|doi:\s*\S+/giu);
   const numbers = countRegexMatches(normalized, /\b\d+(?:[.,]\d+)?\s*(?:%|грн|uah|usd|км|м|року|р\.|рік|years?)?\b/giu);
-  const firstPerson = countRegexMatches(normalized, /\b(?:я|мені|мою|моє|ми|наш|наша|i|my|we|our)\b/giu);
+  const firstPerson = countRegexMatches(normalized, /(?<![\p{L}\p{N}_])(?:я|мені|мою|моє|ми|наш|наша|i|my|we|our)(?![\p{L}\p{N}_])/giu);
   const quotes = countRegexMatches(normalized, /["“„«][^"”»]{12,}["”»]/gu);
   
   const evidence = [
@@ -148,21 +166,26 @@ function safeguardScore(normalized: string, wordCount: number, placeholderText: 
   return { score, evidence };
 }
 
-function calculateTextEntropy(tokens: string[]): number {
-  if (tokens.length < 10) return 0;
-  const bigrams = new Map<string, number>();
-  for (let i = 0; i < tokens.length - 1; i++) {
-    const bigram = `${tokens[i]} ${tokens[i+1]}`;
-    bigrams.set(bigram, (bigrams.get(bigram) ?? 0) + 1);
+function movingAverageTypeTokenRatio(tokens: string[], windowSize = 50): number {
+  if (tokens.length === 0) return 0;
+  if (tokens.length <= windowSize) return new Set(tokens).size / tokens.length;
+  const step = Math.max(10, Math.floor(windowSize / 2));
+  const ratios: number[] = [];
+  for (let start = 0; start + windowSize <= tokens.length; start += step) {
+    ratios.push(new Set(tokens.slice(start, start + windowSize)).size / windowSize);
   }
-  let entropy = 0;
-  const total = tokens.length - 1;
-  for (const count of bigrams.values()) {
-    const p = count / total;
-    entropy -= p * Math.log2(p);
-  }
-  // Max entropy for bigrams is Math.log2(total)
-  return entropy / Math.log2(total);
+  const tail = tokens.slice(-windowSize);
+  ratios.push(new Set(tail).size / tail.length);
+  return ratios.reduce((sum, ratio) => sum + ratio, 0) / ratios.length;
+}
+
+function strongestChannelScore(signals: SignalDraft[], category: NonNullable<AiSignal["category"]>): number {
+  const scores = signals
+    .filter((signal) => signal.category === category && signal.score > 0)
+    .map((signal) => signal.score * Math.min(1.15, Math.max(0.45, signal.weight)))
+    .sort((left, right) => right - left)
+    .slice(0, 3);
+  return clampScore((scores[0] ?? 0) * 0.55 + (scores[1] ?? 0) * 0.3 + (scores[2] ?? 0) * 0.15);
 }
 
 function analyzeSinglePass(text: string): { probability: number; signals: AiSignal[] } {
@@ -176,9 +199,8 @@ function analyzeSinglePass(text: string): { probability: number; signals: AiSign
   
   if (wordCount < 10) return { probability: 0, signals: [] };
 
-  const uniqueRatio = wordCount === 0 ? 0 : new Set(words).size / wordCount;
+  const mattr = movingAverageTypeTokenRatio(words);
   const sentenceLengths = proseSentences.map((sentence) => tokenize(sentence, true).length).filter(Boolean);
-  const averageSentence = sentenceLengths.reduce((sum, value) => sum + value, 0) / Math.max(1, sentenceLengths.length);
   const sentenceCv = coefficientOfVariation(sentenceLengths);
   const transitionDensity = words.filter((word) => TRANSITIONS.has(word)).length / Math.max(1, wordCount);
   const hedgeDensity = words.filter((word) => HEDGES.has(word)).length / Math.max(1, wordCount);
@@ -190,11 +212,8 @@ function analyzeSinglePass(text: string): { probability: number; signals: AiSign
   const impersonalVoice = impersonalAcademicVoice(normalized, wordCount);
   const safeguards = safeguardScore(normalized, wordCount, placeholderText, academicStructure);
 
-  const entropy = calculateTextEntropy(words); // 0.85-0.95+ for human text, often lower for AI
-
-  // Метрики "Burstiness" - як варіюється довжина речень
   const rhythmScore = clampScore((1 - Math.min(1, sentenceCv / 0.55)) * 100 * (proseSentences.length >= 4 ? 1 : 0.6));
-  const lexicalScore = clampScore(Math.max(0, 0.65 - uniqueRatio) * 150 + repeatedNgrams.score * 0.3 + Math.max(0, 0.85 - entropy) * 200);
+  const lexicalScore = clampScore(Math.max(0, 0.82 - mattr) * 190 + repeatedNgrams.score * 0.45);
   const transitionScore = clampScore(transitionDensity * 3500);
   const hedgeScore = clampScore(hedgeDensity * 3500);
   
@@ -229,17 +248,17 @@ function analyzeSinglePass(text: string): { probability: number; signals: AiSign
           ? `Текст має надто рівномірну структуру речень (CV: ${sentenceCv.toFixed(2)}). Людський текст зазвичай чергує довгі й короткі речення, ШІ пише "гладко".`
           : "Варіативність довжини речень виглядає природною.",
       evidence: sentences.length >= 2 ? sentenceLengths.slice(0, 8).map((length) => `${length} слів`) : [],
-      weight: 1.0 // Increased weight for burstiness
+      weight: 1.0
     },
     {
       label: "Лексична одноманітність",
       score: lexicalScore,
       category: "statistical",
       detail: lexicalScore >= 50
-          ? `Словниковий запас та зв'язки слів досить передбачувані (Ентропія: ${entropy.toFixed(2)}). ШІ рідко використовує незвичні комбінації слів.`
-          : "Текст має високу лексичну різноманітність та непередбачуваність (Ентропія висока).",
-      evidence: repeatedNgrams.evidence,
-      weight: 0.9
+          ? `Локальна різноманітність словника низька або є повторювані фрази (MATTR: ${Math.round(mattr * 100)}%).`
+          : `Локальна різноманітність словника не виглядає підозрілою (MATTR: ${Math.round(mattr * 100)}%).`,
+      evidence: [`локальна унікальність словника ${Math.round(mattr * 100)}%`, ...repeatedNgrams.evidence].slice(0, 5),
+      weight: 0.8
     },
     {
       label: "Часті формальні переходи",
@@ -285,24 +304,33 @@ function analyzeSinglePass(text: string): { probability: number; signals: AiSign
   ];
 
   const evidenceSignals = signalDrafts.filter((signal) => signal.score >= 30);
-  const weightedSum = signalDrafts.reduce((sum, s) => sum + s.score * s.weight, 0);
-  const weightTotal = signalDrafts.reduce((sum, s) => sum + s.weight, 0);
-  const weightedRaw = weightedSum / weightTotal;
-
-  const corroboration = evidenceSignals.length <= 1 ? 0.7 : evidenceSignals.length === 2 ? 0.9 : 1.1;
+  const weakEvidenceSignals = signalDrafts.filter((signal) => signal.score >= 12);
+  const statisticalChannel = strongestChannelScore(signalDrafts, "statistical");
+  const patternChannel = strongestChannelScore(signalDrafts, "pattern");
+  const structureChannel = strongestChannelScore(signalDrafts, "structure");
+  const activeChannels = [statisticalChannel, patternChannel, structureChannel].filter((score) => score >= 14).length;
+  const weightedRaw = statisticalChannel * 0.38 + patternChannel * 0.42 + structureChannel * 0.2;
+  const corroboration = activeChannels >= 3 ? 1.1 : activeChannels === 2 ? 1 : 0.78;
   const lengthAdjust = wordCount < 60 ? 0.6 : wordCount < 120 ? 0.8 : wordCount < 200 ? 0.95 : 1.0;
-  
-  const safeguardDeduction = evidenceSignals.length >= 2
-    ? Math.min(6, safeguards.score * 0.06)
-    : Math.min(12, safeguards.score * 0.12);
-  let rawProbability = (weightedRaw * corroboration * lengthAdjust) - safeguardDeduction;
-  
-  // Бонуси за кластери ознак
-  if (evidenceSignals.filter(s => s.category === "pattern").length >= 2) rawProbability += 15;
-  if (evidenceSignals.filter(s => s.category === "pattern").length >= 3) rawProbability += 25;
-  if (academicStructure && impersonalVoice.score > 50) rawProbability += 10;
+  let rawProbability = weightedRaw * corroboration * lengthAdjust;
+  rawProbability += Math.max(0, evidenceSignals.length - 1) * 4;
+  rawProbability += Math.max(0, weakEvidenceSignals.length - 3) * 1.5;
 
-  const evidenceFloor = evidenceSignals.length >= 3 ? 12 : evidenceSignals.length >= 1 ? 4 : 0;
+  const promptLeak = signalDrafts.find((signal) => signal.label === "Prompt-leak та ШІ-відмови")?.score ?? 0;
+  const strongAverage = evidenceSignals
+    .map((signal) => signal.score)
+    .sort((left, right) => right - left)
+    .slice(0, 3)
+    .reduce((sum, score, _index, scores) => sum + score / Math.max(1, scores.length), 0);
+  const evidenceFloor = promptLeak >= 40
+    ? 45
+    : evidenceSignals.length >= 3
+      ? Math.max(22, strongAverage * 0.5)
+      : weakEvidenceSignals.length >= 5
+        ? 12
+        : weakEvidenceSignals.length >= 2
+          ? 5
+          : 0;
   const probability = clampScore(placeholderText ? Math.min(10, weightedRaw) : Math.max(rawProbability, corroboratedFloor, evidenceFloor));
 
   const signals: AiSignal[] = signalDrafts
@@ -322,25 +350,34 @@ function analyzeSinglePass(text: string): { probability: number; signals: AiSign
   return { probability, signals };
 }
 
-function buildAnalysisWindows(text: string, targetWords = 240, overlapWords = 48): string[] {
-  const words = normalizeWhitespace(text).split(/\s+/).filter(Boolean);
-  if (words.length <= targetWords + overlapWords) return [words.join(" ")];
+type AnalysisWindow = {
+  index: number;
+  startWord: number;
+  endWord: number;
+  text: string;
+};
 
-  const windows: string[] = [];
-  const step = Math.max(80, targetWords - overlapWords);
-  for (let start = 0; start < words.length; start += step) {
-    const window = words.slice(start, start + targetWords);
-    if (window.length < 80 && windows.length > 0) {
-      const previousStart = Math.max(0, words.length - targetWords);
-      const tail = words.slice(previousStart).join(" ");
-      if (tail !== windows.at(-1)) windows.push(tail);
-      break;
-    }
-    windows.push(window.join(" "));
-    if (start + targetWords >= words.length) break;
+function buildAnalysisWindows(text: string, targetWords = 220, overlapWords = 55): AnalysisWindow[] {
+  const words = normalizeWhitespace(text).split(/\s+/).filter(Boolean);
+  if (words.length === 0) return [];
+  if (words.length <= targetWords) {
+    return [{ index: 0, startWord: 1, endWord: words.length, text: words.join(" ") }];
   }
 
-  return windows;
+  const step = Math.max(80, targetWords - overlapWords);
+  const starts: number[] = [];
+  for (let start = 0; start + targetWords < words.length; start += step) starts.push(start);
+  const tailStart = Math.max(0, words.length - targetWords);
+  if (!starts.includes(tailStart)) starts.push(tailStart);
+
+  return starts
+    .sort((left, right) => left - right)
+    .map((startWord, index) => ({
+      index,
+      startWord: startWord + 1,
+      endWord: Math.min(words.length, startWord + targetWords),
+      text: words.slice(startWord, startWord + targetWords).join(" ")
+    }));
 }
 
 function percentile(values: number[], ratio: number): number {
@@ -350,7 +387,13 @@ function percentile(values: number[], ratio: number): number {
   return sorted[index];
 }
 
-function estimateReliability(wordCount: number, windowScores: number[], evidenceSignals: AiSignal[]): AiReliability {
+function estimateReliability(
+  wordCount: number,
+  windowScores: number[],
+  evidenceSignals: AiSignal[],
+  language: AiLanguageCoverage,
+  exclusions: AiContentExclusions
+): AiReliability {
   const segmentCount = windowScores.length;
   const minimum = windowScores.length ? Math.min(...windowScores) : 0;
   const maximum = windowScores.length ? Math.max(...windowScores) : 0;
@@ -362,11 +405,19 @@ function estimateReliability(wordCount: number, windowScores: number[], evidence
   const evidenceScore = clampScore(Math.min(1, strongEvidence / 4) * 100);
 
   let score = clampScore(lengthScore * 0.42 + segmentScore * 0.2 + agreementScore * 0.23 + evidenceScore * 0.15);
-  if (wordCount < 120) score = Math.min(score, 30);
+  if (wordCount < 80) score = Math.min(score, 18);
+  else if (wordCount < 120) score = Math.min(score, 30);
   else if (wordCount < 240) score = Math.min(score, 48);
+  if (language.code === "limited") score = Math.min(score, 28);
+  else if (language.code === "mixed") score = Math.min(score, 58);
 
   const level: AiReliability["level"] = score >= 72 ? "high" : score >= 45 ? "medium" : "low";
-  const reason = wordCount < 120
+  const excludedWords = exclusions.codeWords + exclusions.quotedWords + exclusions.referenceWords;
+  let reason = wordCount < 80
+    ? "Після вилучення коду, цитат і службових частин лишилося замало авторського тексту для стилометричного висновку."
+    : language.code === "limited"
+      ? language.reason
+      : wordCount < 120
     ? "Текст надто короткий для стійкого стилометричного висновку."
     : segmentSpread >= 45
       ? "Сегменти сильно відрізняються між собою; документ може мати змішане походження або різні жанри."
@@ -375,34 +426,95 @@ function estimateReliability(wordCount: number, windowScores: number[], evidence
         : level === "high"
           ? "Обсяг достатній, а сегментні оцінки узгоджені."
           : "Оцінка має помірну доказовість і потребує ручної перевірки сигналів.";
+  if (excludedWords > 0 && wordCount >= 80) {
+    reason += ` Неавторський або технічний вміст вилучено: ${excludedWords} слів.`;
+  }
 
   return { level, score, segmentCount, segmentSpread, reason };
 }
 
-export function detectAiSignals(text: string): { probability: number; signals: AiSignal[]; reliability: AiReliability } {
+function suspiciousSegments(windows: AnalysisWindow[], results: Array<{ probability: number; signals: AiSignal[] }>): AiSuspiciousSegment[] {
+  return results
+    .map((result, index): AiSuspiciousSegment => {
+      const window = windows[index];
+      const evidence = result.signals
+        .filter((signal) => signal.category !== "safeguard" && signal.score >= 12)
+        .slice(0, 4)
+        .map((signal) => `${signal.label}: ${signal.score}%`);
+      const excerpt = window.text.length > 280 ? `${window.text.slice(0, 277).trimEnd()}…` : window.text;
+      return { index: window.index, startWord: window.startWord, endWord: window.endWord, score: result.probability, excerpt, evidence };
+    })
+    .filter((segment) => segment.score >= 18 && segment.evidence.length > 0)
+    .sort((left, right) => right.score - left.score)
+    .slice(0, 5);
+}
+
+function determineVerdict(
+  wordCount: number,
+  probability: number,
+  reliability: AiReliability,
+  language: AiLanguageCoverage,
+  windowScores: number[],
+  segments: AiSuspiciousSegment[]
+): AiVerdict {
+  if (wordCount < 80) return "insufficient";
+  if (language.code === "limited") return "uncertain";
+  const minimum = windowScores.length ? Math.min(...windowScores) : probability;
+  const strongest = windowScores.length ? Math.max(...windowScores) : probability;
+  if (strongest >= 35 && minimum <= 28 && strongest - minimum >= 28) return "mixed";
+  if (probability >= 70) return "high";
+  if (probability >= 45) return "elevated";
+  if (reliability.level === "low" || probability >= 12 || segments.length > 0) return "uncertain";
+  return "low";
+}
+
+export function detectAiSignals(rawText: string): AiDetectionResult {
+  const prepared = prepareAiAnalysisText(rawText);
+  const text = prepared.text;
+  const language = detectAiLanguageCoverage(text);
   const documentResult = analyzeSinglePass(text);
   const windows = buildAnalysisWindows(text);
-  const windowResults = windows.map((window) => analyzeSinglePass(window));
+  const windowResults = windows.map((window) => analyzeSinglePass(window.text));
   const windowScores = windowResults.map((result) => result.probability);
-  const reliability = estimateReliability(tokenize(text, true).length, windowScores, documentResult.signals);
-  if (windows.length <= 1) return { ...documentResult, reliability };
+  const wordCount = tokenize(text, true).length;
+  const reliability = estimateReliability(wordCount, windowScores, documentResult.signals, language, prepared.exclusions);
+  const segments = suspiciousSegments(windows, windowResults);
+
+  const exclusionSignal: AiSignal | null = prepared.exclusions.codeWords + prepared.exclusions.quotedWords + prepared.exclusions.referenceWords > 0
+    ? {
+        label: "Вилучений неавторський вміст",
+        score: 0,
+        category: "safeguard",
+        detail: "Код, довгі цитати та бібліографічний хвіст не беруть участі в оцінці авторського стилю.",
+        evidence: [
+          prepared.exclusions.codeWords ? `${prepared.exclusions.codeWords} слів коду` : "",
+          prepared.exclusions.quotedWords ? `${prepared.exclusions.quotedWords} слів у довгих цитатах` : "",
+          prepared.exclusions.referenceWords ? `${prepared.exclusions.referenceWords} слів у списку джерел` : ""
+        ].filter(Boolean)
+      }
+    : null;
+
+  if (windows.length <= 1) {
+    const signals = exclusionSignal ? [...documentResult.signals, exclusionSignal] : documentResult.signals;
+    const verdict = determineVerdict(wordCount, documentResult.probability, reliability, language, windowScores, segments);
+    return { ...documentResult, verdict, signals, reliability, language, exclusions: prepared.exclusions, suspiciousSegments: segments };
+  }
 
   const median = percentile(windowScores, 0.5);
   const upperQuartile = percentile(windowScores, 0.75);
   const strongest = Math.max(...windowScores);
-  const suspiciousWindows = windowScores.filter((score) => score >= 45).length;
+  const suspiciousWindows = windowScores.filter((score) => score >= 35).length;
   const suspiciousCoverage = suspiciousWindows / windowScores.length;
+  const topScores = [...windowScores].sort((left, right) => right - left).slice(0, Math.min(3, windowScores.length));
+  const topAverage = topScores.reduce((sum, score) => sum + score, 0) / Math.max(1, topScores.length);
 
   const ensembleScore =
-    documentResult.probability * 0.42 +
-    median * 0.18 +
-    upperQuartile * 0.28 +
-    suspiciousCoverage * 100 * 0.12;
-  const localizedFloor = suspiciousCoverage >= 0.25
-    ? upperQuartile * 0.82
-    : strongest >= 68
-      ? strongest * 0.52
-      : 0;
+    documentResult.probability * 0.36 +
+    median * 0.14 +
+    upperQuartile * 0.2 +
+    topAverage * 0.22 +
+    suspiciousCoverage * 100 * 0.08;
+  const localizedFloor = strongest >= 35 ? strongest * 0.56 : topAverage >= 24 ? topAverage * 0.48 : 0;
   const probability = clampScore(Math.max(ensembleScore, localizedFloor));
 
   const segmentSignal: AiSignal = {
@@ -410,7 +522,7 @@ export function detectAiSignals(text: string): { probability: number; signals: A
     score: clampScore(upperQuartile),
     category: "statistical",
     detail: suspiciousWindows > 0
-      ? `Підозрілі ознаки зосереджені у ${suspiciousWindows} з ${windowScores.length} повністю перевірених сегментів. Підсумок враховує весь документ і не маскує локальні ділянки середнім значенням.`
+      ? `Підозрілі ознаки зосереджені у ${suspiciousWindows} з ${windowScores.length} повністю перевірених сегментів. Для ручної перевірки нижче наведено координати найсильніших ділянок.`
       : `У ${windowScores.length} сегментах немає стійкого кластера AI-ознак; оцінка залишається низькою або невизначеною.`,
     evidence: [...windowScores]
       .map((score, index) => ({ score, index }))
@@ -419,9 +531,7 @@ export function detectAiSignals(text: string): { probability: number; signals: A
       .map(({ score, index }) => `сегмент ${index + 1}: ${score}%`)
   };
 
-  return {
-    probability,
-    signals: [segmentSignal, ...documentResult.signals].slice(0, 21),
-    reliability
-  };
+  const signals = [segmentSignal, ...documentResult.signals, ...(exclusionSignal ? [exclusionSignal] : [])].slice(0, 22);
+  const verdict = determineVerdict(wordCount, probability, reliability, language, windowScores, segments);
+  return { probability, verdict, signals, reliability, language, exclusions: prepared.exclusions, suspiciousSegments: segments };
 }

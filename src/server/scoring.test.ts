@@ -224,4 +224,114 @@ describe("detectAiSignals", () => {
     expect(result.reliability.score).toBeGreaterThan(40);
     expect(result.reliability.reason.length).toBeGreaterThan(20);
   });
+
+  it("marks short evidence as insufficient instead of presenting a clean zero", () => {
+    const result = detectAiSignals("Коротке речення без достатнього стилометричного контексту.");
+
+    expect(result.verdict).toBe("insufficient");
+    expect(result.reliability.level).toBe("low");
+  });
+
+  it("reports unsupported-language input as uncertain", () => {
+    const text = Array.from({ length: 12 }, () =>
+      "Кроме того, необходимо отметить, что данный комплексный подход обеспечивает эффективное развитие системы и позволяет последовательно решать поставленные задачи."
+    ).join(" ");
+    const result = detectAiSignals(text);
+
+    expect(result.language.code).toBe("limited");
+    expect(result.verdict).toBe("uncertain");
+    expect(result.reliability.reason).toMatch(/мов|підтрим/i);
+  });
+
+  it("does not let embedded source code distort direct AI analysis", () => {
+    const prose = Array.from({ length: 10 }, (_, index) =>
+      `Під час спостереження ${index + 1} я занотував результати, порівняв їх з архівом і пояснив, чому окремі вимірювання довелося повторити.`
+    ).join(" ");
+    const code = Array.from({ length: 20 }, (_, index) =>
+      `const result${index} = calculateScore(input${index});`
+    ).join("\n");
+    const clean = detectAiSignals(prose);
+    const mixed = detectAiSignals(`${prose}\n${code}`);
+
+    expect(mixed.exclusions.codeWords).toBeGreaterThan(40);
+    expect(Math.abs(mixed.probability - clean.probability)).toBeLessThanOrEqual(5);
+  });
+
+  it("keeps distributed weak AI evidence visible in a long coursework", () => {
+    const text = Array.from({ length: 18 }, (_, index) => `
+      РОЗДІЛ ${index + 1}. У роботі розглянуто підхід ${index + 1} до організації інформаційних процесів.
+      Варто зазначити, що цей підхід формує послідовну основу для подальшого аналізу та вдосконалення системи.
+      Для перевірки використано ${30 + index} записів за ${2010 + (index % 14)} рік, після чого результати узагальнено у таблиці ${index + 1}.
+      Отримані результати дозволяють визначити напрями подальшого розвитку та сформувати практичні рекомендації.
+    `).join(" ");
+    const result = detectAiSignals(text);
+
+    expect(result.probability).toBeGreaterThanOrEqual(12);
+    expect(result.verdict).not.toBe("low");
+    expect(result.suspiciousSegments.length).toBeGreaterThan(0);
+  });
+
+  it("exposes a moderate localized AI island with word coordinates and evidence", () => {
+    const human = [
+      "I reached the archive before lunch and found three pages missing from the folder, so the first count remains provisional.",
+      "Maria remembered the delivery differently. Her notebook lists two boxes, while the warehouse sheet records four separate packages.",
+      "Rain interrupted the field visit after twenty minutes, and I wrote the remaining measurements by hand under the station roof.",
+      "The oldest receipt had a torn corner. I could read the date but not the surname, which is why that row stays blank.",
+      "After comparing both ledgers, we corrected one duplicated payment and left another entry unchanged until the accountant returns.",
+      "A participant challenged my interpretation of the question, then explained what she had understood in her own words.",
+      "Two sensors disagreed by nearly six degrees. Replacing the battery fixed one device, though the second still drifted overnight.",
+      "My first transcription contained a simple mistake: I had swapped the month and day while copying the handwritten date.",
+      "The interview ended early because the bus arrived. We scheduled another conversation instead of filling the gap from memory.",
+      "Several figures look untidy in the original chart, but that irregularity matches the notes taken during the actual experiment.",
+      "I expected the southern plot to be drier. The soil sample proved otherwise, and the result changed the order of the next visits.",
+      "One answer does not fit the broader pattern. I kept it because the recording is clear and there is no basis for correcting it."
+    ].join(" ");
+    const aiIsland = Array.from({ length: 4 }, () =>
+      "Moreover, it is important to note that the comprehensive approach facilitates seamless optimization and underscores the pivotal role of innovative solutions in the evolving landscape."
+    ).join(" ");
+    const result = detectAiSignals(`${human} ${aiIsland} ${human}`);
+
+    expect(result.verdict).toBe("mixed");
+    expect(result.suspiciousSegments.some((segment) => segment.score >= 35)).toBe(true);
+    expect(result.suspiciousSegments.every((segment) => segment.startWord >= 1 && segment.endWord >= segment.startWord)).toBe(true);
+    expect(result.suspiciousSegments.some((segment) => segment.evidence.length > 0)).toBe(true);
+  });
+
+  it("excludes long quotations and a bibliography tail from authorship style scoring", () => {
+    const authored = Array.from({ length: 10 }, (_, index) =>
+      `У власному спостереженні ${index + 1} я порівнюю польові нотатки, виправляю помилки вимірювання і пояснюю межі отриманого результату.`
+    ).join(" ");
+    const quoted = '«Moreover, it is important to note that this comprehensive innovative framework facilitates seamless optimization and underscores a pivotal transformative role.»';
+    const references = "СПИСОК ВИКОРИСТАНИХ ДЖЕРЕЛ. 1. Ivanenko I. Comprehensive systems. 2021. 2. Petrenko P. Innovative frameworks. 2022.";
+    const result = detectAiSignals(`${authored} ${quoted} ${references}`);
+    const baseline = detectAiSignals(authored);
+
+    expect(result.exclusions.quotedWords).toBeGreaterThan(8);
+    expect(result.exclusions.referenceWords).toBeGreaterThan(8);
+    expect(Math.abs(result.probability - baseline.probability)).toBeLessThanOrEqual(8);
+  });
+
+  it("does not present insufficient AI evidence as a zero-percent result", () => {
+    const summary = summarizeReport(0, 0, [], undefined, "insufficient");
+
+    expect(summary).toMatch(/недостатньо авторського тексту/i);
+    expect(summary).not.toMatch(/(?:ризик|індикатор)[^.!]*0%/i);
+  });
+
+  it("describes mixed local evidence without calling it a calibrated probability", () => {
+    const summary = summarizeReport(0, 34, [], undefined, "mixed");
+
+    expect(summary).toMatch(/неоднорідні сегменти/i);
+    expect(summary).toContain("індикатор ризику: 34%");
+    expect(summary).not.toMatch(/ймовірн/i);
+  });
+
+  it("recognizes Ukrainian first-person markers as false-positive context", () => {
+    const result = detectAiSignals(Array.from({ length: 8 }, () =>
+      "Я описую власне спостереження, ми перевіряємо наш журнал, а мені доводиться пояснювати кожне виправлення окремо."
+    ).join(" "));
+    const safeguard = result.signals.find((signal) => signal.category === "safeguard");
+
+    expect(safeguard?.evidence?.join(" ")).toMatch(/авторської позиції/i);
+  });
 });
