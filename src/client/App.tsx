@@ -1,6 +1,7 @@
 import { ClipboardEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import nezbigLogo from "./assets/nezbig-mark.png";
 import { htmlFromPlainText, plainTextFromRichHtml, sanitizeRichHtml } from "./richText";
+import { copyRichTextForWord } from "./wordClipboard";
 import { downloadWordDocument } from "./wordDocument";
 import type { HumanizeResult, LlmOpinion, ScanReport, ScanSettings, UploadedText } from "../shared/types";
 
@@ -399,17 +400,11 @@ export default function App() {
   }
 
   function handleRichPaste(event: ClipboardEvent<HTMLDivElement>) {
-    event.preventDefault();
-    const html = event.clipboardData.getData("text/html");
-    const plain = event.clipboardData.getData("text/plain");
-    if (html) {
-      document.execCommand("insertHTML", false, sanitizeRichHtml(html));
-      setMessage("Текст вставлено разом із форматуванням Word.");
-    } else {
-      document.execCommand("insertText", false, plain);
-      setMessage("Текст вставлено без форматування.");
-    }
-    window.requestAnimationFrame(() => syncEditorFromDom(true));
+    const hasRichHtml = event.clipboardData.types.includes("text/html");
+    window.requestAnimationFrame(() => {
+      syncEditorFromDom(true);
+      setMessage(hasRichHtml ? "Текст вставлено разом із форматуванням Word." : "Текст вставлено без форматування.");
+    });
   }
 
   async function loadFormattedPreview(file: File) {
@@ -446,20 +441,10 @@ export default function App() {
 
   async function copyFormattedForWord(html: string, plainText: string) {
     try {
-      if ("ClipboardItem" in window && navigator.clipboard.write) {
-        await navigator.clipboard.write([
-          new ClipboardItem({
-            "text/html": new Blob([html], { type: "text/html" }),
-            "text/plain": new Blob([plainText], { type: "text/plain" })
-          })
-        ]);
-      } else {
-        await navigator.clipboard.writeText(plainText);
-      }
-      setMessage("Текст скопійовано разом із форматуванням для Word.");
+      const mode = await copyRichTextForWord(html, plainText);
+      setMessage(mode === "rich" ? "Текст скопійовано разом із форматуванням для Word." : "Браузер дозволив скопіювати лише звичайний текст.");
     } catch {
-      await navigator.clipboard.writeText(plainText);
-      setMessage("Браузер дозволив скопіювати лише звичайний текст.");
+      setMessage("Не вдалося скопіювати документ. Дозвольте сайту доступ до буфера обміну або завантажте файл для Word.");
     }
   }
 

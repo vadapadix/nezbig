@@ -58,6 +58,40 @@ describe("sanitizeRichHtml", () => {
     expect(run?.style.fontSize).toBe("14pt");
     expect(run?.style.textDecoration).toContain("underline");
   });
+
+  it("keeps safe Word round-trip metadata used by lists and pagination", () => {
+    const result = sanitizeRichHtml(`
+      <style>
+        p.MsoListParagraph { margin-left: 36pt; mso-list: l0 level1 lfo1; mso-pagination: widow-orphan; }
+      </style>
+      <p class="MsoListParagraph" style="mso-outline-level: 2">Пункт списку</p>
+    `);
+
+    const container = document.createElement("div");
+    container.innerHTML = result;
+    const paragraph = container.querySelector("p");
+
+    expect(paragraph?.classList.contains("MsoListParagraph")).toBe(true);
+    expect(paragraph?.style.marginLeft).toBe("36pt");
+    expect(paragraph?.getAttribute("style")).toContain("mso-list:l0 level1 lfo1");
+    expect(paragraph?.getAttribute("style")).toContain("mso-pagination:widow-orphan");
+    expect(paragraph?.getAttribute("style")).toContain("mso-outline-level:2");
+  });
+
+  it("preserves Word bookmarks and footnote links without allowing unsafe URLs", () => {
+    const result = sanitizeRichHtml(`
+      <h2 id="_Toc123">Розділ</h2>
+      <p>Текст<a href="#_ftn1" id="_ftnref1"><sup>1</sup></a></p>
+      <ol><li id="_ftn1"><a href="#_ftnref1">1</a> Примітка</li></ol>
+      <a href="javascript:alert(1)">Небезпечно</a>
+    `);
+
+    expect(result).toContain('id="_Toc123"');
+    expect(result).toContain('href="#_ftn1"');
+    expect(result).toContain('id="_ftnref1"');
+    expect(result).toContain('id="_ftn1"');
+    expect(result).not.toContain("javascript:");
+  });
 });
 
 describe("htmlFromPlainText", () => {

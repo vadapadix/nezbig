@@ -2,7 +2,7 @@ const ALLOWED_TAGS = new Set([
   "P", "BR", "STRONG", "B", "EM", "I", "U", "S", "A", "UL", "OL", "LI",
   "H1", "H2", "H3", "H4", "H5", "H6", "TABLE", "THEAD", "TBODY", "TFOOT",
   "TR", "TD", "TH", "CAPTION", "COLGROUP", "COL", "SPAN", "DIV", "BLOCKQUOTE",
-  "SUB", "SUP", "PRE", "CODE", "HR", "IMG"
+  "SUB", "SUP", "PRE", "CODE", "HR", "IMG", "MARK"
 ]);
 
 const DISCARDED_TAGS = new Set(["SCRIPT", "STYLE", "META", "LINK", "OBJECT", "EMBED", "IFRAME", "FORM", "INPUT", "BUTTON"]);
@@ -13,8 +13,21 @@ const ALLOWED_STYLES = new Set([
   "color", "background-color", "margin", "margin-top", "margin-right", "margin-bottom", "margin-left",
   "padding", "padding-top", "padding-right", "padding-bottom", "padding-left", "list-style-type",
   "border", "border-top", "border-right", "border-bottom", "border-left", "border-collapse",
-  "width", "height", "min-width", "max-width", "page-break-before", "page-break-after", "break-before", "break-after"
+  "border-color", "border-style", "border-width", "table-layout", "direction", "unicode-bidi",
+  "width", "height", "min-width", "max-width", "page-break-before", "page-break-after", "page-break-inside",
+  "break-before", "break-after", "break-inside", "orphans", "widows", "word-spacing", "tab-size"
 ]);
+
+const SAFE_WORD_CLASS = /^(?:Mso[\w-]*|WordSection\d+|Nezbig[\w-]*|nezbig-[\w-]+)$/i;
+const SAFE_DOCUMENT_ID = /^[A-Za-z_][\w:.-]{0,127}$/;
+
+function isAllowedStyle(property: string): boolean {
+  return ALLOWED_STYLES.has(property) || /^mso-[a-z0-9-]+$/i.test(property);
+}
+
+function isSafeStyleValue(value: string): boolean {
+  return !/(?:expression\s*\(|javascript:|url\s*\(|@import|behavior\s*:|-moz-binding)/i.test(value);
+}
 
 export function htmlFromPlainText(value: string): string {
   return value
@@ -60,15 +73,16 @@ function parseAllowedDeclarations(cssText: string): Map<string, string> {
     if (separator === -1) continue;
     const property = declaration.slice(0, separator).trim().toLowerCase();
     const value = declaration.slice(separator + 1).replace(/!important\s*$/i, "").trim();
-    if (ALLOWED_STYLES.has(property) && value && !/expression\s*\(|javascript:/i.test(value)) {
+    if (isAllowedStyle(property) && value && isSafeStyleValue(value)) {
       declarations.set(property, value);
     }
   }
   return declarations;
 }
 
-function inlineWordClassStyles(document: Document): void {
+function collectWordStyles(document: Document): WeakMap<Element, Map<string, string>> {
   const rulesByClass = new Map<string, Map<string, string>>();
+  const stylesByElement = new WeakMap<Element, Map<string, string>>();
   const css = Array.from(document.querySelectorAll("style")).map((style) => style.textContent ?? "").join("\n");
   const rulePattern = /([^{}]+)\{([^{}]*)\}/g;
   let match: RegExpExecArray | null;
@@ -85,21 +99,26 @@ function inlineWordClassStyles(document: Document): void {
     }
   }
 
-  for (const element of Array.from(document.querySelectorAll<HTMLElement>("[class]"))) {
+  for (const element of Array.from(document.querySelectorAll<HTMLElement>("[class], [style]"))) {
+    const resolved = new Map<string, string>();
     for (const className of Array.from(element.classList)) {
       const declarations = rulesByClass.get(className);
       if (!declarations) continue;
-      for (const [property, value] of declarations) {
-        if (!element.style.getPropertyValue(property)) element.style.setProperty(property, value);
-      }
+      for (const [property, value] of declarations) resolved.set(property, value);
     }
+
+    const inlineDeclarations = parseAllowedDeclarations(element.getAttribute("style") ?? "");
+    for (const [property, value] of inlineDeclarations) resolved.set(property, value);
+    if (resolved.size > 0) stylesByElement.set(element, resolved);
   }
+
+  return stylesByElement;
 }
 
 export function sanitizeRichHtml(input: string): string {
   const parser = new DOMParser();
   const document = parser.parseFromString(input, "text/html");
-  inlineWordClassStyles(document);
+  const stylesByElement = collectWordStyles(document);
 
   function clean(node: Node): Node | null {
     if (node.nodeType === Node.TEXT_NODE) return document.createTextNode(node.textContent ?? "");
@@ -117,13 +136,26 @@ export function sanitizeRichHtml(input: string): string {
     }
 
     const output = document.createElement(element.tagName.toLowerCase());
+    const wordClasses = Array.from(element.classList).filter((className) => SAFE_WORD_CLASS.test(className));
+    if (wordClasses.length > 0) output.className = wordClasses.join(" ");
+
+    const id = element.getAttribute("id") ?? "";
+    if (SAFE_DOCUMENT_ID.test(id)) output.setAttribute("id", id);
+    const language = element.getAttribute("lang") ?? "";
+    if (/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(language)) output.setAttribute("lang", language);
+    const direction = element.getAttribute("dir")?.toLowerCase();
+    if (direction === "ltr" || direction === "rtl" || direction === "auto") output.setAttribute("dir", direction);
+
     if (element instanceof HTMLTableCellElement && element.colSpan > 1) output.setAttribute("colspan", String(element.colSpan));
     if (element instanceof HTMLTableCellElement && element.rowSpan > 1) output.setAttribute("rowspan", String(element.rowSpan));
     if (element instanceof HTMLAnchorElement) {
       const href = element.getAttribute("href") ?? "";
-      if (/^(https?:|mailto:)/i.test(href)) output.setAttribute("href", href);
+      if (/^(?:https?:|mailto:)/i.test(href) || /^#[A-Za-z_][\w:.-]{0,127}$/.test(href)) output.setAttribute("href", href);
+      const name = element.getAttribute("name") ?? "";
+      if (SAFE_DOCUMENT_ID.test(name)) output.setAttribute("name", name);
     }
     if (element instanceof HTMLOListElement && element.start > 1) output.setAttribute("start", String(element.start));
+    if (element instanceof HTMLLIElement && element.hasAttribute("value")) output.setAttribute("value", String(element.value));
     if (element instanceof HTMLImageElement) {
       const src = element.getAttribute("src") ?? "";
       if (/^data:image\/(?:png|jpe?g|gif|webp);base64,/i.test(src)) output.setAttribute("src", src);
@@ -132,9 +164,9 @@ export function sanitizeRichHtml(input: string): string {
       if (element.height > 0) output.setAttribute("height", String(element.height));
     }
 
-    for (const property of ALLOWED_STYLES) {
-      const value = element.style.getPropertyValue(property);
-      if (value && !/expression\s*\(|javascript:/i.test(value)) output.style.setProperty(property, value);
+    const declarations = stylesByElement.get(element);
+    if (declarations && declarations.size > 0) {
+      output.setAttribute("style", Array.from(declarations, ([property, value]) => `${property}:${value}`).join(";"));
     }
 
     for (const child of Array.from(element.childNodes)) {
