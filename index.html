@@ -3,12 +3,23 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#111817" />
+    <meta name="theme-color" content="#08100f" />
+    
+    <!-- High-contrast favicons visible on both light/white Google Search results and dark tabs -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>Незбіг — перевірка оригінальності тексту на плагіат та AI</title>
-    <meta name="description" content="Незбіг — це безкоштовний сервіс для перевірки тексту на плагіат, виявлення слідів штучного інтелекту (AI) та пошуку збігів у відкритих вебджерелах. Швидко, конфіденційно, без реєстрації." />
-    <meta name="keywords" content="перевірка тексту, антиплагіат, перевірка на плагіат, ai детектор, штучний інтелект, плагіат онлайн, незбіг, перевірка оригінальності, олюднення тексту" />
-    <meta property="og:title" content="Незбіг — перевірка тексту на плагіат та AI" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+
+    <!-- Google Site Name & Branding -->
+    <title>Nezbig — перевірка тексту на плагіат та AI онлайн</title>
+    <meta name="application-name" content="Nezbig" />
+    <meta name="apple-mobile-web-app-title" content="Nezbig" />
+    <meta property="og:site_name" content="Nezbig" />
+
+    <meta name="description" content="Nezbig (Незбіг) — це безкоштовний сервіс для перевірки тексту на плагіат, виявлення слідів штучного інтелекту (AI) та пошуку збігів у відкритих вебджерелах. Швидко, конфіденційно, без реєстрації." />
+    <meta name="keywords" content="nezbig, незбіг, перевірка тексту, антиплагіат, перевірка на плагіат, ai детектор, штучний інтелект, плагіат онлайн, перевірка оригінальності, олюднення тексту" />
+    <meta property="og:title" content="Nezbig — перевірка тексту на плагіат та AI" />
     <meta property="og:description" content="Безкоштовна перевірка тексту на плагіат, AI-сліди та відкриті вебджерела." />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://nezbig.vercel.app/" />
@@ -19,7 +30,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" />
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Незбіг — антиплагіат та AI детектор" />
+    <meta name="twitter:title" content="Nezbig — антиплагіат та AI детектор" />
     <meta name="twitter:description" content="Безкоштовна перевірка тексту на плагіат та AI" />
     <meta name="twitter:image" content="https://nezbig.vercel.app/logo.jpg" />
   </head>
@@ -35,10 +46,17 @@
       "@context": "https://schema.org",
       "@graph": [
         {
+          "@type": "WebSite",
+          "@id": "https://nezbig.vercel.app/#website",
+          "url": "https://nezbig.vercel.app/",
+          "name": "Nezbig",
+          "alternateName": ["Незбіг", "Nezbig AI"]
+        },
+        {
           "@type": "SoftwareApplication",
           "@id": "https://nezbig.vercel.app/#software",
-          "name": "Незбіг",
-          "alternateName": ["Nezbig", "Nezbig AI", "Антиплагіат Незбіг"],
+          "name": "Nezbig",
+          "alternateName": ["Незбіг", "Nezbig AI", "Антиплагіат Незбіг"],
           "url": "https://nezbig.vercel.app",
           "description": "Український сервіс для безкоштовної перевірки тексту на плагіат, виявлення слідів штучного інтелекту (AI) та олюднення тексту.",
           "applicationCategory": "EducationalApplication",
@@ -62,7 +80,7 @@
         {
           "@type": "Organization",
           "@id": "https://nezbig.vercel.app/#organization",
-          "name": "Незбіг",
+          "name": "Nezbig",
           "url": "https://nezbig.vercel.app",
           "logo": "https://nezbig.vercel.app/logo.jpg"
         }

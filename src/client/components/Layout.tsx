@@ -90,10 +90,12 @@ export function Layout() {
             <button
               type="button"
               onClick={() => setLang(lang === "uk" ? "en" : "uk")}
-              className="px-2.5 py-1.5 rounded-lg border border-white/10 hover:border-emerald-glow/40 bg-surface-container/60 text-xs font-semibold text-white/90 hover:text-emerald-glow transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+              className="px-2.5 py-1.5 rounded-lg border border-white/10 hover:border-emerald-glow/40 bg-surface-container/60 text-xs font-semibold text-white/90 hover:text-emerald-glow transition-all flex items-center gap-1.5 cursor-pointer shadow-sm group"
               title={lang === "uk" ? "Switch to English" : "Перемкнути на українську"}
+              aria-label={lang === "uk" ? "Switch to English" : "Перемкнути на українську"}
             >
-              <span>{lang === "uk" ? "🇺🇦 UA" : "🇬🇧 EN"}</span>
+              <span className="material-symbols-outlined text-[17px] text-emerald-glow group-hover:rotate-12 transition-transform">language</span>
+              <span className="tracking-wider uppercase font-mono font-bold">{lang === "uk" ? "UA" : "EN"}</span>
             </button>
 
             {isLoggedIn ? (

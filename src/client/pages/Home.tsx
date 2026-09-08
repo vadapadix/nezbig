@@ -9,6 +9,7 @@ import { useLanguage } from "../context/LanguageContext";
 import { recommendSettings, estimateScanSeconds, formatDuration, defaultSettings } from "../utils/scanSettings";
 import type { ScanReport } from "../../shared/types";
 import { LoadingPanel } from "../components/LoadingPanel";
+import { RecentScansBar } from "../components/RecentScansBar";
 
 import { AdsterraBanner } from "../components/AdsterraBanner";
 
@@ -18,6 +19,7 @@ export default function Home({ showToast }: { showToast: (msg: string, type?: "s
   const { t, lang } = useLanguage();
   const [settings, setSettings] = useState(defaultSettings);
   const reportRef = useRef<HTMLElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const editor = useDocumentEditor((msg) => showToast(msg, "info"));
   const { report, setReport, busy, progress, scan, cancel } = useScan();
@@ -111,14 +113,43 @@ export default function Home({ showToast }: { showToast: (msg: string, type?: "s
     }
   }
 
+  const handleBackToEditor = () => {
+    setReport(null);
+    cancel();
+    editor.setSelectedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   if (busy || report) {
     return (
-      <div className="max-w-container-max mx-auto px-gutter py-8 md:py-12 relative z-10 fade-in flex flex-col gap-8">
+      <div className="max-w-container-max mx-auto px-gutter py-8 md:py-12 relative z-10 fade-in flex flex-col gap-6">
+        {/* Previous scans above results */}
+        <RecentScansBar currentReportId={report?.id} onSelectReport={(r) => { setReport(r); window.scrollTo({ top: 0, behavior: "smooth" }); }} />
+
         {busy && (
           <LoadingPanel busy={busy} llmBusy={llmBusy} progress={progress} estimatedSeconds={formatDuration(estimatedSeconds, lang)} onCancel={cancel} />
         )}
         {report && (
           <Suspense fallback={<div className="loading-skeleton">{lang === "uk" ? "Завантаження звіту…" : "Loading report…"}</div>}>
+            {/* Top Back to Editor Action Bar */}
+            <div className="flex items-center justify-between gap-4 p-2 bg-surface-container-high/60 backdrop-blur-md rounded-2xl border border-white/10">
+              <button 
+                type="button"
+                onClick={handleBackToEditor} 
+                className="bg-emerald-glow/15 hover:bg-emerald-glow/25 text-emerald-glow px-5 py-2.5 rounded-xl border border-emerald-glow/40 hover:border-emerald-glow transition-all font-medium flex items-center gap-2 cursor-pointer shadow-md group text-sm md:text-base"
+              >
+                <span className="material-symbols-outlined text-lg transition-transform group-hover:-translate-x-1">arrow_back</span>
+                <span>{lang === "uk" ? "Повернутись до редактора" : "Back to Editor"}</span>
+              </button>
+              <div className="hidden sm:flex items-center gap-2 text-xs text-on-surface-variant font-mono">
+                <span className="material-symbols-outlined text-sm text-emerald-glow">verified</span>
+                <span className="truncate max-w-[280px]">{report.fileName}</span>
+              </div>
+            </div>
+
             <ReportView
               report={report}
               llmBusy={llmBusy}
@@ -127,10 +158,12 @@ export default function Home({ showToast }: { showToast: (msg: string, type?: "s
             />
             <div className="flex justify-center mt-8">
               <button 
-                onClick={() => { setReport(null); cancel(); }} 
-                className="bg-surface-variant hover:bg-surface-bright text-white px-8 py-3 rounded-xl border border-outline-variant hover:border-emerald-glow transition-all font-medium"
+                type="button"
+                onClick={handleBackToEditor} 
+                className="bg-surface-variant hover:bg-surface-bright text-white px-8 py-3 rounded-xl border border-outline-variant hover:border-emerald-glow transition-all font-medium flex items-center gap-2 cursor-pointer"
               >
-                Повернутись до редактора
+                <span className="material-symbols-outlined text-lg">arrow_back</span>
+                <span>{lang === "uk" ? "Повернутись до редактора" : "Back to Editor"}</span>
               </button>
             </div>
           </Suspense>
@@ -147,6 +180,9 @@ export default function Home({ showToast }: { showToast: (msg: string, type?: "s
       </aside>
 
       <div ref={mainRef} className="max-w-container-max flex-grow py-6 md:py-8 flex flex-col gap-6 relative z-10 fade-in w-full">
+        {/* Previous scans above editor */}
+        <RecentScansBar currentReportId={null} onSelectReport={(r) => { setReport(r); window.scrollTo({ top: 0, behavior: "smooth" }); }} />
+
         {isDragging && (
           <div className="absolute inset-0 z-50 bg-emerald-glow/10 backdrop-blur-sm border-2 border-dashed border-emerald-glow rounded-xl flex items-center justify-center">
             <p className="text-headline-lg text-emerald-glow font-bold">Відпустіть файл для завантаження</p>
@@ -161,7 +197,19 @@ export default function Home({ showToast }: { showToast: (msg: string, type?: "s
                   {editor.selectedFile ? (
                     <span className="flex items-center gap-2 text-emerald-glow">
                       <span className="material-symbols-outlined text-xl shrink-0">description</span>
-                      <span className="truncate max-w-[240px] sm:max-w-[380px]">{editor.selectedFile.name}</span>
+                      <span className="truncate max-w-[200px] sm:max-w-[340px]">{editor.selectedFile.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          editor.clearFile();
+                          if (fileInputRef.current) fileInputRef.current.value = "";
+                        }}
+                        className="ml-1 text-on-surface-variant hover:text-rose-400 p-1 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
+                        title={lang === "uk" ? "Прибрати файл" : "Remove file"}
+                        aria-label="Remove attached file"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">close</span>
+                      </button>
                     </span>
                   ) : (
                     lang === "uk" ? "Вставте текст або завантажте файл" : "Paste text or upload document"
@@ -176,13 +224,20 @@ export default function Home({ showToast }: { showToast: (msg: string, type?: "s
                 <label className="upload-chip bg-surface-variant/80 hover:bg-surface-bright text-white px-4 py-2 rounded-full font-label-sm text-label-sm border border-outline-variant hover:border-emerald-glow transition-all flex items-center gap-2 cursor-pointer">
                   <span className="material-symbols-outlined text-[18px]">upload_file</span>
                   {editor.selectedFile ? (lang === "uk" ? "Замінити файл" : "Replace file") : (lang === "uk" ? "Вибрати файл" : "Choose file")}
-                  <input type="file" className="hidden" accept=".docx,.pdf" onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      setReport(null);
-                      void editor.handleFile(file);
-                    }
-                  }} />
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    accept=".docx,.pdf"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setReport(null);
+                        void editor.handleFile(file);
+                      }
+                      e.target.value = "";
+                    }}
+                  />
                 </label>
               </div>
             </div>

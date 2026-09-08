@@ -19,6 +19,7 @@ export interface AuthPayload {
   id: string;
   email: string;
   name: string;
+  avatarUrl?: string;
 }
 
 // Extend Express Request
@@ -140,7 +141,12 @@ export async function verifyPassword(user: User, password: string): Promise<bool
 // ---------- JWT ----------
 
 export function generateToken(user: User): string {
-  const payload: AuthPayload = { id: user.id, email: user.email, name: user.name };
+  const payload: AuthPayload = {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    avatarUrl: user.avatarUrl,
+  };
   return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES });
 }
 
@@ -171,7 +177,10 @@ export function clearAuthCookie(res: Response): void {
 // ---------- Middleware ----------
 
 export function authMiddleware(req: Request, _res: Response, next: NextFunction): void {
-  const token = req.cookies?.[COOKIE_NAME];
+  let token = req.cookies?.[COOKIE_NAME];
+  if (!token && req.headers.authorization?.startsWith("Bearer ")) {
+    token = req.headers.authorization.slice(7).trim();
+  }
   if (token) {
     const payload = verifyToken(token);
     if (payload) {

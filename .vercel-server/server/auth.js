@@ -96,7 +96,12 @@ export async function verifyPassword(user, password) {
 }
 // ---------- JWT ----------
 export function generateToken(user) {
-    const payload = { id: user.id, email: user.email, name: user.name };
+    const payload = {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        avatarUrl: user.avatarUrl,
+    };
     return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES });
 }
 export function verifyToken(token) {
@@ -122,7 +127,10 @@ export function clearAuthCookie(res) {
 }
 // ---------- Middleware ----------
 export function authMiddleware(req, _res, next) {
-    const token = req.cookies?.[COOKIE_NAME];
+    let token = req.cookies?.[COOKIE_NAME];
+    if (!token && req.headers.authorization?.startsWith("Bearer ")) {
+        token = req.headers.authorization.slice(7).trim();
+    }
     if (token) {
         const payload = verifyToken(token);
         if (payload) {

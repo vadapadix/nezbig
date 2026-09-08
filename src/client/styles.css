@@ -46,7 +46,7 @@
   --graphite: #f0f4f4;
   --paper: #0e1514;
   --field: #1a2120;
-  --muted: #53615f;
+  --muted: #b0c2be;
   --line: rgba(255, 255, 255, 0.1);
   --accent: #2ec4b6;
   --accent-soft: rgba(46, 196, 182, 0.15);
@@ -880,7 +880,8 @@ dt {
 }
 
 .scan-notes span {
-  color: var(--muted);
+  color: #e2edea;
+  font-weight: 500;
 }
 
 .report-grid {
@@ -1035,7 +1036,7 @@ dt {
   min-width: 0;
   border-left: 3px solid var(--accent);
   background: rgba(46, 196, 182, 0.08);
-  color: var(--muted);
+  color: #d6e4e0;
   padding: 8px 10px;
 }
 
@@ -1081,9 +1082,10 @@ dt {
 .segment-card blockquote {
   margin: 0;
   border-left: 3px solid var(--warn);
-  color: var(--muted);
-  line-height: 1.45;
-  padding-left: 10px;
+  color: #f1f7f5;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  padding-left: 12px;
 }
 
 .segment-card ul {
@@ -1096,11 +1098,12 @@ dt {
 }
 
 .segment-card li {
-  border: 1px solid rgba(17, 24, 23, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 999px;
-  color: var(--graphite);
-  font-size: 0.78rem;
-  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #e2edea;
+  font-size: 0.82rem;
+  padding: 4px 10px;
 }
 
 .opinion-panel {
@@ -1274,11 +1277,13 @@ dt {
 .signal-detail {
   font-size: 0.95rem;
   margin-top: 8px;
+  color: #d6e4e0;
+  line-height: 1.5;
 }
 
 .match-card p,
 .signal p {
-  color: var(--muted);
+  color: #c9dad6;
   overflow-wrap: anywhere;
 }
 
@@ -1296,9 +1301,9 @@ dt {
 
 .match-evidence blockquote {
   margin: 0 0 7px;
-  color: var(--ink);
-  font-size: 0.92rem;
-  line-height: 1.45;
+  color: #f4faf8;
+  font-size: 0.95rem;
+  line-height: 1.5;
 }
 
 .match-lead-note {
@@ -1306,6 +1311,7 @@ dt {
   border-left: 3px solid var(--warn);
   padding-left: 12px;
   font-size: 0.9rem;
+  color: #d6e4e0;
 }
 
 dl {
@@ -1327,8 +1333,13 @@ dd {
   overflow-wrap: anywhere;
 }
 
+dt {
+  color: #c9dad6;
+  font-size: 0.8rem;
+}
+
 dd {
-  color: var(--ink);
+  color: #ffffff;
   font-weight: 850;
 }
 

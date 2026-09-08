@@ -38,7 +38,7 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion }: Repor
           <h2 id="report-title" className="font-headline-lg text-headline-lg text-white font-bold break-all leading-tight">
             {report.fileName}
           </h2>
-          <p className="text-body-md text-on-surface-variant mt-2 leading-relaxed max-w-3xl">
+          <p className="text-body-md text-slate-100 mt-2 leading-relaxed max-w-3xl">
             {translateReportSummary(reportSummaryText(report, lang), lang)}
           </p>
         </div>

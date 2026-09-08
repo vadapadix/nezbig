@@ -20,29 +20,68 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+function getStoredUser(): AuthUser | null {
+  try {
+    const raw = localStorage.getItem("nezbig_auth_user");
+    return raw ? (JSON.parse(raw) as AuthUser) : null;
+  } catch {
+    return null;
+  }
+}
+
+function getStoredToken(): string | null {
+  try {
+    return localStorage.getItem("nezbig_auth_token");
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(() => getStoredUser());
   const [loading, setLoading] = useState(true);
+
+  const getAuthHeaders = useCallback((): HeadersInit => {
+    const token = getStoredToken();
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+    return headers;
+  }, []);
 
   const refresh = useCallback(async () => {
     try {
-      const res = await fetch("/api/auth/me", { credentials: "include" });
+      const headers = getAuthHeaders();
+      const res = await fetch("/api/auth/me", {
+        headers,
+        credentials: "include",
+      });
       const data = await res.json();
-      setUser(data.user || null);
+      if (data.user) {
+        setUser(data.user);
+        localStorage.setItem("nezbig_auth_user", JSON.stringify(data.user));
+      } else if (res.status === 401 || data.user === null) {
+        // Only clear if confirmed not authenticated
+        if (!getStoredToken()) {
+          setUser(null);
+          localStorage.removeItem("nezbig_auth_user");
+        }
+      }
     } catch {
-      setUser(null);
+      // Keep cached user on offline/temporary network blip
     } finally {
       setLoading(false);
     }
-  }, []);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  }, [getAuthHeaders]);
 
   // Check for auth_success/auth_error in URL (from Google OAuth redirect)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    if (params.has("token")) {
+      const token = params.get("token");
+      if (token) localStorage.setItem("nezbig_auth_token", token);
+    }
     if (params.has("auth_success")) {
       void refresh();
       // Clean URL
@@ -52,6 +91,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error("Auth error:", params.get("auth_error"));
       window.history.replaceState({}, "", window.location.pathname);
     }
+  }, [refresh]);
+
+  useEffect(() => {
+    void refresh();
   }, [refresh]);
 
   const login = useCallback(async (email: string, password: string): Promise<{ error?: string }> => {
@@ -64,7 +107,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       const data = await res.json();
       if (!res.ok) return { error: data.error || "Помилка при вході." };
-      setUser(data.user);
+      if (data.token) {
+        localStorage.setItem("nezbig_auth_token", data.token);
+      }
+      if (data.user) {
+        setUser(data.user);
+        localStorage.setItem("nezbig_auth_user", JSON.stringify(data.user));
+      }
       return {};
     } catch {
       return { error: "Помилка мережі." };
@@ -81,7 +130,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       const data = await res.json();
       if (!res.ok) return { error: data.error || "Помилка при реєстрації." };
-      setUser(data.user);
+      if (data.token) {
+        localStorage.setItem("nezbig_auth_token", data.token);
+      }
+      if (data.user) {
+        setUser(data.user);
+        localStorage.setItem("nezbig_auth_user", JSON.stringify(data.user));
+      }
       return {};
     } catch {
       return { error: "Помилка мережі." };
@@ -90,10 +145,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+      const headers = getAuthHeaders();
+      await fetch("/api/auth/logout", { method: "POST", headers, credentials: "include" });
     } catch { /* ignore */ }
+    localStorage.removeItem("nezbig_auth_token");
+    localStorage.removeItem("nezbig_auth_user");
     setUser(null);
-  }, []);
+  }, [getAuthHeaders]);
 
   const loginWithGoogle = useCallback(async () => {
     try {

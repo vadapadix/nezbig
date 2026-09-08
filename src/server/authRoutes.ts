@@ -41,6 +41,7 @@ router.post("/register", async (req: Request, res: Response) => {
     setAuthCookie(res, token);
 
     res.json({
+      token,
       user: { id: user.id, name: user.name, email: user.email, avatarUrl: user.avatarUrl },
     });
   } catch (error) {
@@ -59,12 +60,12 @@ router.post("/login", async (req: Request, res: Response) => {
     }
 
     const user = await findUserByEmail(email);
-    if (!user) {
+    if (!user || !user.passwordHash) {
       res.status(401).json({ error: "Невірний email або пароль." });
       return;
     }
 
-    const valid = await verifyPassword(user, password);
+    const valid = await verifyPassword(password, user.passwordHash);
     if (!valid) {
       res.status(401).json({ error: "Невірний email або пароль." });
       return;
@@ -74,6 +75,7 @@ router.post("/login", async (req: Request, res: Response) => {
     setAuthCookie(res, token);
 
     res.json({
+      token,
       user: { id: user.id, name: user.name, email: user.email, avatarUrl: user.avatarUrl },
     });
   } catch (error) {
@@ -94,7 +96,18 @@ router.get("/me", async (req: Request, res: Response) => {
     return;
   }
 
-  const user = await findUserById(req.user.id);
+  let user = await findUserById(req.user.id);
+  if (!user && req.user.email) {
+    // Restore user from validated JWT payload so cold starts / serverless restarts don't lose session
+    user = {
+      id: req.user.id,
+      name: req.user.name,
+      email: req.user.email,
+      avatarUrl: req.user.avatarUrl,
+      createdAt: new Date().toISOString(),
+    };
+  }
+
   if (!user) {
     clearAuthCookie(res);
     res.json({ user: null });
@@ -255,8 +268,8 @@ router.get("/google/callback", async (req: Request, res: Response) => {
     const token = generateToken(user);
     setAuthCookie(res, token);
 
-    // Redirect back to frontend
-    res.redirect(`${state}/?auth_success=1`);
+    // Redirect back to frontend with token for local fallback
+    res.redirect(`${state}/?auth_success=1&token=${encodeURIComponent(token)}`);
   } catch (error) {
     console.error("Google OAuth error:", error);
     res.redirect(`${state}/?auth_error=google_failed`);

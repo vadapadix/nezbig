@@ -30,7 +30,10 @@ export default function HistoryPage() {
         let serverItems: HistoryItem[] = [];
         if (isLoggedIn) {
           try {
-            const res = await fetch("/api/auth/history", { credentials: "include" });
+            const token = localStorage.getItem("nezbig_auth_token");
+            const headers: Record<string, string> = {};
+            if (token) headers["Authorization"] = `Bearer ${token}`;
+            const res = await fetch("/api/auth/history", { headers, credentials: "include" });
             const data = await res.json();
             if (Array.isArray(data)) serverItems = data;
           } catch {
@@ -66,7 +69,10 @@ export default function HistoryPage() {
     setLoadingReport(true);
     try {
       // 1. Try server fetch
-      const res = await fetch(`/api/history/${id}`, { credentials: "include" });
+      const token = localStorage.getItem("nezbig_auth_token");
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch(`/api/history/${id}`, { headers, credentials: "include" });
       if (res.ok) {
         const report = await res.json();
         setSelectedReport(report);
