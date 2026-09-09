@@ -23,6 +23,7 @@ import { decodeUploadFileName, extractTextFromUpload } from "./textExtraction.js
 import { hydrateSearchCandidatesDetailed, searchWebCandidatesDetailed } from "./webSearch.js";
 import { authMiddleware, saveUserReport } from "./auth.js";
 import { authRouter } from "./authRoutes.js";
+import { historyRouter } from "./historyRoutes.js";
 import type { FileEvidence, HumanizeRequest, LlmOpinionRequest, LlmOpinion, PlagiarismMatch, ScanReport, ScanRequest, ScanSettings, SearchDiagnostics } from "../shared/types.js";
 
 export const app = express();
@@ -75,8 +76,9 @@ app.use(cookieParser());
 app.use(express.json({ limit: "10mb" }));
 app.use(authMiddleware);
 
-// Auth routes
+// Auth and History routes
 app.use("/api/auth", authRouter);
+app.use("/api/history", historyRouter);
 
 const scanLimiter = rateLimit({ windowMs: 60 * 1000, max: 10, message: { error: "Забагато запитів" } });
 const fileLimiter = rateLimit({ windowMs: 60 * 1000, max: 5, message: { error: "Забагато запитів з файлами" } });
@@ -293,7 +295,12 @@ app.post("/api/feedback", feedbackLimiter, async (request, response) => {
 app.post("/api/scan", scanLimiter, async (request, response) => {
   try {
     const parsed = ScanRequestSchema.parse(request.body);
-    response.json(await runScan(parsed as unknown as ScanRequest));
+    const report = await runScan(parsed as unknown as ScanRequest);
+    await saveReport(report.id, report);
+    if (request.user?.id) {
+      await saveUserReport(request.user.id, report.id);
+    }
+    response.json(report);
   } catch (error) {
     response.status(400).json({ error: error instanceof Error ? error.message : "Не вдалося виконати перевірку." });
   }

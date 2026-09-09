@@ -187,3 +187,13 @@ export type LlmOpinion = {
   aiNote?: string;
   aiSignals: AiSignal[];
 };
+
+export type UserScanHistoryItem = {
+  id: string;
+  fileName: string;
+  checkedAt: string;
+  plagiarismScore: number;
+  wordCount?: number;
+  aiProbability?: number;
+  fullReport?: ScanReport;
+};

@@ -37,16 +37,26 @@ export function useScan() {
     const signal = abortControllerRef.current.signal;
 
     try {
+      const token = localStorage.getItem("nezbig_auth_token");
+      const authHeaders: Record<string, string> = {};
+      if (token) authHeaders["Authorization"] = `Bearer ${token}`;
+
       let response: Response;
       if (selectedFile) {
         const formData = new FormData();
         formData.append("file", selectedFile);
         formData.append("settings", JSON.stringify(settings));
-        response = await fetch("/api/scan-file/jobs", { method: "POST", body: formData, signal, credentials: "include" });
+        response = await fetch("/api/scan-file/jobs", {
+          method: "POST",
+          headers: authHeaders,
+          body: formData,
+          signal,
+          credentials: "include"
+        });
       } else {
         response = await fetch("/api/scan/jobs", {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          headers: { "content-type": "application/json", ...authHeaders },
           body: JSON.stringify({ text, fileName, settings }),
           signal,
           credentials: "include"
@@ -70,7 +80,11 @@ export function useScan() {
         const poll = async () => {
           try {
             if (signal.aborted) throw new Error("Перевірку скасовано користувачем.");
-            const statusRes = await fetch(`/api/scan-status/${jobId}`, { signal });
+            const statusRes = await fetch(`/api/scan-status/${jobId}`, {
+              headers: authHeaders,
+              signal,
+              credentials: "include"
+            });
             const statusPayload = await statusRes.json();
             
             if (!statusRes.ok || statusPayload.error) {

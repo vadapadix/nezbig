@@ -10,7 +10,7 @@ import {
   generateToken,
   setAuthCookie,
   clearAuthCookie,
-  getUserReportIds,
+  getUserReports,
 } from "./auth.js";
 import { getReport } from "./db.js";
 
@@ -127,23 +127,7 @@ router.get("/history", async (req: Request, res: Response) => {
   }
 
   try {
-    const reportIds = await getUserReportIds(req.user.id);
-    const reports = [];
-
-    for (const id of reportIds) {
-      const report = await getReport(id);
-      if (report) {
-        reports.push({
-          id: report.id,
-          fileName: report.fileName,
-          checkedAt: report.checkedAt,
-          plagiarismScore: report.plagiarismScore,
-          wordCount: report.wordCount,
-          aiProbability: report.aiProbability,
-        });
-      }
-    }
-
+    const reports = await getUserReports(req.user.id);
     res.json(reports);
   } catch (error) {
     res.status(500).json({ error: "Помилка при завантаженні історії." });

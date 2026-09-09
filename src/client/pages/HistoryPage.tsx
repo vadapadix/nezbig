@@ -33,7 +33,7 @@ export default function HistoryPage() {
             const token = localStorage.getItem("nezbig_auth_token");
             const headers: Record<string, string> = {};
             if (token) headers["Authorization"] = `Bearer ${token}`;
-            const res = await fetch("/api/auth/history", { headers, credentials: "include" });
+            const res = await fetch("/api/history", { headers, credentials: "include" });
             const data = await res.json();
             if (Array.isArray(data)) serverItems = data;
           } catch {
@@ -63,6 +63,16 @@ export default function HistoryPage() {
       }
     }
     void loadHistory();
+
+    const handleHistoryUpdated = () => {
+      void loadHistory();
+    };
+    window.addEventListener("nezbig_history_updated", handleHistoryUpdated);
+    window.addEventListener("storage", handleHistoryUpdated);
+    return () => {
+      window.removeEventListener("nezbig_history_updated", handleHistoryUpdated);
+      window.removeEventListener("storage", handleHistoryUpdated);
+    };
   }, [isLoggedIn]);
 
   async function handleSelectReport(id: string) {
@@ -145,7 +155,7 @@ export default function HistoryPage() {
     );
   }
 
-  function handleDeleteItem(e: React.MouseEvent, id: string) {
+  async function handleDeleteItem(e: React.MouseEvent, id: string) {
     e.stopPropagation();
     const updated = items.filter((item) => item.id !== id);
     setItems(updated);
@@ -154,15 +164,41 @@ export default function HistoryPage() {
     } catch {
       // ignore
     }
+
+    if (isLoggedIn) {
+      try {
+        const token = localStorage.getItem("nezbig_auth_token");
+        const headers: Record<string, string> = {};
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        await fetch(`/api/history/${id}`, { method: "DELETE", headers, credentials: "include" });
+      } catch {
+        // ignore
+      }
+    }
   }
 
-  function handleClearAll() {
-    if (window.confirm(lang === "uk" ? "Ви дійсно бажаєте очистити всю локальну історію перевірок?" : "Are you sure you want to clear your local scan history?")) {
+  async function handleClearAll() {
+    const confirmMsg = isLoggedIn
+      ? (lang === "uk" ? "Ви дійсно бажаєте очистити всю історію перевірок у вашому акаунті та браузері?" : "Are you sure you want to clear your entire scan history from your account and browser?")
+      : (lang === "uk" ? "Ви дійсно бажаєте очистити всю локальну історію перевірок?" : "Are you sure you want to clear your local scan history?");
+
+    if (window.confirm(confirmMsg)) {
       setItems([]);
       try {
         localStorage.removeItem("nezbig_local_history");
       } catch {
         // ignore
+      }
+
+      if (isLoggedIn) {
+        try {
+          const token = localStorage.getItem("nezbig_auth_token");
+          const headers: Record<string, string> = {};
+          if (token) headers["Authorization"] = `Bearer ${token}`;
+          await fetch("/api/history", { method: "DELETE", headers, credentials: "include" });
+        } catch {
+          // ignore
+        }
       }
     }
   }
@@ -175,7 +211,9 @@ export default function HistoryPage() {
             {lang === "uk" ? "Історія перевірок" : "Scan History"}
           </h1>
           <p className="text-label-sm text-on-surface-variant mt-1">
-            {lang === "uk" ? "Зберігається локально у вашому браузері" : "Saved locally in your browser storage"}
+            {isLoggedIn
+              ? (lang === "uk" ? "Синхронізовано з вашим акаунтом у хмарі" : "Synced with your account in the cloud")
+              : (lang === "uk" ? "Зберігається локально у вашому браузері" : "Saved locally in your browser storage")}
           </p>
         </div>
         <div className="flex items-center gap-4">
@@ -185,13 +223,54 @@ export default function HistoryPage() {
           {items.length > 0 && (
             <button
               onClick={handleClearAll}
-              className="text-label-sm text-on-surface-variant hover:text-error transition-colors px-3 py-1.5 rounded-lg border border-white/10 hover:border-error/30"
+              className="text-label-sm text-on-surface-variant hover:text-error transition-colors px-3 py-1.5 rounded-lg border border-white/10 hover:border-error/30 cursor-pointer"
             >
               {lang === "uk" ? "Очистити все" : "Clear All"}
             </button>
           )}
         </div>
       </div>
+
+      {isLoggedIn ? (
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-glow/10 border border-emerald-glow/30 text-white">
+          <span className="material-symbols-outlined text-emerald-glow text-2xl shrink-0">cloud_done</span>
+          <div className="flex flex-col min-w-0">
+            <p className="text-sm font-medium text-emerald-glow">
+              {lang === "uk" ? "Хмарне збереження активне" : "Cloud Storage Active"}
+            </p>
+            <p className="text-xs text-on-surface-variant truncate">
+              {lang === "uk"
+                ? `Звіти надійно прив'язані до вашого акаунта (${user?.email}) та доступні з будь-якого пристрою.`
+                : `Scans are linked to your account (${user?.email}) and accessible on any device.`}
+            </p>
+          </div>
+        </div>
+      ) : (
+        items.length > 0 && (
+          <div className="flex items-center justify-between gap-4 p-4 rounded-xl bg-surface-container-high/60 border border-white/10 text-white">
+            <div className="flex items-center gap-3">
+              <span className="material-symbols-outlined text-amber-400 text-2xl shrink-0">cloud_off</span>
+              <div className="flex flex-col">
+                <p className="text-sm font-medium text-white">
+                  {lang === "uk" ? "Локальне збереження" : "Local Browser Storage"}
+                </p>
+                <p className="text-xs text-on-surface-variant">
+                  {lang === "uk"
+                    ? "Увійдіть в акаунт Google або створіть профіль Незбігу, щоб скани не губилися при очищенні браузера."
+                    : "Sign in with Google or create an account to back up scans to cloud."}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowAuth(true)}
+              className="px-4 py-2 bg-emerald-glow/15 hover:bg-emerald-glow/25 text-emerald-glow border border-emerald-glow/30 rounded-xl text-xs font-medium cursor-pointer transition-all shrink-0"
+            >
+              {lang === "uk" ? "Увійти в акаунт" : "Sign In"}
+            </button>
+          </div>
+        )
+      )}
 
       {loadingReport && (
         <div className="text-emerald-glow text-center py-4">

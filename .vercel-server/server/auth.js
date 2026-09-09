@@ -7,10 +7,73 @@ const JWT_SECRET = process.env.JWT_SECRET || "nezbig-dev-secret-change-me-in-pro
 const JWT_EXPIRES = "30d";
 const COOKIE_NAME = "nezbig_token";
 const SALT_ROUNDS = 10;
-// ---------- In-memory fallback ----------
+import fs from "fs";
+import path from "path";
+import os from "os";
+// ---------- In-memory & Persistent Storage ----------
 const memoryUsers = new Map();
 const memoryEmailIndex = new Map(); // email -> userId
 const memoryGoogleIndex = new Map(); // googleId -> userId
+function getUserStorageDir() {
+    const candidateDirs = [
+        path.resolve(process.cwd(), ".nezbig-data", "users"),
+        path.resolve(os.tmpdir(), "nezbig-data", "users")
+    ];
+    for (const dir of candidateDirs) {
+        try {
+            if (!fs.existsSync(dir))
+                fs.mkdirSync(dir, { recursive: true });
+            return dir;
+        }
+        catch {
+            // try next
+        }
+    }
+    return path.resolve(os.tmpdir(), "nezbig-data", "users");
+}
+function saveUserToFile(user) {
+    try {
+        const dir = getUserStorageDir();
+        fs.writeFileSync(path.join(dir, `${user.id}.json`), JSON.stringify(user), "utf-8");
+    }
+    catch {
+        // ignore
+    }
+}
+function loadUserFromFile(userId) {
+    try {
+        const dir = getUserStorageDir();
+        const filePath = path.join(dir, `${userId}.json`);
+        if (fs.existsSync(filePath)) {
+            const data = fs.readFileSync(filePath, "utf-8");
+            return JSON.parse(data);
+        }
+    }
+    catch {
+        // ignore
+    }
+    return null;
+}
+function scanUsersFromFile() {
+    try {
+        const dir = getUserStorageDir();
+        if (!fs.existsSync(dir))
+            return [];
+        const files = fs.readdirSync(dir);
+        const users = [];
+        for (const file of files) {
+            if (file.endsWith(".json")) {
+                const u = loadUserFromFile(file.replace(".json", ""));
+                if (u)
+                    users.push(u);
+            }
+        }
+        return users;
+    }
+    catch {
+        return [];
+    }
+}
 // ---------- User CRUD ----------
 export async function createUser(data) {
     const id = crypto.randomUUID();
@@ -23,67 +86,148 @@ export async function createUser(data) {
         avatarUrl: data.avatarUrl,
         createdAt: new Date().toISOString(),
     };
-    if (redis) {
-        const pipeline = redis.pipeline();
-        pipeline.set(`user:${id}`, JSON.stringify(user));
-        pipeline.set(`user:email:${user.email}`, id);
-        if (user.googleId) {
-            pipeline.set(`user:google:${user.googleId}`, id);
-        }
-        await pipeline.exec();
+    // Memory
+    memoryUsers.set(id, user);
+    memoryEmailIndex.set(user.email, id);
+    if (user.googleId) {
+        memoryGoogleIndex.set(user.googleId, id);
     }
-    else {
-        memoryUsers.set(id, user);
-        memoryEmailIndex.set(user.email, id);
-        if (user.googleId) {
-            memoryGoogleIndex.set(user.googleId, id);
+    // File
+    saveUserToFile(user);
+    // Redis
+    if (redis && redis.status === "ready") {
+        try {
+            const pipeline = redis.pipeline();
+            pipeline.set(`user:${id}`, JSON.stringify(user));
+            pipeline.set(`user:email:${user.email}`, id);
+            if (user.googleId) {
+                pipeline.set(`user:google:${user.googleId}`, id);
+            }
+            await pipeline.exec();
+        }
+        catch {
+            // ignore
         }
     }
     return user;
 }
 export async function findUserById(id) {
-    if (redis) {
-        const data = await redis.get(`user:${id}`);
-        return data ? JSON.parse(data) : null;
+    // 1. Memory
+    if (memoryUsers.has(id))
+        return memoryUsers.get(id);
+    // 2. File
+    const fileUser = loadUserFromFile(id);
+    if (fileUser) {
+        memoryUsers.set(id, fileUser);
+        memoryEmailIndex.set(fileUser.email, id);
+        if (fileUser.googleId)
+            memoryGoogleIndex.set(fileUser.googleId, id);
+        return fileUser;
     }
-    return memoryUsers.get(id) || null;
+    // 3. Redis
+    if (redis && redis.status === "ready") {
+        try {
+            const data = await redis.get(`user:${id}`);
+            if (data) {
+                const user = JSON.parse(data);
+                memoryUsers.set(id, user);
+                return user;
+            }
+        }
+        catch {
+            // ignore
+        }
+    }
+    return null;
 }
 export async function findUserByEmail(email) {
     const normalizedEmail = email.toLowerCase();
-    if (redis) {
-        const userId = await redis.get(`user:email:${normalizedEmail}`);
-        if (!userId)
-            return null;
-        return findUserById(userId);
-    }
+    // 1. Memory index
     const userId = memoryEmailIndex.get(normalizedEmail);
-    return userId ? memoryUsers.get(userId) || null : null;
+    if (userId) {
+        const user = await findUserById(userId);
+        if (user)
+            return user;
+    }
+    // 2. File search
+    const diskUsers = scanUsersFromFile();
+    const matched = diskUsers.find((u) => u.email === normalizedEmail);
+    if (matched) {
+        memoryUsers.set(matched.id, matched);
+        memoryEmailIndex.set(normalizedEmail, matched.id);
+        if (matched.googleId)
+            memoryGoogleIndex.set(matched.googleId, matched.id);
+        return matched;
+    }
+    // 3. Redis
+    if (redis && redis.status === "ready") {
+        try {
+            const rUserId = await redis.get(`user:email:${normalizedEmail}`);
+            if (rUserId)
+                return findUserById(rUserId);
+        }
+        catch {
+            // ignore
+        }
+    }
+    return null;
 }
 export async function findUserByGoogleId(googleId) {
-    if (redis) {
-        const userId = await redis.get(`user:google:${googleId}`);
-        if (!userId)
-            return null;
-        return findUserById(userId);
-    }
+    // 1. Memory index
     const userId = memoryGoogleIndex.get(googleId);
-    return userId ? memoryUsers.get(userId) || null : null;
+    if (userId) {
+        const user = await findUserById(userId);
+        if (user)
+            return user;
+    }
+    // 2. File search
+    const diskUsers = scanUsersFromFile();
+    const matched = diskUsers.find((u) => u.googleId === googleId);
+    if (matched) {
+        memoryUsers.set(matched.id, matched);
+        memoryEmailIndex.set(matched.email, matched.id);
+        memoryGoogleIndex.set(googleId, matched.id);
+        return matched;
+    }
+    // 3. Redis
+    if (redis && redis.status === "ready") {
+        try {
+            const rUserId = await redis.get(`user:google:${googleId}`);
+            if (rUserId)
+                return findUserById(rUserId);
+        }
+        catch {
+            // ignore
+        }
+    }
+    return null;
 }
 export async function updateUser(id, updates) {
     const user = await findUserById(id);
     if (!user)
         return null;
     const updated = { ...user, ...updates };
-    if (redis) {
-        await redis.set(`user:${id}`, JSON.stringify(updated));
-        if (updates.googleId) {
-            await redis.set(`user:google:${updates.googleId}`, id);
+    // Memory
+    memoryUsers.set(id, updated);
+    if (updates.email)
+        memoryEmailIndex.set(updates.email.toLowerCase(), id);
+    if (updates.googleId)
+        memoryGoogleIndex.set(updates.googleId, id);
+    // File
+    saveUserToFile(updated);
+    // Redis
+    if (redis && redis.status === "ready") {
+        try {
+            await redis.set(`user:${id}`, JSON.stringify(updated));
+            if (updates.googleId) {
+                await redis.set(`user:google:${updates.googleId}`, id);
+            }
+            if (updates.email) {
+                await redis.set(`user:email:${updates.email.toLowerCase()}`, id);
+            }
         }
-    }
-    else {
-        memoryUsers.set(id, updated);
-        if (updates.googleId) {
-            memoryGoogleIndex.set(updates.googleId, id);
+        catch {
+            // ignore
         }
     }
     return updated;
@@ -139,29 +283,10 @@ export function authMiddleware(req, _res, next) {
     }
     next();
 }
-// ---------- Per-user history ----------
-export async function saveUserReport(userId, reportId) {
-    if (redis) {
-        try {
-            await redis.zadd(`user:history:${userId}`, Date.now(), reportId);
-            // Keep max 100 reports per user, trim older ones
-            await redis.zremrangebyrank(`user:history:${userId}`, 0, -101);
-        }
-        catch (err) {
-            console.error("[Redis] saveUserReport error:", err);
-        }
-    }
-}
+// ---------- Per-user history (delegated to multi-tier db.ts) ----------
+export { saveUserReport, getUserReports, deleteUserReport, clearUserHistory, syncUserReports, } from "./db.js";
 export async function getUserReportIds(userId, limit = 20) {
-    if (redis) {
-        try {
-            const ids = await redis.zrevrange(`user:history:${userId}`, 0, limit - 1);
-            if (ids && ids.length > 0)
-                return ids;
-        }
-        catch (err) {
-            console.error("[Redis] getUserReportIds error:", err);
-        }
-    }
-    return [];
+    const { getUserReports } = await import("./db.js");
+    const reports = await getUserReports(userId, limit);
+    return reports.map((r) => r.id);
 }

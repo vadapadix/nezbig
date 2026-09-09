@@ -67,6 +67,7 @@ export default function Home({ showToast }: { showToast: (msg: string, type?: "s
         fullReport: report
       });
       localStorage.setItem("nezbig_local_history", JSON.stringify(filtered.slice(0, 50)));
+      window.dispatchEvent(new Event("nezbig_history_updated"));
     } catch {
       // ignore
     }

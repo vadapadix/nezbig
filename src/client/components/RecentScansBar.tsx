@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
+import { useAuth } from "../hooks/useAuth";
 import type { ScanReport } from "../../shared/types";
 
 export interface StoredScanItem {
@@ -20,6 +21,7 @@ interface RecentScansBarProps {
 
 export function RecentScansBar({ currentReportId, onSelectReport }: RecentScansBarProps) {
   const { lang } = useLanguage();
+  const { user, isLoggedIn } = useAuth();
   const [items, setItems] = useState<StoredScanItem[]>([]);
 
   const loadItems = useCallback(() => {
@@ -38,27 +40,54 @@ export function RecentScansBar({ currentReportId, onSelectReport }: RecentScansB
 
   useEffect(() => {
     loadItems();
-    // Listen to storage events from other tabs or scans
+
+    // Listen to storage events and custom history update events
     const handleStorage = (e: StorageEvent) => {
       if (e.key === "nezbig_local_history") loadItems();
     };
+    const handleHistoryUpdated = () => {
+      loadItems();
+    };
+
     window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
+    window.addEventListener("nezbig_history_updated", handleHistoryUpdated);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("nezbig_history_updated", handleHistoryUpdated);
+    };
   }, [loadItems]);
 
-  const handleClearAll = () => {
+  const handleClearAll = async () => {
     if (window.confirm(lang === "uk" ? "Очистити історію всіх попередніх сканів?" : "Clear all previous scans history?")) {
       localStorage.removeItem("nezbig_local_history");
       setItems([]);
+
+      if (isLoggedIn) {
+        try {
+          const token = localStorage.getItem("nezbig_auth_token");
+          const headers: Record<string, string> = {};
+          if (token) headers["Authorization"] = `Bearer ${token}`;
+          await fetch("/api/history", { method: "DELETE", headers, credentials: "include" });
+        } catch {
+          // ignore
+        }
+      }
     }
   };
 
-  const handleRemoveOne = (e: React.MouseEvent, id: string) => {
+  const handleRemoveOne = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     try {
       const filtered = items.filter((item) => item.id !== id);
       localStorage.setItem("nezbig_local_history", JSON.stringify(filtered));
       setItems(filtered);
+
+      if (isLoggedIn) {
+        const token = localStorage.getItem("nezbig_auth_token");
+        const headers: Record<string, string> = {};
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        await fetch(`/api/history/${id}`, { method: "DELETE", headers, credentials: "include" });
+      }
     } catch {
       // ignore
     }
@@ -97,6 +126,15 @@ export function RecentScansBar({ currentReportId, onSelectReport }: RecentScansB
           <span className="px-2 py-0.5 rounded-full bg-white/10 text-xs font-mono text-on-surface-variant">
             {items.length}
           </span>
+          {isLoggedIn && (
+            <span
+              className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-glow/15 border border-emerald-glow/30 text-[11px] font-mono text-emerald-glow"
+              title={lang === "uk" ? "Історія синхронізована з акаунтом" : "History synced with account"}
+            >
+              <span className="material-symbols-outlined text-[13px]">cloud_done</span>
+              <span>{lang === "uk" ? "Хмара" : "Cloud"}</span>
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-3 text-xs">

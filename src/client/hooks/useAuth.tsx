@@ -16,6 +16,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   loginWithGoogle: () => void;
   refresh: () => Promise<void>;
+  syncHistory: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -75,6 +76,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [getAuthHeaders]);
 
+  const syncHistory = useCallback(async () => {
+    try {
+      const raw = localStorage.getItem("nezbig_local_history");
+      const localItems = raw ? JSON.parse(raw) : [];
+      const authToken = localStorage.getItem("nezbig_auth_token");
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (authToken) headers["Authorization"] = `Bearer ${authToken}`;
+
+      if (Array.isArray(localItems) && localItems.length > 0) {
+        const res = await fetch("/api/history/sync", {
+          method: "POST",
+          headers,
+          credentials: "include",
+          body: JSON.stringify({ items: localItems }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.items && Array.isArray(data.items)) {
+            const reportMap = new Map<string, any>();
+            for (const it of localItems) {
+              if (it?.id && it?.fullReport) reportMap.set(it.id, it.fullReport);
+            }
+            const updatedLocal = data.items.map((it: any) => ({
+              ...it,
+              fullReport: it.fullReport || reportMap.get(it.id) || undefined,
+            }));
+            localStorage.setItem("nezbig_local_history", JSON.stringify(updatedLocal));
+            window.dispatchEvent(new Event("nezbig_history_updated"));
+            return;
+          }
+        }
+      }
+
+      // If localItems was empty, fetch from server to populate local cache for this account
+      const fetchRes = await fetch("/api/history", { headers, credentials: "include" });
+      if (fetchRes.ok) {
+        const serverItems = await fetchRes.json();
+        if (Array.isArray(serverItems)) {
+          localStorage.setItem("nezbig_local_history", JSON.stringify(serverItems));
+          window.dispatchEvent(new Event("nezbig_history_updated"));
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
   // Check for auth_success/auth_error in URL (from Google OAuth redirect)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -83,7 +131,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (token) localStorage.setItem("nezbig_auth_token", token);
     }
     if (params.has("auth_success")) {
-      void refresh();
+      void refresh().then(() => {
+        void syncHistory();
+      });
       // Clean URL
       window.history.replaceState({}, "", window.location.pathname);
     }
@@ -91,11 +141,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error("Auth error:", params.get("auth_error"));
       window.history.replaceState({}, "", window.location.pathname);
     }
-  }, [refresh]);
+  }, [refresh, syncHistory]);
 
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    void refresh().then(() => {
+      const token = localStorage.getItem("nezbig_auth_token");
+      if (token || user) void syncHistory();
+    });
+  }, [refresh, syncHistory]);
 
   const login = useCallback(async (email: string, password: string): Promise<{ error?: string }> => {
     try {
@@ -113,12 +166,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data.user) {
         setUser(data.user);
         localStorage.setItem("nezbig_auth_user", JSON.stringify(data.user));
+        void syncHistory();
       }
       return {};
     } catch {
       return { error: "Помилка мережі." };
     }
-  }, []);
+  }, [syncHistory]);
 
   const register = useCallback(async (name: string, email: string, password: string): Promise<{ error?: string }> => {
     try {
@@ -136,12 +190,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data.user) {
         setUser(data.user);
         localStorage.setItem("nezbig_auth_user", JSON.stringify(data.user));
+        void syncHistory();
       }
       return {};
     } catch {
       return { error: "Помилка мережі." };
     }
-  }, []);
+  }, [syncHistory]);
 
   const logout = useCallback(async () => {
     try {
@@ -151,6 +206,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("nezbig_auth_token");
     localStorage.removeItem("nezbig_auth_user");
     setUser(null);
+    window.dispatchEvent(new Event("nezbig_history_updated"));
   }, [getAuthHeaders]);
 
   const loginWithGoogle = useCallback(async () => {
@@ -168,7 +224,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, isLoggedIn: !!user, login, register, logout, loginWithGoogle, refresh }}>
+    <AuthContext.Provider value={{ user, loading, isLoggedIn: !!user, login, register, logout, loginWithGoogle, refresh, syncHistory }}>
       {children}
     </AuthContext.Provider>
   );
