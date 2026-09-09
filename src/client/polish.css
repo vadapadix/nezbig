@@ -419,6 +419,38 @@ input[type="radio"]:checked {
   background: linear-gradient(180deg, rgba(42, 187, 167, 0.55), rgba(42, 187, 167, 0.3));
 }
 
+/* ── File Upload Progress Bar ──────────────────────────────────── */
+
+@keyframes indeterminateProgress {
+  0% {
+    left: -35%;
+    right: 100%;
+  }
+  60% {
+    left: 100%;
+    right: -90%;
+  }
+  100% {
+    left: 100%;
+    right: -90%;
+  }
+}
+
+.loading-bar-indeterminate {
+  position: relative;
+  overflow: hidden;
+}
+
+.loading-bar-indeterminate::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, #2ec4b6, #56dbc6);
+  border-radius: 9999px;
+  animation: indeterminateProgress 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
 /* ── Reduced motion ────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {

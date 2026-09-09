@@ -100,6 +100,7 @@ export function useDocumentEditor(onMessage?: (msg: string) => void) {
     setSelectedFile(file);
     setFileName(file.name);
     setEditorContent("", "");
+    setFormattedPreviewBusy(true);
     onMessage?.(
       lang === "uk"
         ? `Файл прикріплено: ${file.name}. Читаю форматування для preview; перевірка піде файлом.`

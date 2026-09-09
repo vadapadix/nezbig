@@ -10,6 +10,7 @@ import { recommendSettings, estimateScanSeconds, formatDuration, defaultSettings
 import type { ScanReport } from "../../shared/types";
 import { LoadingPanel } from "../components/LoadingPanel";
 import { RecentScansBar } from "../components/RecentScansBar";
+import { BrandLogo } from "../components/BrandLogo";
 
 import { AdsterraBanner } from "../components/AdsterraBanner";
 
@@ -196,37 +197,50 @@ export default function Home({ showToast }: { showToast: (msg: string, type?: "s
                 <h2 className="font-headline-sm text-headline-sm text-white font-medium truncate">
                   {editor.selectedFile ? (
                     <span className="flex items-center gap-2 text-emerald-glow">
-                      <span className="material-symbols-outlined text-xl shrink-0">description</span>
+                      {editor.formattedPreviewBusy ? (
+                        <span className="material-symbols-outlined text-xl shrink-0 animate-spin text-emerald-glow">progress_activity</span>
+                      ) : (
+                        <span className="material-symbols-outlined text-xl shrink-0">description</span>
+                      )}
                       <span className="truncate max-w-[200px] sm:max-w-[340px]">{editor.selectedFile.name}</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          editor.clearFile();
-                          if (fileInputRef.current) fileInputRef.current.value = "";
-                        }}
-                        className="ml-1 text-on-surface-variant hover:text-rose-400 p-1 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
-                        title={lang === "uk" ? "Прибрати файл" : "Remove file"}
-                        aria-label="Remove attached file"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">close</span>
-                      </button>
+                      {!editor.formattedPreviewBusy && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            editor.clearFile();
+                            if (fileInputRef.current) fileInputRef.current.value = "";
+                          }}
+                          className="ml-1 text-on-surface-variant hover:text-rose-400 p-1 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
+                          title={lang === "uk" ? "Прибрати файл" : "Remove file"}
+                          aria-label="Remove attached file"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">close</span>
+                        </button>
+                      )}
                     </span>
                   ) : (
                     lang === "uk" ? "Вставте текст або завантажте файл" : "Paste text or upload document"
                   )}
                 </h2>
                 <span className="font-label-sm text-label-sm text-on-surface-variant mt-0.5">
-                  {editor.selectedFile ? t("fileReady") : t("fileFormats")}
+                  {editor.formattedPreviewBusy
+                    ? (lang === "uk" ? "Зчитування документа та витяг тексту…" : "Extracting document text and formatting…")
+                    : (editor.selectedFile ? t("fileReady") : t("fileFormats"))}
                 </span>
               </div>
 
               <div className="flex items-center gap-3 shrink-0">
-                <label className="upload-chip bg-surface-variant/80 hover:bg-surface-bright text-white px-4 py-2 rounded-full font-label-sm text-label-sm border border-outline-variant hover:border-emerald-glow transition-all flex items-center gap-2 cursor-pointer">
-                  <span className="material-symbols-outlined text-[18px]">upload_file</span>
-                  {editor.selectedFile ? (lang === "uk" ? "Замінити файл" : "Replace file") : (lang === "uk" ? "Вибрати файл" : "Choose file")}
+                <label className={`upload-chip ${editor.formattedPreviewBusy ? "opacity-60 cursor-wait pointer-events-none" : "hover:bg-surface-bright cursor-pointer"} bg-surface-variant/80 text-white px-4 py-2 rounded-full font-label-sm text-label-sm border border-outline-variant hover:border-emerald-glow transition-all flex items-center gap-2`}>
+                  <span className={`material-symbols-outlined text-[18px] ${editor.formattedPreviewBusy ? "animate-spin text-emerald-glow" : ""}`}>
+                    {editor.formattedPreviewBusy ? "progress_activity" : "upload_file"}
+                  </span>
+                  {editor.formattedPreviewBusy
+                    ? (lang === "uk" ? "Обробка…" : "Processing…")
+                    : (editor.selectedFile ? (lang === "uk" ? "Замінити файл" : "Replace file") : (lang === "uk" ? "Вибрати файл" : "Choose file"))}
                   <input
                     ref={fileInputRef}
                     type="file"
+                    disabled={editor.formattedPreviewBusy}
                     className="hidden"
                     accept=".docx,.pdf"
                     onChange={(e) => {
@@ -245,32 +259,75 @@ export default function Home({ showToast }: { showToast: (msg: string, type?: "s
               <div
                 ref={editor.editorRef}
                 className="w-full h-full bg-transparent !border-0 !outline-none !shadow-none focus:!outline-none focus:!ring-0 text-body-lg text-white placeholder:text-on-surface-variant/60 custom-scrollbar !p-0 overflow-y-auto [&_*]:!text-inherit [&_*]:!bg-transparent"
-                contentEditable
+                contentEditable={!editor.formattedPreviewBusy}
                 onPaste={editor.handleRichPaste}
                 onInput={() => editor.syncEditorFromDom(true)}
                 suppressContentEditableWarning
               />
-              {!editor.text && (
-                <div className="editor-empty pointer-events-none select-none" aria-hidden="true">
-                  <span className="editor-empty-icon">
-                    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="8" y="2" width="8" height="4" rx="1" />
-                      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-                      <path d="M9 12h6M9 16h4" />
-                    </svg>
-                  </span>
-                  <p className="text-body-lg">{lang === "uk" ? "Вставте текст з Word або скопіюйте сюди текст..." : "Paste text from Word or type your content here..."}</p>
-                  <span className="kbd-hint"><kbd>Ctrl</kbd> + <kbd>V</kbd></span>
+              {editor.formattedPreviewBusy ? (
+                <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-6 bg-surface/92 backdrop-blur-md transition-all fade-in">
+                  <div className="relative mb-6 flex items-center justify-center">
+                    <div className="w-20 h-20 rounded-2xl bg-surface-container-high/90 border border-emerald-glow/40 flex items-center justify-center shadow-xl shadow-emerald-glow/10">
+                      <BrandLogo spinning={true} className="w-14 h-14" />
+                    </div>
+                    <div className="absolute -inset-1.5 rounded-2xl border border-emerald-glow/40 border-t-transparent animate-spin pointer-events-none" />
+                  </div>
+
+                  <div className="text-center max-w-md px-4 flex flex-col items-center">
+                    <h3 className="text-white font-medium text-lg md:text-xl mb-1.5 flex items-center justify-center gap-2">
+                      <span className="material-symbols-outlined text-emerald-glow animate-spin text-xl">progress_activity</span>
+                      <span>{lang === "uk" ? "Зчитування документа…" : "Reading document…"}</span>
+                    </h3>
+                    <p className="text-on-surface-variant text-sm md:text-base leading-relaxed mb-4 text-center">
+                      {lang === "uk"
+                        ? "Витягуємо текст, структуру та готуємо до перевірки"
+                        : "Extracting text, formatting, and preparing for scan"}
+                    </p>
+
+                    {editor.selectedFile && (
+                      <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-white/90 mb-5">
+                        <span className="material-symbols-outlined text-sm text-emerald-glow">description</span>
+                        <span className="truncate max-w-[220px] sm:max-w-[300px]">{editor.selectedFile.name}</span>
+                        <span className="text-on-surface-variant">
+                          • {editor.selectedFile.size < 1024 * 1024
+                              ? `${Math.round(editor.selectedFile.size / 1024)} KB`
+                              : `${(editor.selectedFile.size / (1024 * 1024)).toFixed(1)} MB`}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Progress indicator bar */}
+                    <div className="w-52 h-1.5 bg-white/10 rounded-full loading-bar-indeterminate" />
+                  </div>
                 </div>
+              ) : (
+                !editor.text && (
+                  <div className="editor-empty pointer-events-none select-none" aria-hidden="true">
+                    <span className="editor-empty-icon">
+                      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="8" y="2" width="8" height="4" rx="1" />
+                        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                        <path d="M9 12h6M9 16h4" />
+                      </svg>
+                    </span>
+                    <p className="text-body-lg">{lang === "uk" ? "Вставте текст з Word або скопіюйте сюди текст..." : "Paste text from Word or type your content here..."}</p>
+                    <span className="kbd-hint"><kbd>Ctrl</kbd> + <kbd>V</kbd></span>
+                  </div>
+                )
               )}
             </div>
             <div className="px-6 py-3 border-t border-white/10 flex justify-between items-center bg-surface-container/60 shrink-0">
-              <span className="word-counter font-label-sm text-label-sm text-on-surface-variant">{wordCount} {t("wordsCount")}</span>
+              <span className="word-counter font-label-sm text-label-sm text-on-surface-variant">
+                {editor.formattedPreviewBusy
+                  ? (lang === "uk" ? "Завантаження документа…" : "Loading document…")
+                  : `${wordCount} ${t("wordsCount")}`}
+              </span>
               <button
                 type="button"
                 aria-label="Clear text"
                 title={t("clearText")}
-                className="clear-button p-1.5 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-all flex items-center justify-center cursor-pointer"
+                disabled={editor.formattedPreviewBusy}
+                className={`clear-button p-1.5 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-all flex items-center justify-center ${editor.formattedPreviewBusy ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
                 onClick={() => {
                   editor.setEditorContent("", "");
                   editor.setSelectedFile(null);
@@ -332,9 +389,23 @@ export default function Home({ showToast }: { showToast: (msg: string, type?: "s
             </div>
           </div>
 
-            <button onClick={handleSubmit} disabled={busy || !canScan} className="cta-main group relative z-10 bg-gradient-to-br from-emerald-glow to-primary-container hover:from-primary hover:to-emerald-glow text-on-primary font-headline-md text-body-lg font-medium py-4 px-6 rounded-xl transition-all duration-300 transform hover:-translate-y-1 flex items-center justify-center gap-3 disabled:opacity-50 disabled:hover:translate-y-0 w-full shrink-0 rise-in d-4">
-              <span className="relative z-10">{t("runScan")}</span>
-              <span className="relative z-10 material-symbols-outlined text-3xl transition-transform group-hover:translate-x-1">arrow_forward</span>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={busy || editor.formattedPreviewBusy || !canScan}
+              className="cta-main group relative z-10 bg-gradient-to-br from-emerald-glow to-primary-container hover:from-primary hover:to-emerald-glow text-on-primary font-headline-md text-body-lg font-medium py-4 px-6 rounded-xl transition-all duration-300 transform hover:-translate-y-1 flex items-center justify-center gap-3 disabled:opacity-50 disabled:hover:translate-y-0 w-full shrink-0 rise-in d-4 cursor-pointer disabled:cursor-not-allowed"
+            >
+              {editor.formattedPreviewBusy ? (
+                <>
+                  <span className="material-symbols-outlined text-2xl animate-spin">progress_activity</span>
+                  <span>{lang === "uk" ? "Зчитування файлу…" : "Reading file…"}</span>
+                </>
+              ) : (
+                <>
+                  <span className="relative z-10">{t("runScan")}</span>
+                  <span className="relative z-10 material-symbols-outlined text-3xl transition-transform group-hover:translate-x-1">arrow_forward</span>
+                </>
+              )}
             </button>
           </div>
         </div>
