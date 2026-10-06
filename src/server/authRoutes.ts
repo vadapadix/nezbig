@@ -12,7 +12,6 @@ import {
   clearAuthCookie,
   getUserReports,
 } from "./auth.js";
-import { getReport } from "./db.js";
 
 const router = Router();
 
@@ -44,7 +43,7 @@ router.post("/register", async (req: Request, res: Response) => {
       token,
       user: { id: user.id, name: user.name, email: user.email, avatarUrl: user.avatarUrl },
     });
-  } catch (error) {
+  } catch {
     res.status(500).json({ error: "Помилка при реєстрації." });
   }
 });
@@ -78,7 +77,7 @@ router.post("/login", async (req: Request, res: Response) => {
       token,
       user: { id: user.id, name: user.name, email: user.email, avatarUrl: user.avatarUrl },
     });
-  } catch (error) {
+  } catch {
     res.status(500).json({ error: "Помилка при вході." });
   }
 });
@@ -129,7 +128,7 @@ router.get("/history", async (req: Request, res: Response) => {
   try {
     const reports = await getUserReports(req.user.id);
     res.json(reports);
-  } catch (error) {
+  } catch {
     res.status(500).json({ error: "Помилка при завантаженні історії." });
   }
 });

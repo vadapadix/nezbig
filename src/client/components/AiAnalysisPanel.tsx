@@ -59,7 +59,7 @@ export function AiAnalysisPanel({ report, llmBusy, primarySignals, onRetryOpinio
         <p className="provider-note" role="status">
           {stripHtml(report.aiOpinionError)}{" "}
           {onRetryOpinion ? (
-            <button type="button" className="retry-opinion-button" onClick={onRetryOpinion}>
+            <button type="button" className="retry-opinion-button cursor-pointer" onClick={onRetryOpinion}>
               {lang === "uk" ? "Повторити AI-думку" : "Retry AI Opinion"}
             </button>
           ) : null}

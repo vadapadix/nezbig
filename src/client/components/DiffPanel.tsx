@@ -78,14 +78,14 @@ export function DiffPanel() {
       
       <div className="diff-actions">
         <button 
-          className="primary-button" 
+          className="primary-button cursor-pointer disabled:cursor-not-allowed" 
           onClick={handleCompare} 
           disabled={busy || (!original.trim() || !modified.trim())}
         >
           {busy ? (lang === "uk" ? "Аналіз..." : "Comparing...") : (lang === "uk" ? "Порівняти" : "Compare")}
         </button>
         <button 
-          className="secondary-button" 
+          className="secondary-button cursor-pointer disabled:cursor-not-allowed" 
           onClick={handleClear} 
           disabled={busy || (!original && !modified && !diffResult)}
         >

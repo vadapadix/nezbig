@@ -21,7 +21,7 @@ interface RecentScansBarProps {
 
 export function RecentScansBar({ currentReportId, onSelectReport }: RecentScansBarProps) {
   const { lang } = useLanguage();
-  const { user, isLoggedIn } = useAuth();
+  const { isLoggedIn } = useAuth();
   const [items, setItems] = useState<StoredScanItem[]>([]);
 
   const loadItems = useCallback(() => {
@@ -174,11 +174,18 @@ export function RecentScansBar({ currentReportId, onSelectReport }: RecentScansB
               : "bg-cyan-500/20 text-cyan-300 border-cyan-500/30";
 
           return (
-            <button
-              type="button"
+            <div
+              role="button"
+              tabIndex={0}
               key={item.id}
               onClick={() => void handleItemClick(item)}
-              className={`shrink-0 flex items-center gap-3 px-3.5 py-2.5 rounded-xl border text-left transition-all group cursor-pointer ${
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  void handleItemClick(item);
+                }
+              }}
+              className={`shrink-0 flex items-center gap-3 px-3.5 py-2.5 rounded-xl border text-left transition-all group cursor-pointer select-none ${
                 isActive
                   ? "bg-emerald-glow/15 border-emerald-glow text-white shadow-md ring-1 ring-emerald-glow/40"
                   : "bg-surface-container/80 hover:bg-surface-container border-white/10 hover:border-emerald-glow/40 text-white/90"
@@ -220,22 +227,16 @@ export function RecentScansBar({ currentReportId, onSelectReport }: RecentScansB
                 )}
               </div>
 
-              <span
-                role="button"
-                tabIndex={0}
+              <button
+                type="button"
                 onClick={(e) => handleRemoveOne(e, item.id)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    handleRemoveOne(e as unknown as React.MouseEvent, item.id);
-                  }
-                }}
-                className="ml-1 text-white/30 hover:text-rose-400 p-0.5 rounded hover:bg-white/5 transition-colors"
+                className="ml-1 text-white/30 hover:text-rose-400 p-1 rounded hover:bg-white/10 transition-colors cursor-pointer"
                 title={lang === "uk" ? "Видалити зі списку" : "Remove from list"}
-                aria-label="Remove item"
+                aria-label={lang === "uk" ? "Видалити зі списку" : "Remove from list"}
               >
                 <span className="material-symbols-outlined text-[14px]">close</span>
-              </span>
-            </button>
+              </button>
+            </div>
           );
         })}
       </div>

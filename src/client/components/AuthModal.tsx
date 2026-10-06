@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { useLanguage } from "../context/LanguageContext";
 
@@ -9,13 +9,23 @@ interface AuthModalProps {
 
 export function AuthModal({ open, onClose }: AuthModalProps) {
   const { login, register, loginWithGoogle } = useAuth();
-  const { lang, t } = useLanguage();
+  const { lang } = useLanguage();
   const [tab, setTab] = useState<"login" | "register">("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, onClose]);
 
   if (!open) return null;
 
@@ -49,7 +59,7 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
       <div className="bg-[#141b1a] border border-white/10 rounded-2xl p-7 w-full max-w-md shadow-[0_24px_64px_rgba(0,0,0,0.6)] relative fade-in">
         <button 
           onClick={onClose} 
-          className="absolute top-4 right-4 p-1.5 rounded-lg text-on-surface-variant hover:text-white hover:bg-white/5 transition-colors"
+          className="absolute top-4 right-4 p-1.5 rounded-lg text-on-surface-variant hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
           title={lang === "uk" ? "Закрити" : "Close"}
         >
           <span className="material-symbols-outlined text-xl">close</span>
@@ -60,14 +70,14 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
           <button
             type="button"
             onClick={() => { setTab("login"); setError(""); }}
-            className={`font-headline-sm text-headline-sm transition-all pb-2 bg-transparent !border-0 ${tab === "login" ? "!text-emerald-glow !border-b-2 !border-emerald-glow font-bold -mb-[9px]" : "!text-on-surface-variant hover:!text-white"}`}
+            className={`font-headline-sm text-headline-sm transition-all pb-2 bg-transparent !border-0 cursor-pointer ${tab === "login" ? "!text-emerald-glow !border-b-2 !border-emerald-glow font-bold -mb-[9px]" : "!text-on-surface-variant hover:!text-white"}`}
           >
             {lang === "uk" ? "Вхід" : "Sign In"}
           </button>
           <button
             type="button"
             onClick={() => { setTab("register"); setError(""); }}
-            className={`font-headline-sm text-headline-sm transition-all pb-2 bg-transparent !border-0 ${tab === "register" ? "!text-emerald-glow !border-b-2 !border-emerald-glow font-bold -mb-[9px]" : "!text-on-surface-variant hover:!text-white"}`}
+            className={`font-headline-sm text-headline-sm transition-all pb-2 bg-transparent !border-0 cursor-pointer ${tab === "register" ? "!text-emerald-glow !border-b-2 !border-emerald-glow font-bold -mb-[9px]" : "!text-on-surface-variant hover:!text-white"}`}
           >
             {lang === "uk" ? "Реєстрація" : "Register"}
           </button>
@@ -77,7 +87,7 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
         <button
           type="button"
           onClick={handleGoogleLogin}
-          className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border border-white/15 bg-white/[0.04] hover:bg-white/[0.08] !text-white transition-all mb-5 font-medium group"
+          className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border border-white/15 bg-white/[0.04] hover:bg-white/[0.08] !text-white transition-all mb-5 font-medium group cursor-pointer"
         >
           <svg viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
@@ -116,15 +126,28 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
             required
             className="w-full bg-[#1b2524] border border-white/15 rounded-xl px-4 py-3 text-white placeholder:text-on-surface-variant/50 focus:border-emerald-glow focus:ring-1 focus:ring-emerald-glow transition-all outline-none text-body-md"
           />
-          <input
-            type="password"
-            placeholder={lang === "uk" ? "Пароль" : "Password"}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={6}
-            className="w-full bg-[#1b2524] border border-white/15 rounded-xl px-4 py-3 text-white placeholder:text-on-surface-variant/50 focus:border-emerald-glow focus:ring-1 focus:ring-emerald-glow transition-all outline-none text-body-md"
-          />
+          <div className="relative w-full">
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder={lang === "uk" ? "Пароль" : "Password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+              className="w-full bg-[#1b2524] border border-white/15 rounded-xl px-4 py-3 pr-12 text-white placeholder:text-on-surface-variant/50 focus:border-emerald-glow focus:ring-1 focus:ring-emerald-glow transition-all outline-none text-body-md"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-on-surface-variant hover:text-white transition-colors cursor-pointer"
+              title={showPassword ? (lang === "uk" ? "Сховати пароль" : "Hide password") : (lang === "uk" ? "Показати пароль" : "Show password")}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              <span className="material-symbols-outlined text-lg">
+                {showPassword ? "visibility_off" : "visibility"}
+              </span>
+            </button>
+          </div>
 
           {error && (
             <div className="text-error text-label-sm bg-error/10 border border-error/20 px-3.5 py-2.5 rounded-xl font-medium">{error}</div>

@@ -9,7 +9,7 @@ import pino from "pino";
 import * as diff from "diff";
 import { rateLimit } from "express-rate-limit";
 import { ScanRequestSchema, ScanSettingsSchema, LlmOpinionRequestSchema, HumanizeRequestSchema } from "../shared/validation.js";
-import { saveReport, getReport, redis } from "./db.js";
+import { saveReport, getReport } from "./db.js";
 import { scanJobCache, reportCache } from "./jobStore.js";
 import { chunkText, countWords } from "./chunking.js";
 import { prepareDocumentText } from "./documentPreprocess.js";
@@ -24,7 +24,7 @@ import { hydrateSearchCandidatesDetailed, searchWebCandidatesDetailed } from "./
 import { authMiddleware, saveUserReport } from "./auth.js";
 import { authRouter } from "./authRoutes.js";
 import { historyRouter } from "./historyRoutes.js";
-import type { FileEvidence, HumanizeRequest, LlmOpinionRequest, LlmOpinion, PlagiarismMatch, ScanReport, ScanRequest, ScanSettings, SearchDiagnostics } from "../shared/types.js";
+import type { FileEvidence, LlmOpinion, PlagiarismMatch, ScanReport, ScanRequest, ScanSettings, SearchDiagnostics } from "../shared/types.js";
 
 export const app = express();
 
@@ -287,7 +287,7 @@ app.post("/api/feedback", feedbackLimiter, async (request, response) => {
     const { text, page } = request.body;
     logger.info({ feedback: text, page }, "User feedback");
     response.json({ ok: true });
-  } catch (error) {
+  } catch {
     response.status(500).json({ error: "Failed to send feedback" });
   }
 });
@@ -374,46 +374,8 @@ app.get("/api/scan-status/:jobId", async (request, response) => {
     }
     
     response.json(job);
-  } catch (error) {
+  } catch {
     response.status(500).json({ error: "Помилка сервера" });
-  }
-});
-
-app.get("/api/history", async (_req, res) => {
-  if (!redis) {
-    res.json([]);
-    return;
-  }
-  try {
-    const ids = await redis.zrevrange("history:index", 0, 9);
-    const pipeline = redis.pipeline();
-    for (const id of ids) pipeline.get(`history:${id}`);
-    const results = await pipeline.exec();
-    const items = (results || []).map(([err, data]) => {
-      if (err || !data) return null;
-      try {
-        const r = JSON.parse(data as string);
-        return { id: r.id, fileName: r.fileName, checkedAt: r.checkedAt, plagiarismScore: r.plagiarismScore };
-      } catch {
-        return null;
-      }
-    }).filter(Boolean);
-    res.json(items);
-  } catch (error) {
-    res.status(500).json({ error: "Помилка при завантаженні історії" });
-  }
-});
-
-app.get("/api/history/:id", async (request, response) => {
-  try {
-    const report = await getReport(request.params.id);
-    if (!report) {
-      response.status(404).json({ error: "Звіт не знайдено або він застарів" });
-      return;
-    }
-    response.json(report);
-  } catch (error) {
-    response.status(500).json({ error: "Помилка при завантаженні історії" });
   }
 });
 
@@ -608,7 +570,7 @@ app.post("/api/diff", scanLimiter, async (request, response) => {
 
     const diffResult = diff.diffWordsWithSpace(original, modified);
     response.json(diffResult);
-  } catch (error) {
+  } catch {
     response.status(500).json({ error: "Помилка при порівнянні текстів." });
   }
 });

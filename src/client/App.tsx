@@ -22,6 +22,7 @@ export default function App() {
             <Route path="humanize" element={<HumanizePage showToast={show} />} />
             <Route path="about" element={<About />} />
             <Route path="history" element={<HistoryPage />} />
+            <Route path="history/:id" element={<HistoryPage />} />
             <Route path="privacy" element={<Privacy />} />
             <Route path="terms" element={<Terms />} />
           </Route>

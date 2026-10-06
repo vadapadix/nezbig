@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { HumanizeResult } from "../../shared/types";
 import { htmlFromPlainText, sanitizeRichHtml } from "../richText";
 import { formatNumber } from "../utils/reportLabels";
@@ -21,6 +22,13 @@ export function HumanizePanel({
   onDownloadForWord
 }: HumanizePanelProps) {
   const { lang, t } = useLanguage();
+  const [copied, setCopied] = useState(false);
+
+  function handleCopy() {
+    onCopyFormatted();
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
 
   const modeLabel =
     lang === "uk"
@@ -86,7 +94,7 @@ export function HumanizePanel({
       <div className="flex flex-wrap items-center gap-4 pt-2">
         <button
           type="button"
-          className="bg-gradient-to-br from-emerald-glow to-primary-container hover:from-primary hover:to-emerald-glow text-on-primary font-headline-md text-body-md font-medium py-3 px-6 rounded-xl shadow-md transition-all flex items-center gap-2"
+          className="bg-gradient-to-br from-emerald-glow to-primary-container hover:from-primary hover:to-emerald-glow text-on-primary font-headline-md text-body-md font-medium py-3 px-6 rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer"
           onClick={onMoveToChecker}
         >
           <span className="material-symbols-outlined text-lg">check_circle</span>
@@ -95,17 +103,27 @@ export function HumanizePanel({
 
         <button
           type="button"
-          className="bg-surface-variant hover:bg-surface-bright text-white border border-white/10 hover:border-emerald-glow px-5 py-3 rounded-xl text-body-md font-medium transition-all flex items-center gap-2"
-          onClick={onCopyFormatted}
+          className={`border px-5 py-3 rounded-xl text-body-md font-medium transition-all flex items-center gap-2 cursor-pointer ${
+            copied
+              ? "bg-emerald-glow/20 border-emerald-glow text-emerald-glow"
+              : "bg-surface-variant hover:bg-surface-bright text-white border-white/10 hover:border-emerald-glow"
+          }`}
+          onClick={handleCopy}
         >
-          <span className="material-symbols-outlined text-lg">content_copy</span>
-          <span>{lang === "uk" ? "Копіювати текст" : "Copy Output"}</span>
+          <span className="material-symbols-outlined text-lg">
+            {copied ? "check" : "content_copy"}
+          </span>
+          <span>
+            {copied
+              ? (lang === "uk" ? "Скопійовано!" : "Copied!")
+              : (lang === "uk" ? "Копіювати текст" : "Copy Output")}
+          </span>
         </button>
 
         <button
           type="button"
           disabled={wordDownloadBusy}
-          className="bg-surface-variant hover:bg-surface-bright text-white border border-white/10 hover:border-emerald-glow px-5 py-3 rounded-xl text-body-md font-medium transition-all flex items-center gap-2 disabled:opacity-50"
+          className="bg-surface-variant hover:bg-surface-bright text-white border border-white/10 hover:border-emerald-glow px-5 py-3 rounded-xl text-body-md font-medium transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
           onClick={onDownloadForWord}
         >
           <span className="material-symbols-outlined text-lg">download</span>

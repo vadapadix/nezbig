@@ -46,7 +46,6 @@ export function useDraft(text: string, html: string, fileName: string, onRestore
     } catch {
       localStorage.removeItem(DRAFT_KEY);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const clearDraft = useCallback(() => localStorage.removeItem(DRAFT_KEY), []);

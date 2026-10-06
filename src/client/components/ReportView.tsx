@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { ScanReport } from "../../shared/types";
 import { ExportToolbar } from "./ExportToolbar";
 import { AiAnalysisPanel } from "./AiAnalysisPanel";
@@ -6,7 +7,7 @@ import { PlagiarismMatches } from "./PlagiarismMatches";
 import { ProviderDiagnostics } from "./ProviderDiagnostics";
 import { SignalCard } from "./SignalCard";
 import { useLanguage } from "../context/LanguageContext";
-import { formatNumber, riskLabel, aiMetricCaption, reportSummaryText, aiVerdictLabel, uncertaintyBand } from "../utils/reportLabels";
+import { formatNumber, riskLabel, aiMetricCaption, reportSummaryText, uncertaintyBand } from "../utils/reportLabels";
 import { translateReportSummary, translateScanNote } from "../utils/reportI18n";
 
 interface ReportViewProps {
@@ -18,6 +19,7 @@ interface ReportViewProps {
 
 export function ReportView({ report, llmBusy, reportRef, onRetryOpinion }: ReportViewProps) {
   const { lang, t } = useLanguage();
+  const [copiedLink, setCopiedLink] = useState(false);
   const confirmedMatchCount = report.matches.filter((match) => match.confidence === "page").length;
   const leadMatchCount = report.matches.length - confirmedMatchCount;
   const searchAttemptCount = report.searchDiagnostics?.providers.reduce((sum, provider) => sum + provider.attempted, 0) ?? 0;
@@ -27,6 +29,13 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion }: Repor
   const aiSignalSplit = Math.max(1, Math.ceil(report.aiSignals.length / 2));
   const primaryAiSignals = report.aiSignals.slice(0, aiSignalSplit);
   const secondaryAiSignals = report.aiSignals.slice(aiSignalSplit);
+
+  const handleCopyLink = () => {
+    const shareUrl = `${window.location.origin}/history/${report.id}`;
+    void navigator.clipboard.writeText(shareUrl);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2500);
+  };
 
   return (
     <section ref={reportRef} className="report" aria-labelledby="report-title">
@@ -48,11 +57,19 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion }: Repor
           </time>
           <div className="flex flex-wrap items-center gap-2">
             <button 
-              className="px-3.5 py-2 rounded-xl border border-emerald-glow/40 text-emerald-glow hover:bg-emerald-glow/10 text-body-md font-medium transition-all"
+              className={`px-3.5 py-2 rounded-xl border text-body-md font-medium transition-all flex items-center gap-1.5 cursor-pointer ${
+                copiedLink
+                  ? "bg-emerald-glow/20 border-emerald-glow text-emerald-glow shadow-sm"
+                  : "border-emerald-glow/40 text-emerald-glow hover:bg-emerald-glow/10"
+              }`}
               type="button" 
-              onClick={() => navigator.clipboard.writeText(window.location.origin + "/history/" + report.id)}
+              onClick={handleCopyLink}
+              title={copiedLink ? (lang === "uk" ? "Посилання скопійовано" : "Link copied") : (lang === "uk" ? "Копіювати посилання" : "Copy Link")}
             >
-              {lang === "uk" ? "Копіювати посилання" : "Copy Link"}
+              <span className="material-symbols-outlined text-[18px]">
+                {copiedLink ? "check" : "link"}
+              </span>
+              <span>{copiedLink ? (lang === "uk" ? "Скопійовано!" : "Copied!") : (lang === "uk" ? "Копіювати посилання" : "Copy Link")}</span>
             </button>
             <ExportToolbar report={report} />
           </div>

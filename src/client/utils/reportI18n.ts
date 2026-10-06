@@ -1,4 +1,3 @@
-import type { AiSignal, AiSuspiciousSegment, ScanReport } from "../../shared/types";
 import type { Language } from "../context/LanguageContext";
 
 const signalLabelsEn: Record<string, string> = {

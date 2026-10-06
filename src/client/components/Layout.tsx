@@ -29,6 +29,18 @@ export function Layout() {
     return () => document.removeEventListener("click", handleClick);
   }, [showUserMenu]);
 
+  // Close modals or menus on Escape
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        if (showFeedback) setShowFeedback(false);
+        if (showUserMenu) setShowUserMenu(false);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showFeedback, showUserMenu]);
+
   async function handleFeedbackSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!feedbackText.trim()) return;
@@ -103,53 +115,100 @@ export function Layout() {
             ) : (
               <button
                 onClick={() => setShowAuthModal(true)}
-                className="signin-btn px-4 py-1.5 rounded-full border border-emerald-glow/40 text-emerald-glow hover:bg-emerald-glow/10 font-medium text-body-md transition-all hidden sm:block"
+                className="signin-btn px-4 py-1.5 rounded-full border border-emerald-glow/40 text-emerald-glow hover:bg-emerald-glow/10 font-medium text-body-md transition-all hidden sm:block cursor-pointer"
               >
                 {t("signIn")}
               </button>
             )}
-            <button 
-              onClick={() => setShowUserMenu(!showUserMenu)}
-              className="relative rounded-full overflow-hidden w-10 h-10 border border-white/20 hover:border-emerald-glow transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-glow/50 bg-surface-container flex items-center justify-center"
-            >
-              {isLoggedIn && avatarUrl ? (
-                <img alt="User avatar" className="w-full h-full object-cover" src={avatarUrl} />
-              ) : (
-                <span className="material-symbols-outlined text-on-surface-variant text-2xl">person</span>
-              )}
-            </button>
 
-            {/* Dropdown Menu */}
-            {showUserMenu && (
-              <div className="absolute top-14 right-0 w-60 bg-surface-container-high/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden fade-in z-[100] py-1.5">
-                {isLoggedIn ? (
-                  <div className="flex flex-col">
-                    <div className="px-4 py-2.5 border-b border-white/5 mb-1 bg-white/[0.02]">
-                      <p className="text-body-md text-white font-medium truncate">{user?.name}</p>
-                      <p className="text-label-sm text-on-surface-variant truncate">{user?.email}</p>
+            <div className="relative" data-user-menu>
+              <button 
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="relative rounded-full overflow-hidden w-10 h-10 border border-white/20 hover:border-emerald-glow transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-glow/50 bg-surface-container flex items-center justify-center cursor-pointer"
+              >
+                {isLoggedIn && avatarUrl ? (
+                  <img alt="User avatar" className="w-full h-full object-cover" src={avatarUrl} />
+                ) : (
+                  <span className="material-symbols-outlined text-on-surface-variant text-2xl">person</span>
+                )}
+              </button>
+
+              {/* Dropdown Menu */}
+              {showUserMenu && (
+                <div className="absolute top-12 right-0 w-60 bg-surface-container-high/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden fade-in z-[100] py-1.5">
+                  {isLoggedIn ? (
+                    <div className="flex flex-col">
+                      <div className="px-4 py-2.5 border-b border-white/5 mb-1 bg-white/[0.02]">
+                        <p className="text-body-md text-white font-medium truncate">{user?.name}</p>
+                        <p className="text-label-sm text-on-surface-variant truncate">{user?.email}</p>
+                      </div>
+                      <button onClick={() => { setShowUserMenu(false); navigate("/history"); }} className="w-full text-left px-4 py-2.5 text-body-md text-on-surface-variant hover:text-white hover:bg-white/5 transition-colors flex items-center gap-2.5 cursor-pointer">
+                        <span className="material-symbols-outlined text-[20px] text-emerald-glow">history</span>
+                        {t("navHistory")}
+                      </button>
+                      <div className="border-t border-white/5 mt-1 pt-1">
+                        <button onClick={async () => { setShowUserMenu(false); await logout(); }} className="w-full text-left px-4 py-2.5 text-body-md text-error hover:bg-error/10 transition-colors flex items-center gap-2.5 cursor-pointer">
+                          <span className="material-symbols-outlined text-[20px]">logout</span>
+                          {t("signOut")}
+                        </button>
+                      </div>
                     </div>
-                    <button onClick={() => { setShowUserMenu(false); navigate("/history"); }} className="w-full text-left px-4 py-2.5 text-body-md text-on-surface-variant hover:text-white hover:bg-white/5 transition-colors flex items-center gap-2.5">
-                      <span className="material-symbols-outlined text-[20px] text-emerald-glow">history</span>
-                      {t("navHistory")}
-                    </button>
-                    <div className="border-t border-white/5 mt-1 pt-1">
-                      <button onClick={async () => { setShowUserMenu(false); await logout(); }} className="w-full text-left px-4 py-2.5 text-body-md text-error hover:bg-error/10 transition-colors flex items-center gap-2.5">
-                        <span className="material-symbols-outlined text-[20px]">logout</span>
-                        {t("signOut")}
+                  ) : (
+                    <div className="flex flex-col">
+                      <button onClick={() => { setShowUserMenu(false); setShowAuthModal(true); }} className="w-full text-left px-4 py-2.5 text-body-md text-emerald-glow hover:text-white hover:bg-white/5 transition-colors flex items-center gap-2.5 font-medium cursor-pointer">
+                        <span className="material-symbols-outlined text-[20px]">login</span>
+                        {t("signIn")}
                       </button>
                     </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-col">
-                    <button onClick={() => { setShowUserMenu(false); setShowAuthModal(true); }} className="w-full text-left px-4 py-2.5 text-body-md text-emerald-glow hover:text-white hover:bg-white/5 transition-colors flex items-center gap-2.5 font-medium">
-                      <span className="material-symbols-outlined text-[20px]">login</span>
-                      {t("signIn")}
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
+                  )}
+                </div>
+              )}
+            </div>
           </div>
+        </div>
+
+        {/* Mobile Navigation Bar */}
+        <div className="flex md:hidden items-center justify-around border-t border-white/5 px-2 py-2 bg-surface-container-lowest/80 backdrop-blur-md">
+          <NavLink
+            to="/"
+            end
+            className={({ isActive }) =>
+              `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                isActive
+                  ? "bg-emerald-glow/15 text-emerald-glow border border-emerald-glow/30 shadow-sm"
+                  : "text-on-surface-variant hover:text-white"
+              }`
+            }
+          >
+            <span className="material-symbols-outlined text-[17px]">search_check</span>
+            <span>{t("navHome")}</span>
+          </NavLink>
+          <NavLink
+            to="/humanize"
+            className={({ isActive }) =>
+              `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                isActive
+                  ? "bg-emerald-glow/15 text-emerald-glow border border-emerald-glow/30 shadow-sm"
+                  : "text-on-surface-variant hover:text-white"
+              }`
+            }
+          >
+            <span className="material-symbols-outlined text-[17px]">auto_fix_high</span>
+            <span>{t("navHumanize")}</span>
+          </NavLink>
+          <NavLink
+            to="/history"
+            className={({ isActive }) =>
+              `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                isActive
+                  ? "bg-emerald-glow/15 text-emerald-glow border border-emerald-glow/30 shadow-sm"
+                  : "text-on-surface-variant hover:text-white"
+              }`
+            }
+          >
+            <span className="material-symbols-outlined text-[17px]">history</span>
+            <span>{t("navHistory")}</span>
+          </NavLink>
         </div>
       </nav>
 
@@ -179,9 +238,16 @@ export function Layout() {
 
       {/* Feedback Modal */}
       {showFeedback && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowFeedback(false); }}
+        >
           <div className="bg-surface-container-high border border-white/10 rounded-xl p-6 w-full max-w-md shadow-2xl relative fade-in">
-            <button onClick={() => setShowFeedback(false)} className="absolute top-4 right-4 text-on-surface-variant hover:text-white transition-colors">
+            <button 
+              onClick={() => setShowFeedback(false)} 
+              className="absolute top-4 right-4 text-on-surface-variant hover:text-white transition-colors cursor-pointer"
+              title={lang === "uk" ? "Закрити" : "Close"}
+            >
               <span className="material-symbols-outlined">close</span>
             </button>
             <h3 className="text-headline-sm font-headline-sm text-white mb-4">
@@ -201,10 +267,10 @@ export function Layout() {
                   autoFocus
                 />
                 <div className="flex justify-end gap-3 mt-2">
-                  <button type="button" onClick={() => setShowFeedback(false)} className="px-4 py-2 text-on-surface-variant hover:text-white transition-colors">
+                  <button type="button" onClick={() => setShowFeedback(false)} className="px-4 py-2 text-on-surface-variant hover:text-white transition-colors cursor-pointer">
                     {lang === "uk" ? "Скасувати" : "Cancel"}
                   </button>
-                  <button type="submit" disabled={submittingFeedback || !feedbackText.trim()} className="px-6 py-2 bg-emerald-glow text-on-primary rounded-lg font-medium hover:bg-emerald-glow/90 disabled:opacity-50 transition-colors">
+                  <button type="submit" disabled={submittingFeedback || !feedbackText.trim()} className="px-6 py-2 bg-emerald-glow text-on-primary rounded-lg font-medium hover:bg-emerald-glow/90 disabled:opacity-50 transition-colors cursor-pointer disabled:cursor-not-allowed">
                     {submittingFeedback ? (lang === "uk" ? "Надсилання..." : "Sending...") : (lang === "uk" ? "Надіслати" : "Submit")}
                   </button>
                 </div>

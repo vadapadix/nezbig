@@ -214,7 +214,6 @@ function strongestChannelScore(signals, category) {
 }
 function analyzeSinglePass(text) {
     const normalized = normalizeWhitespace(text);
-    const lower = normalized.toLowerCase();
     const words = tokenize(normalized, true);
     const contentWords = tokenize(normalized);
     const sentences = splitSentences(normalized);

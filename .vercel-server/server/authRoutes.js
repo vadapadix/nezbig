@@ -26,7 +26,7 @@ router.post("/register", async (req, res) => {
             user: { id: user.id, name: user.name, email: user.email, avatarUrl: user.avatarUrl },
         });
     }
-    catch (error) {
+    catch {
         res.status(500).json({ error: "Помилка при реєстрації." });
     }
 });
@@ -55,7 +55,7 @@ router.post("/login", async (req, res) => {
             user: { id: user.id, name: user.name, email: user.email, avatarUrl: user.avatarUrl },
         });
     }
-    catch (error) {
+    catch {
         res.status(500).json({ error: "Помилка при вході." });
     }
 });
@@ -100,7 +100,7 @@ router.get("/history", async (req, res) => {
         const reports = await getUserReports(req.user.id);
         res.json(reports);
     }
-    catch (error) {
+    catch {
         res.status(500).json({ error: "Помилка при завантаженні історії." });
     }
 });

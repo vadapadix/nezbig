@@ -11,7 +11,7 @@ router.get("/", async (req, res) => {
         const reports = await getUserReports(req.user.id, 100);
         res.json(reports);
     }
-    catch (error) {
+    catch {
         res.status(500).json({ error: "Помилка при завантаженні історії." });
     }
 });
@@ -31,7 +31,7 @@ router.get("/:id", async (req, res) => {
         }
         res.json(report);
     }
-    catch (error) {
+    catch {
         res.status(500).json({ error: "Помилка при отриманні звіту." });
     }
 });
@@ -51,7 +51,7 @@ router.delete("/:id", async (req, res) => {
         await deleteUserReport(req.user.id, reportId);
         res.json({ ok: true, id: reportId });
     }
-    catch (error) {
+    catch {
         res.status(500).json({ error: "Помилка при видаленні звіту." });
     }
 });
@@ -65,7 +65,7 @@ router.delete("/", async (req, res) => {
         await clearUserHistory(req.user.id);
         res.json({ ok: true });
     }
-    catch (error) {
+    catch {
         res.status(500).json({ error: "Помилка при очищенні історії." });
     }
 });
@@ -86,7 +86,7 @@ router.post("/sync", async (req, res) => {
         const merged = await syncUserReports(req.user.id, safeItems);
         res.json({ ok: true, items: merged });
     }
-    catch (error) {
+    catch {
         res.status(500).json({ error: "Помилка при синхронізації історії." });
     }
 });

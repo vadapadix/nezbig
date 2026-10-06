@@ -1,6 +1,21 @@
 import { jsPDF } from "jspdf";
 import type { ScanReport } from "../../shared/types";
+import type { Language } from "../context/LanguageContext";
 import { riskLabel, aiVerdictLabel, reportSummaryText, formatNumber } from "./reportLabels";
+import {
+  translateReportSummary,
+  translateScanNote,
+  translateSignalLabel,
+  translateSignalDetail,
+} from "./reportI18n";
+
+function getFallbackLang(): Language {
+  if (typeof localStorage !== "undefined") {
+    const saved = localStorage.getItem("nezbig_lang");
+    if (saved === "uk" || saved === "en") return saved;
+  }
+  return "uk";
+}
 
 function wrapCanvasText(context: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number): number {
   const words = text.split(/\s+/).filter(Boolean);
@@ -46,7 +61,7 @@ function estimateReportHeight(report: ScanReport): number {
   return Math.max(1400, h);
 }
 
-export function generateReportCanvas(report: ScanReport): HTMLCanvasElement {
+export function generateReportCanvas(report: ScanReport, lang: Language = getFallbackLang()): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   const width = 1200;
   const height = estimateReportHeight(report);
@@ -75,13 +90,13 @@ export function generateReportCanvas(report: ScanReport): HTMLCanvasElement {
   // Top header brand
   context.fillStyle = accentEmerald;
   context.font = "800 18px 'Actay Wide', Actay, sans-serif";
-  context.fillText("НЕЗБІГ 2.0  •  ОФІЦІЙНИЙ ЗВІТ ОРИГІНАЛЬНОСТІ", 60, 60);
+  context.fillText(lang === "uk" ? "НЕЗБІГ 2.0  •  ОФІЦІЙНИЙ ЗВІТ ОРИГІНАЛЬНОСТІ" : "NEZBIG 2.0  •  OFFICIAL ORIGINALITY REPORT", 60, 60);
 
   // Date
   context.font = "500 18px Actay, sans-serif";
   context.fillStyle = printGray;
-  const dateStr = new Intl.DateTimeFormat("uk-UA", { dateStyle: "medium", timeStyle: "short" }).format(new Date(report.checkedAt));
-  context.fillText(dateStr, 930, 60);
+  const dateStr = new Intl.DateTimeFormat(lang === "uk" ? "uk-UA" : "en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(report.checkedAt));
+  context.fillText(dateStr, 880, 60);
 
   // File Name Title
   context.fillStyle = printBlack;
@@ -100,14 +115,14 @@ export function generateReportCanvas(report: ScanReport): HTMLCanvasElement {
   let y = Math.max(210, titleY + 40);
   const cardWidth = 250;
   const cards = [
-    ["Плагіат", `${report.plagiarismScore}%`, `${riskLabel(report.plagiarismScore)} ризик`],
-    ["ШІ-аналіз", report.aiVerdict === "insufficient" ? "—" : `${report.aiProbability}%`, aiVerdictLabel(report.aiVerdict)],
+    [lang === "uk" ? "Плагіат" : "Plagiarism", `${report.plagiarismScore}%`, `${riskLabel(report.plagiarismScore, lang)} ${lang === "uk" ? "ризик" : "risk"}`],
+    [lang === "uk" ? "ШІ-аналіз" : "AI Detection", report.aiVerdict === "insufficient" ? "—" : `${report.aiProbability}%`, aiVerdictLabel(report.aiVerdict, lang)],
     [
-      "AI-думка",
+      lang === "uk" ? "AI-думка" : "AI Opinion",
       report.aiOpinionProbability !== undefined ? `${report.aiOpinionProbability}%` : "—",
-      report.aiOpinionProbability !== undefined ? `${riskLabel(report.aiOpinionProbability)} рівень` : "модель не задіяна"
+      report.aiOpinionProbability !== undefined ? `${riskLabel(report.aiOpinionProbability, lang)} ${lang === "uk" ? "рівень" : "level"}` : (lang === "uk" ? "модель не задіяна" : "no model query")
     ],
-    ["Фрагменти", formatNumber(report.chunksChecked), `${formatNumber(report.wordCount)} слів`]
+    [lang === "uk" ? "Фрагменти" : "Chunks", formatNumber(report.chunksChecked, lang), `${formatNumber(report.wordCount, lang)} ${lang === "uk" ? "слів" : "words"}`]
   ];
 
   for (const [index, card] of cards.entries()) {
@@ -138,10 +153,10 @@ export function generateReportCanvas(report: ScanReport): HTMLCanvasElement {
   // Summary Section
   context.fillStyle = printBlack;
   context.font = "800 24px 'Actay Wide', Actay, sans-serif";
-  context.fillText("Підсумок перевірки", 60, y);
+  context.fillText(lang === "uk" ? "Підсумок перевірки" : "Executive Summary", 60, y);
   context.fillStyle = printDark;
   context.font = "400 21px Actay, sans-serif";
-  y = wrapCanvasText(context, reportSummaryText(report), 60, y + 34, 1080, 30) + 16;
+  y = wrapCanvasText(context, translateReportSummary(reportSummaryText(report, lang), lang), 60, y + 34, 1080, 30) + 16;
 
   // AI Opinion Summary (if present)
   if (report.aiOpinionNote) {
@@ -155,7 +170,7 @@ export function generateReportCanvas(report: ScanReport): HTMLCanvasElement {
 
     context.fillStyle = accentEmerald;
     context.font = "800 18px 'Actay Wide', Actay, sans-serif";
-    context.fillText("Експертний AI-висновок нейромережі", 80, y + 32);
+    context.fillText(lang === "uk" ? "Експертний AI-висновок нейромережі" : "Expert AI Model Evaluation", 80, y + 32);
 
     context.fillStyle = printDark;
     context.font = "400 18px Actay, sans-serif";
@@ -167,12 +182,12 @@ export function generateReportCanvas(report: ScanReport): HTMLCanvasElement {
   if (report.scanNotes?.length) {
     context.fillStyle = printBlack;
     context.font = "800 22px 'Actay Wide', Actay, sans-serif";
-    context.fillText("Примітки та надійність аналізу", 60, y);
+    context.fillText(lang === "uk" ? "Примітки та надійність аналізу" : "Scan Notes & Reliability", 60, y);
     context.fillStyle = printGray;
     context.font = "400 18px Actay, sans-serif";
     y += 30;
     for (const note of report.scanNotes.slice(0, 4)) {
-      y = wrapCanvasText(context, `•  ${note}`, 75, y, 1050, 25);
+      y = wrapCanvasText(context, `•  ${translateScanNote(note, lang)}`, 75, y, 1050, 25);
     }
     y += 14;
   }
@@ -189,23 +204,34 @@ export function generateReportCanvas(report: ScanReport): HTMLCanvasElement {
   // Sources Section
   context.fillStyle = printBlack;
   context.font = "800 24px 'Actay Wide', Actay, sans-serif";
-  context.fillText("Знайдені джерела та збіги", 60, y);
+  context.fillText(lang === "uk" ? "Знайдені джерела та збіги" : "Discovered Sources & Matches", 60, y);
   y += 36;
   context.font = "400 18px Actay, sans-serif";
   context.fillStyle = printGray;
 
   const matches = report.matches.slice(0, 5);
   if (matches.length === 0) {
-    y = wrapCanvasText(context, "Сильних збігів у відкритих наукових базах та вебджерелах не знайдено.", 60, y, 1080, 28) + 20;
+    y = wrapCanvasText(
+      context,
+      lang === "uk"
+        ? "Сильних збігів у відкритих наукових базах та вебджерелах не знайдено."
+        : "No significant matches found in open web or academic registries.",
+      60,
+      y,
+      1080,
+      28
+    ) + 20;
   } else {
     for (const match of matches) {
       context.fillStyle = printBlack;
       context.font = "800 20px Actay, sans-serif";
-      y = wrapCanvasText(context, `${match.score}% збігу  —  ${match.title}`, 60, y, 1080, 28);
+      y = wrapCanvasText(context, `${match.score}% ${lang === "uk" ? "збігу" : "match"}  —  ${match.title}`, 60, y, 1080, 28);
 
       context.fillStyle = printGray;
       context.font = "400 17px Actay, sans-serif";
-      const evidenceLabel = match.confidence === "page" ? "текст підтверджено джерелом" : "пошуковий уривок";
+      const evidenceLabel = match.confidence === "page"
+        ? (lang === "uk" ? "текст підтверджено джерелом" : "full text verified")
+        : (lang === "uk" ? "пошуковий уривок" : "search snippet");
       y = wrapCanvasText(
         context,
         `${match.url}  •  ${match.provider}  •  ${evidenceLabel}`,
@@ -216,7 +242,7 @@ export function generateReportCanvas(report: ScanReport): HTMLCanvasElement {
       );
       if (match.confidence === "page" && match.submittedEvidence) {
         context.fillStyle = printDark;
-        y = wrapCanvasText(context, `Спільний уривок: «${match.submittedEvidence}»`, 80, y + 4, 1050, 24);
+        y = wrapCanvasText(context, `${lang === "uk" ? "Спільний уривок:" : "Matching excerpt:"} «${match.submittedEvidence}»`, 80, y + 4, 1050, 24);
       }
       y += 14;
     }
@@ -234,17 +260,17 @@ export function generateReportCanvas(report: ScanReport): HTMLCanvasElement {
   // AI Signals Section
   context.fillStyle = printBlack;
   context.font = "800 24px 'Actay Wide', Actay, sans-serif";
-  context.fillText("Маркери штучного інтелекту (AI Signals)", 60, y);
+  context.fillText(lang === "uk" ? "Маркери штучного інтелекту (AI Signals)" : "AI Stylometry Signals", 60, y);
   y += 36;
 
   for (const signal of report.aiSignals.slice(0, 5)) {
     context.fillStyle = printBlack;
     context.font = "800 19px Actay, sans-serif";
-    context.fillText(`${signal.label}: ${signal.score}%`, 60, y);
+    context.fillText(`${translateSignalLabel(signal.label, lang)}: ${signal.score}%`, 60, y);
 
     context.fillStyle = printGray;
     context.font = "400 17px Actay, sans-serif";
-    y = wrapCanvasText(context, signal.detail, 80, y + 24, 1050, 24) + 12;
+    y = wrapCanvasText(context, translateSignalDetail(signal.detail, lang), 80, y + 24, 1050, 24) + 12;
   }
 
   // Footer
@@ -258,13 +284,19 @@ export function generateReportCanvas(report: ScanReport): HTMLCanvasElement {
 
   context.fillStyle = printGray;
   context.font = "500 15px Actay, sans-serif";
-  context.fillText(`ID звіту: ${report.id}  •  Перевірено на nezbig.vercel.app  •  Всі права захищено`, 60, y + 6);
+  context.fillText(
+    lang === "uk"
+      ? `ID звіту: ${report.id}  •  Перевірено на nezbig.vercel.app  •  Всі права захищено`
+      : `Report ID: ${report.id}  •  Verified on nezbig.vercel.app  •  All rights reserved`,
+    60,
+    y + 6
+  );
 
   return canvas;
 }
 
-export function downloadReportPng(report: ScanReport): void {
-  const canvas = generateReportCanvas(report);
+export function downloadReportPng(report: ScanReport, lang: Language = getFallbackLang()): void {
+  const canvas = generateReportCanvas(report, lang);
   canvas.toBlob((blob) => {
     if (!blob) return;
     const url = URL.createObjectURL(blob);
@@ -280,8 +312,8 @@ export function downloadReportPng(report: ScanReport): void {
 /**
  * Generates an instant, crisp A4 PDF document without browser freezing
  */
-export function downloadReportPdf(report: ScanReport): void {
-  const fullCanvas = generateReportCanvas(report);
+export function downloadReportPdf(report: ScanReport, lang: Language = getFallbackLang()): void {
+  const fullCanvas = generateReportCanvas(report, lang);
   const pdf = new jsPDF({
     orientation: "portrait",
     unit: "mm",

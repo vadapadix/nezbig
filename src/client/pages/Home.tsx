@@ -1,4 +1,5 @@
-import { FormEvent, useMemo, useState, useRef, useEffect, Suspense, lazy } from "react";
+import { useMemo, useState, useRef, useEffect, Suspense, lazy } from "react";
+import { useSearchParams, useLocation } from "react-router-dom";
 import { useScan } from "../hooks/useScan";
 import { useAiOpinion } from "../hooks/useAiOpinion";
 import { useDragDrop } from "../hooks/useDragDrop";
@@ -7,6 +8,7 @@ import { useFaviconProgress } from "../hooks/useFaviconProgress";
 import { useDocumentEditor } from "../hooks/useDocumentEditor";
 import { useLanguage } from "../context/LanguageContext";
 import { recommendSettings, estimateScanSeconds, formatDuration, defaultSettings } from "../utils/scanSettings";
+import { htmlFromPlainText } from "../richText";
 import type { ScanReport } from "../../shared/types";
 import { LoadingPanel } from "../components/LoadingPanel";
 import { RecentScansBar } from "../components/RecentScansBar";
@@ -18,6 +20,8 @@ const ReportView = lazy(() => import("../components/ReportView").then(m => ({ de
 
 export default function Home({ showToast }: { showToast: (msg: string, type?: "success" | "error" | "info") => void }) {
   const { t, lang } = useLanguage();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
   const [settings, setSettings] = useState(defaultSettings);
   const reportRef = useRef<HTMLElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -33,10 +37,33 @@ export default function Home({ showToast }: { showToast: (msg: string, type?: "s
     void editor.handleFile(file);
   });
 
-  const { draftSaved, clearDraft } = useDraft(editor.text, editor.sourceHtml, editor.fileName, (draft) => {
+  const { clearDraft } = useDraft(editor.text, editor.sourceHtml, editor.fileName, (draft) => {
     editor.setEditorContent(draft.html, draft.text);
     editor.setFileName(draft.fileName);
   });
+
+  // Handle incoming text from Humanizer or URL query
+  useEffect(() => {
+    const state = location.state as { text?: string; html?: string } | null;
+    const queryText = searchParams.get("text");
+    const incomingText = state?.text || queryText;
+
+    if (incomingText && incomingText.trim()) {
+      const html = state?.html || htmlFromPlainText(incomingText);
+      editor.setEditorContent(html, incomingText);
+      editor.setFileName(lang === "uk" ? "Олюднений текст" : "Humanized Text");
+      editor.setSelectedFile(null);
+      setReport(null);
+      showToast(lang === "uk" ? "Текст перенесено до перевірки на плагіат." : "Text transferred to plagiarism checker.", "success");
+
+      if (queryText) {
+        setSearchParams({}, { replace: true });
+      }
+      if (state) {
+        window.history.replaceState({}, "");
+      }
+    }
+  }, [searchParams, setSearchParams, location.state, lang, showToast]);
 
   useFaviconProgress(progress);
 
@@ -119,6 +146,7 @@ export default function Home({ showToast }: { showToast: (msg: string, type?: "s
     setReport(null);
     cancel();
     editor.setSelectedFile(null);
+    editor.setFileName(lang === "uk" ? "Вставлений текст" : "Pasted Text");
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -187,7 +215,9 @@ export default function Home({ showToast }: { showToast: (msg: string, type?: "s
 
         {isDragging && (
           <div className="absolute inset-0 z-50 bg-emerald-glow/10 backdrop-blur-sm border-2 border-dashed border-emerald-glow rounded-xl flex items-center justify-center">
-            <p className="text-headline-lg text-emerald-glow font-bold">Відпустіть файл для завантаження</p>
+            <p className="text-headline-lg text-emerald-glow font-bold">
+              {lang === "uk" ? "Відпустіть файл для завантаження" : "Drop file to upload"}
+            </p>
           </div>
         )}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -208,12 +238,12 @@ export default function Home({ showToast }: { showToast: (msg: string, type?: "s
                         <button
                           type="button"
                           onClick={() => {
-                            editor.clearFile();
+                            editor.detachFile();
                             if (fileInputRef.current) fileInputRef.current.value = "";
                           }}
                           className="ml-1 text-on-surface-variant hover:text-rose-400 p-1 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
-                          title={lang === "uk" ? "Прибрати файл" : "Remove file"}
-                          aria-label="Remove attached file"
+                          title={lang === "uk" ? "Відкріпити файл" : "Detach file"}
+                          aria-label="Detach attached file"
                         >
                           <span className="material-symbols-outlined text-[18px]">close</span>
                         </button>
@@ -332,7 +362,10 @@ export default function Home({ showToast }: { showToast: (msg: string, type?: "s
                 onClick={() => {
                   editor.setEditorContent("", "");
                   editor.setSelectedFile(null);
+                  editor.setFileName(lang === "uk" ? "Вставлений текст" : "Pasted Text");
+                  if (fileInputRef.current) fileInputRef.current.value = "";
                   setReport(null);
+                  clearDraft();
                 }}
               >
                 <span className="material-symbols-outlined text-[20px]">delete_sweep</span>

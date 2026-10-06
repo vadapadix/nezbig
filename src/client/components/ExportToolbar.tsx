@@ -1,16 +1,18 @@
 import { useState } from "react";
 import type { ScanReport } from "../../shared/types";
 import { downloadReportPdf, downloadReportPng } from "../utils/reportExport";
+import { useLanguage } from "../context/LanguageContext";
 
 interface ExportToolbarProps {
   report: ScanReport;
 }
 
 export function ExportToolbar({ report }: ExportToolbarProps) {
+  const { lang } = useLanguage();
   const [exportingType, setExportingType] = useState<"pdf" | "png" | "json" | null>(null);
 
   const downloadIcon = (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
       <polyline points="7 10 12 15 17 10"></polyline>
       <line x1="12" y1="15" x2="12" y2="3"></line>
@@ -21,7 +23,7 @@ export function ExportToolbar({ report }: ExportToolbarProps) {
     setExportingType("pdf");
     setTimeout(() => {
       try {
-        downloadReportPdf(report);
+        downloadReportPdf(report, lang);
       } finally {
         setExportingType(null);
       }
@@ -32,7 +34,7 @@ export function ExportToolbar({ report }: ExportToolbarProps) {
     setExportingType("png");
     setTimeout(() => {
       try {
-        downloadReportPng(report);
+        downloadReportPng(report, lang);
       } finally {
         setExportingType(null);
       }
@@ -55,37 +57,39 @@ export function ExportToolbar({ report }: ExportToolbarProps) {
     }
   };
 
+  const btnClass = "px-3 py-2 rounded-xl border border-white/10 hover:border-emerald-glow/40 bg-surface-container/60 hover:bg-surface-bright text-xs font-semibold text-white/90 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed";
+
   return (
-    <div style={{ display: "flex", gap: "8px" }}>
+    <div className="flex items-center gap-2">
       <button
-        className="secondary-button"
+        className={btnClass}
         type="button"
         disabled={exportingType !== null}
         onClick={handlePdfClick}
-        style={{ display: "flex", alignItems: "center", gap: "6px" }}
+        title={lang === "uk" ? "Завантажити PDF-звіт" : "Download PDF Report"}
       >
         {downloadIcon}
-        {exportingType === "pdf" ? "PDF..." : "PDF"}
+        <span>{exportingType === "pdf" ? "PDF..." : "PDF"}</span>
       </button>
       <button
-        className="secondary-button"
+        className={btnClass}
         type="button"
         disabled={exportingType !== null}
         onClick={handlePngClick}
-        style={{ display: "flex", alignItems: "center", gap: "6px" }}
+        title={lang === "uk" ? "Завантажити зображення звіту" : "Download PNG Image"}
       >
         {downloadIcon}
-        {exportingType === "png" ? "PNG..." : "PNG"}
+        <span>{exportingType === "png" ? "PNG..." : "PNG"}</span>
       </button>
       <button
-        className="secondary-button"
+        className={btnClass}
         type="button"
         disabled={exportingType !== null}
         onClick={handleJsonClick}
-        style={{ display: "flex", alignItems: "center", gap: "6px" }}
+        title={lang === "uk" ? "Завантажити дані JSON" : "Download Raw JSON"}
       >
         {downloadIcon}
-        JSON
+        <span>JSON</span>
       </button>
     </div>
   );

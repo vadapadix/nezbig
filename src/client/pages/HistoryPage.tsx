@@ -1,9 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, Suspense, lazy } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useLanguage } from "../context/LanguageContext";
 import { AuthModal } from "../components/AuthModal";
-import { ReportView } from "../components/ReportView";
 import type { ScanReport } from "../../shared/types";
+
+const ReportView = lazy(() => import("../components/ReportView").then(m => ({ default: m.ReportView })));
 
 interface HistoryItem {
   id: string;
@@ -15,6 +17,8 @@ interface HistoryItem {
 }
 
 export default function HistoryPage() {
+  const { id } = useParams<{ id?: string }>();
+  const navigate = useNavigate();
   const { isLoggedIn, user } = useAuth();
   const { lang, t } = useLanguage();
   const [items, setItems] = useState<HistoryItem[]>([]);
@@ -22,6 +26,7 @@ export default function HistoryPage() {
   const [showAuth, setShowAuth] = useState(false);
   const [selectedReport, setSelectedReport] = useState<ScanReport | null>(null);
   const [loadingReport, setLoadingReport] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
   const reportRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -75,14 +80,15 @@ export default function HistoryPage() {
     };
   }, [isLoggedIn]);
 
-  async function handleSelectReport(id: string) {
+  const handleSelectReport = useCallback(async (reportId: string) => {
     setLoadingReport(true);
+    setReportError(null);
     try {
       // 1. Try server fetch
       const token = localStorage.getItem("nezbig_auth_token");
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
-      const res = await fetch(`/api/history/${id}`, { headers, credentials: "include" });
+      const res = await fetch(`/api/history/${reportId}`, { headers, credentials: "include" });
       if (res.ok) {
         const report = await res.json();
         setSelectedReport(report);
@@ -92,19 +98,27 @@ export default function HistoryPage() {
       
       // 2. Fallback to localStorage
       const localItems = JSON.parse(localStorage.getItem("nezbig_local_history") || "[]");
-      const found = localItems.find((i: any) => i.id === id);
+      const found = localItems.find((i: any) => i.id === reportId);
       if (found?.fullReport) {
         setSelectedReport(found.fullReport);
         window.scrollTo({ top: 0, behavior: "smooth" });
         return;
       }
       throw new Error("Report not found");
-    } catch (e) {
-      alert(lang === "uk" ? "Не вдалося завантажити детальний звіт" : "Failed to load scan report");
+    } catch {
+      setReportError(lang === "uk" ? "Не вдалося завантажити детальний звіт." : "Failed to load scan report.");
     } finally {
       setLoadingReport(false);
     }
-  }
+  }, [lang]);
+
+  useEffect(() => {
+    if (id) {
+      void handleSelectReport(id);
+    } else {
+      setSelectedReport(null);
+    }
+  }, [id, handleSelectReport]);
 
   if (!isLoggedIn && items.length === 0) {
     return (
@@ -120,7 +134,7 @@ export default function HistoryPage() {
         </p>
         <button
           onClick={() => setShowAuth(true)}
-          className="px-8 py-3 bg-gradient-to-br from-emerald-glow to-primary-container text-on-primary rounded-xl font-medium shadow-[0_8px_32px_rgba(42,187,167,0.3)] hover:-translate-y-1 transition-all"
+          className="px-8 py-3 bg-gradient-to-br from-emerald-glow to-primary-container text-on-primary rounded-xl font-medium shadow-[0_8px_32px_rgba(42,187,167,0.3)] hover:-translate-y-1 transition-all cursor-pointer"
         >
           {lang === "uk" ? "Увійти в акаунт" : "Sign In to Account"}
         </button>
@@ -144,13 +158,18 @@ export default function HistoryPage() {
     return (
       <div className="max-w-container-max mx-auto px-gutter py-8 relative z-10 fade-in flex flex-col gap-6">
         <button
-          onClick={() => setSelectedReport(null)}
-          className="self-start flex items-center gap-2 text-emerald-glow hover:text-emerald-glow/80 font-medium transition-colors"
+          onClick={() => {
+            setSelectedReport(null);
+            navigate("/history", { replace: true });
+          }}
+          className="self-start flex items-center gap-2 text-emerald-glow hover:text-emerald-glow/80 font-medium transition-colors cursor-pointer px-3 py-1.5 rounded-lg hover:bg-emerald-glow/10"
         >
           <span className="material-symbols-outlined">arrow_back</span>
-          {lang === "uk" ? "Назад до списку перевірок" : "Back to History"}
+          <span>{lang === "uk" ? "Назад до списку перевірок" : "Back to History"}</span>
         </button>
-        <ReportView report={selectedReport} llmBusy={false} reportRef={reportRef} />
+        <Suspense fallback={<div className="text-center py-12 text-on-surface-variant">{lang === "uk" ? "Завантаження звіту..." : "Loading report..."}</div>}>
+          <ReportView report={selectedReport} llmBusy={false} reportRef={reportRef} />
+        </Suspense>
       </div>
     );
   }
@@ -272,9 +291,26 @@ export default function HistoryPage() {
         )
       )}
 
+      {reportError && (
+        <div className="p-4 rounded-xl bg-error/10 border border-error/20 text-error flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-xl">error</span>
+            <span>{reportError}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setReportError(null)}
+            className="text-error/70 hover:text-error cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-lg">close</span>
+          </button>
+        </div>
+      )}
+
       {loadingReport && (
-        <div className="text-emerald-glow text-center py-4">
-          {lang === "uk" ? "Завантаження детального звіту..." : "Loading detailed report..."}
+        <div className="text-emerald-glow text-center py-4 flex items-center justify-center gap-2">
+          <span className="material-symbols-outlined animate-spin text-xl">progress_activity</span>
+          <span>{lang === "uk" ? "Завантаження детального звіту..." : "Loading detailed report..."}</span>
         </div>
       )}
 
@@ -283,9 +319,9 @@ export default function HistoryPage() {
           <span className="material-symbols-outlined text-5xl text-on-surface-variant/40">description</span>
           <p className="text-body-lg text-on-surface-variant text-center">
             {lang === "uk" ? (
-              <>Ви ще не проводили перевірок. Перейдіть на <a href="/" className="text-emerald-glow hover:underline">головну</a> і запустіть першу!</>
+              <>Ви ще не проводили перевірок. Перейдіть на <Link to="/" className="text-emerald-glow hover:underline">головну</Link> і запустіть першу!</>
             ) : (
-              <>No scans yet. Go to <a href="/" className="text-emerald-glow hover:underline">home</a> to run your first check!</>
+              <>No scans yet. Go to <Link to="/" className="text-emerald-glow hover:underline">home</Link> to run your first check!</>
             )}
           </p>
         </div>
@@ -326,7 +362,7 @@ export default function HistoryPage() {
                   )}
                   <button
                     onClick={(e) => handleDeleteItem(e, item.id)}
-                    className="p-1.5 text-on-surface-variant/40 hover:text-error hover:bg-error/10 rounded-lg transition-all"
+                    className="p-1.5 text-on-surface-variant/40 hover:text-error hover:bg-error/10 rounded-lg transition-all cursor-pointer"
                     title={lang === "uk" ? "Видалити з історії" : "Delete from history"}
                   >
                     <span className="material-symbols-outlined text-[20px]">delete</span>

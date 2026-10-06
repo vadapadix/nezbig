@@ -117,9 +117,16 @@ export function useDocumentEditor(onMessage?: (msg: string) => void) {
     onMessage?.(lang === "uk" ? "Файл прибрано. Можна вставити текст вручну." : "File removed. You can type or paste text manually.");
   }, [setEditorContent, onMessage]);
 
+  const detachFile = useCallback(() => {
+    const lang = getLang();
+    setSelectedFile(null);
+    setFileName(lang === "uk" ? "Вставлений текст" : "Pasted Text");
+    onMessage?.(lang === "uk" ? "Файл відкріплено. Текст залишено для редагування." : "File detached. Text kept for editing.");
+  }, [onMessage]);
+
   return {
     text, fileName, selectedFile, sourceHtml, formattedPreviewBusy,
     editorRef, setEditorContent, syncEditorFromDom, handleRichPaste,
-    handleFile, clearFile, setText, setFileName, setSelectedFile, setSourceHtml
+    handleFile, clearFile, detachFile, setText, setFileName, setSelectedFile, setSourceHtml
   };
 }

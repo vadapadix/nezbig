@@ -128,5 +128,5 @@ export function useScan() {
     }
   }, []);
 
-  return { report, setReport, busy, progress, scan, cancel };
+  return { report, setReport, busy, progress, error, scan, cancel };
 }

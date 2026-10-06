@@ -259,7 +259,6 @@ function strongestChannelScore(signals: SignalDraft[], category: NonNullable<AiS
 
 function analyzeSinglePass(text: string): { probability: number; signals: AiSignal[] } {
   const normalized = normalizeWhitespace(text);
-  const lower = normalized.toLowerCase();
   const words = tokenize(normalized, true);
   const contentWords = tokenize(normalized);
   const sentences = splitSentences(normalized);

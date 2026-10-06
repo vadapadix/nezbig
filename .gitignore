@@ -4,3 +4,4 @@ dev-server*.log
 .env
 .tmp/
 .nezbig-data/
+playwright-report/

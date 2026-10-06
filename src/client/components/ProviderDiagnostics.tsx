@@ -26,12 +26,12 @@ export function ProviderDiagnostics({ diagnostics }: { diagnostics: ScanReport["
           key={provider.provider}
           title={provider.skippedReason ?? `${provider.failed} errors, ${provider.timedOut} timeout`}
         >
-          <div className="provider-health-metric">
+          <span className="provider-health-metric">
             <strong>
               <ProviderIcon provider={provider.provider} /> {provider.provider}
             </strong>
             {providerDiagnosticLabel(provider, lang)}
-          </div>
+          </span>
         </span>
       ))}
       <span title={lang === "uk" ? "Сторінки, текст яких сервер зміг прочитати для підтвердження збігу" : "Pages fetched and verified in full"}>
