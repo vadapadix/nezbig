@@ -5,3 +5,7 @@ dev-server*.log
 .tmp/
 .nezbig-data/
 playwright-report/
+__pycache__/
+*.pyc
+docs/page*.png
+docs/test_out.docx
