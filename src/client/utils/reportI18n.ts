@@ -23,7 +23,9 @@ const signalLabelsEn: Record<string, string> = {
   "Запобіжники від false positive": "False Positive Safeguards",
   "Вилучений неавторський вміст": "Excluded Non-Authorial Content",
   "Стилометрична однорідність": "Stylometric Uniformity",
-  "Словникове різноманіття": "Vocabulary Diversity"
+  "Словникове різноманіття": "Vocabulary Diversity",
+  "Тріадичні переліки (Rule of Three)": "Triadic Structures (Rule of Three)",
+  "Діалектичне балансування": "Dialectical Balancing & Antithesis"
 };
 
 export function translateSignalLabel(label: string, lang: Language): string {

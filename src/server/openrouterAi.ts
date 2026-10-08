@@ -57,18 +57,18 @@ function buildMessages(text: string, localAi: LocalAiResult): OpenRouterMessage[
     {
       role: "system",
       content:
-        "You are a careful authorship-risk analyst for Ukrainian and English text. Return only valid JSON. Do not claim certainty. Treat AI detection as probabilistic. Penalize false positives for citations, personal voice, concrete data, and domain-specific vocabulary."
+        "You are an expert academic authorship and AI-stylometry analyst evaluating Ukrainian and English text based on empirical detection research (2024–2026). Return only valid JSON matching the requested schema. Treat AI detection as strictly probabilistic. Ground your evaluation in proven linguistic markers: sentence burstiness (CV of sentence length, uniform pacing vs dynamic rhythm), discourse connector over-reliance ('важливо зазначити', 'відіграє ключову роль', 'наріжний камінь', 'furthermore', 'testament to'), triadic rule-of-three structures ('X, Y та Z'), dialectical hedging ('з одного боку ... проте з іншого'), and lexical tail richness (Hapax Legomena). Crucially protect genuine student writing from false positives: formal citations [1], academic tables/figures, and domain terminology are expected in human research and must not be penalized."
     },
     {
       role: "user",
-      content: `Analyze whether this text appears AI-generated. Use the local heuristic only as context, not as truth.
+      content: `Analyze whether this text appears AI-generated using modern empirical stylometry markers. Use the local heuristic only as context, not as ground truth.
 
 ${JSON_SHAPE_PROMPT}
 
-Local heuristic probability: ${localAi.probability}
-Local heuristic signals: ${JSON.stringify(localAi.signals.slice(0, 6))}
+Local heuristic probability: ${localAi.probability}%
+Local heuristic signals: ${JSON.stringify(localAi.signals.slice(0, 8))}
 
-Text:
+Text sample:
 ${sample}`
     }
   ];

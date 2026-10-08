@@ -70,9 +70,11 @@ const AI_PATTERN_GROUPS = [
     patterns: [
       /(?:crucial|pivotal|vibrant|valuable|seamless|robust|innovative|transformative|groundbreaking|comprehensive|meticulous|unwavering|versatile|alignment|synergy|multifaceted|beacon of|tapestry of|testament to)/gi,
       /(?:delve|leverage|utilize|enhance|underscore|showcase|foster|facilitate|optimize|navigate the complexities|evolving landscape|rapidly changing|it is important to note|in essence)/gi,
+      /(?:catalyst for|cornerstone of|profound impact|new era of|plays an indispensable role|navigating the nuances|fosters an environment|serves as a testament|intricate tapestry|delve deeper into|beacon of|spearhead|crucial step)/gi,
       /(?:ключов(?:ий|а|е|і)|важлив(?:ий|а|е|і)|комплексн(?:ий|а|е|і)|ефективн(?:ий|а|е|і)|інноваційн(?:ий|а|е|і))[^.!?]{0,70}(?:підхід|рішення|роль|значення|розвиток|система|чинник|аспект)/gi,
       /(?:підкреслює|відіграє (?:ключову|вирішальну|важливу) роль|розкриває потенціал|важливо розуміти|варто відмітити|варто зауважити|вимагає уваги|нерозривно пов'язан|створює міцне підґрунтя)/gi,
-      /(?:трансформаційний потенціал|гармонійне поєднання|широкий спектр|динамічний розвиток|невіддільна частина|покликаний забезпечити|відкриває нові горизонти)/gi
+      /(?:трансформаційний потенціал|гармонійне поєднання|широкий спектр|динамічний розвиток|невіддільна частина|покликаний забезпечити|відкриває нові горизонти)/gi,
+      /(?:наріжний камінь|слугує каталізатором|виступає фундаментом|динамічно трансформується|комплексне осмислення|стратегічний вектор|акцентувати увагу|відіграє невід'ємну роль|новий вимір|втілення інновацій|крок до вдосконалення|свідченням вагомого|невіддільним елементом|покликаний слугувати|варто окреслити|вирішальне значення)/gi
     ]
   },
   {
@@ -115,7 +117,9 @@ const AI_PATTERN_GROUPS = [
     patterns: [
       /(?:як штучний інтелект|я не можу|моя база знань|до моменту мого останнього оновлення|as an ai|as an artificial intelligence|i cannot|i don'?t have access|my knowledge cutoff)/gi,
       /(?:важливо пам'ятати|важливо зазначити|однак варто пам'ятати|необхідно враховувати|слід зауважити|it is important to remember|it is crucial to note)/gi,
-      /(?:в епоху цифрових технологій|у сучасному світі|стрімкий розвиток|безперечно|підсумовуючи|бути свідченням|беззаперечно|яскравий приклад)/gi
+      /(?:в епоху цифрових технологій|у сучасному світі|стрімкий розвиток|безперечно|підсумовуючи|бути свідченням|беззаперечно|яскравий приклад)/gi,
+      /(?:розглянемо детальніше|нижче наведено основні|підсумуємо викладене|враховуючи вищезазначене|узагальнюючи викладений матеріал|важливо звернути увагу|узагальнюючи вищесказане)/gi,
+      /(?:let's delve into|below are the key|to sum up the above|in summary|it is worth emphasizing)/gi
     ]
   }
 ];
@@ -435,6 +439,28 @@ function analyzeSinglePass(text: string): { probability: number; signals: AiSign
           : "Довжина абзаців варіюється природно.",
       evidence: stylometry.paragraphUniformityScore >= 30 ? stylometry.evidence.filter((e) => e.includes("абзаців")) : [],
       weight: 0.65
+    },
+    {
+      label: "Тріадичні переліки (Rule of Three)",
+      score: stylometry.triadicScore,
+      category: "structure",
+      detail:
+        stylometry.triadicScore >= 35
+          ? "Текст має високу концентрацію трикомпонентних списків (X, Y та Z), що є характерним синтаксичним маркером генеративних моделей."
+          : "Тріадичні конструкції у межах норми.",
+      evidence: stylometry.evidence.filter((e) => e.includes("Rule of Three")),
+      weight: 0.75
+    },
+    {
+      label: "Діалектичне балансування",
+      score: stylometry.antithesisScore,
+      category: "pattern",
+      detail:
+        stylometry.antithesisScore >= 35
+          ? "Надмірна кількість штучно збалансованих протиставлень ('з одного боку ... з іншого боку', 'попри ... водночас'), типових для обережності ШІ."
+          : "Синтаксичні антитези у межах норми.",
+      evidence: stylometry.evidence.filter((e) => e.includes("балансування")),
+      weight: 0.7
     },
     ...patternBased
   ];

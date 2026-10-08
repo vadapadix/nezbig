@@ -6,6 +6,8 @@ export type StylometryAnalysis = {
   punctuationEntropyScore: number;
   paragraphUniformityScore: number;
   rhythmDeltaScore: number;
+  triadicScore: number;
+  antithesisScore: number;
   evidence: string[];
 };
 
@@ -171,6 +173,54 @@ export function analyzeSentencePacing(sentenceLengths: number[]): { score: numbe
 }
 
 /**
+ * Analyzes Triadic Enumerations and Rule-of-Three Bias.
+ * State-of-the-art research (2024-2026) demonstrates that LLMs exhibit a pronounced bias toward grouping arguments,
+ * adjectives, and items in sets of three ("X, Y, and Z" / "X, Y та Z").
+ */
+export function analyzeTriadicStructures(text: string, wordCount: number): { score: number; evidence: string[] } {
+  if (wordCount < 45) return { score: 0, evidence: [] };
+
+  const matches = text.match(/[\p{L}\p{N}'-]+,\s+[\p{L}\p{N}'-]+,?\s+(?:та|і|й|або|and|or)\s+[\p{L}\p{N}'-]+/giu) ?? [];
+  const density = matches.length / Math.max(1, wordCount / 100);
+
+  let score = 0;
+  if (density >= 0.9 && matches.length >= 2) {
+    score = clampScore(Math.min(1, (density - 0.4) / 1.4) * 100);
+  }
+
+  const evidence: string[] = [];
+  if (score >= 35) {
+    evidence.push(`Тріадичні переліки (Rule of Three): ${matches.length} груп`);
+  }
+
+  return { score, evidence };
+}
+
+/**
+ * Analyzes Dialectical Balancing and Antithetical Hedging.
+ * Recent LLM studies identify reflexive structural hedging where statements are consistently balanced with opposing clauses
+ * ("з одного боку ... з іншого боку", "попри ... водночас", "while ... nonetheless").
+ */
+export function analyzeAntitheticalBalance(text: string, wordCount: number): { score: number; evidence: string[] } {
+  if (wordCount < 50) return { score: 0, evidence: [] };
+
+  const matches = text.match(/(?:з одного боку[\s\S]{10,140}з іншого боку|on the one hand[\s\S]{10,140}on the other hand|попри[\s\S]{5,80}(?:водночас|проте|однак|разом з тим)|хоча[\s\S]{5,80}(?:проте|однак|але й)|незважаючи на[\s\S]{5,80}(?:важливо|залишається|потрібно)|while[\s\S]{5,80}(?:it is crucial|it remains|nonetheless|however))/giu) ?? [];
+  const density = matches.length / Math.max(1, wordCount / 100);
+
+  let score = 0;
+  if (matches.length >= 2 || (matches.length >= 1 && density >= 0.8)) {
+    score = clampScore(Math.min(1, density / 1.1) * 100);
+  }
+
+  const evidence: string[] = [];
+  if (score >= 35) {
+    evidence.push(`Діалектичне балансування (${matches.length} антитетичних конструкцій)`);
+  }
+
+  return { score, evidence };
+}
+
+/**
  * Comprehensive Stylometric Analysis
  */
 export function performStylometryAnalysis(text: string, proseSentences: string[], paragraphs: string[]): StylometryAnalysis {
@@ -181,8 +231,17 @@ export function performStylometryAnalysis(text: string, proseSentences: string[]
   const punctuation = analyzePunctuationEntropy(text, proseSentences.length);
   const paragraph = analyzeParagraphUniformity(paragraphs);
   const pacing = analyzeSentencePacing(sentenceLengths);
+  const triadic = analyzeTriadicStructures(text, words.length);
+  const antithesis = analyzeAntitheticalBalance(text, words.length);
 
-  const allEvidence = [...zipf.evidence, ...punctuation.evidence, ...paragraph.evidence, ...pacing.evidence];
+  const allEvidence = [
+    ...zipf.evidence,
+    ...punctuation.evidence,
+    ...paragraph.evidence,
+    ...pacing.evidence,
+    ...triadic.evidence,
+    ...antithesis.evidence
+  ];
 
   return {
     zipfScore: zipf.score,
@@ -190,6 +249,8 @@ export function performStylometryAnalysis(text: string, proseSentences: string[]
     punctuationEntropyScore: punctuation.score,
     paragraphUniformityScore: paragraph.score,
     rhythmDeltaScore: pacing.score,
+    triadicScore: triadic.score,
+    antithesisScore: antithesis.score,
     evidence: allEvidence
   };
 }
