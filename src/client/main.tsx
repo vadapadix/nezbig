@@ -8,6 +8,14 @@ import App from "./App";
 import "./styles.css";
 import "./polish.css";
 
+if (typeof window !== "undefined" && "serviceWorker" in navigator && import.meta.env.PROD) {
+  import("virtual:pwa-register")
+    .then(({ registerSW }) => {
+      registerSW({ immediate: true });
+    })
+    .catch(() => {});
+}
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ErrorBoundary>

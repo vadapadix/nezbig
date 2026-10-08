@@ -46,7 +46,7 @@ function sourceForCandidate(candidate: SearchCandidate): string {
   return `${candidate.title} ${candidate.snippet}`;
 }
 
-function winnowFingerprints(tokens: string[], gramSize = 5, windowSize = 4): Set<number> {
+function winnowFingerprints(tokens: string[], gramSize = 4, windowSize = 4): Set<number> {
   const hashes: number[] = [];
   for (let index = 0; index <= tokens.length - gramSize; index += 1) {
     hashes.push(stableHash(tokens.slice(index, index + gramSize).join(" ")));
@@ -91,26 +91,33 @@ export function scoreCandidate(chunkText: string, candidate: SearchCandidate, ch
   const sourceTokens = tokenize(chunkText);
   const sourceRunTokens = tokenize(chunkText, true);
   const candidateText = sourceForCandidate(candidate);
-  const candidateTokens = tokenize(candidateText).slice(0, 8000);
-  const candidateRunTokens = tokenize(candidateText, true).slice(0, 8000);
+  const candidateTokens = tokenize(candidateText).slice(0, 16000);
+  const candidateRunTokens = tokenize(candidateText, true).slice(0, 16000);
   const candidateIndex = new FullTextIndex(candidateTokens);
 
   const candidateSet = new Set(candidateTokens);
   const overlapCount = sourceTokens.filter((token) => candidateSet.has(token)).length;
   const overlapPercent = sourceTokens.length === 0 ? 0 : overlapCount / sourceTokens.length;
+  const twoGramOverlap = overlapRatio(buildNgrams(sourceTokens, 2), buildNgrams(candidateTokens, 2));
   const threeGramOverlap = overlapRatio(buildNgrams(sourceTokens, 3), buildNgrams(candidateTokens, 3));
-  const fiveGramOverlap = overlapRatio(buildNgrams(sourceRunTokens, 5), buildNgrams(candidateRunTokens, 5));
-  // Increased gramSize from 5→7 and windowSize from 4→5 for better specificity
-  const hashOverlap = setOverlapPercent(winnowFingerprints(sourceRunTokens, 7, 5), winnowFingerprints(candidateRunTokens, 7, 5));
+  const fourGramOverlap = overlapRatio(buildNgrams(sourceRunTokens, 4), buildNgrams(candidateRunTokens, 4));
+  const hashOverlap = setOverlapPercent(winnowFingerprints(sourceRunTokens, 4, 4), winnowFingerprints(candidateRunTokens, 4, 4));
   const fullTextRank = candidateIndex.rank(sourceTokens);
   const commonRun = longestCommonRun(sourceRunTokens, candidateRunTokens);
   const longestRun = commonRun.length;
 
-  const runScore = Math.min(1, longestRun / 15);
-  const phraseScore = Math.max(threeGramOverlap * 0.75, fiveGramOverlap);
-  const pageBonus = candidate.sourceText ? 1 : 0.72;
+  const runScore = Math.min(1, longestRun / 10);
+  const phraseScore = Math.max(twoGramOverlap * 0.45 + threeGramOverlap * 0.55, fourGramOverlap);
+  const pageBonus = candidate.sourceText ? 1 : 0.85;
 
-  const score = clampScore((overlapPercent * 0.1 + phraseScore * 0.3 + runScore * 0.24 + hashOverlap * 0.26 + fullTextRank * 0.1) * 100 * pageBonus);
+  let baseScore = (overlapPercent * 0.24 + fullTextRank * 0.20 + phraseScore * 0.22 + runScore * 0.20 + hashOverlap * 0.14) * 100 * pageBonus;
+
+  // Verbatim copy-paste boost when significant contiguous runs exist
+  if (longestRun >= 8) {
+    baseScore = Math.max(baseScore, Math.min(100, longestRun * 6.5) * pageBonus);
+  }
+
+  const score = clampScore(baseScore);
 
   return {
     ...candidate,
@@ -123,7 +130,7 @@ export function scoreCandidate(chunkText: string, candidate: SearchCandidate, ch
     longestRun,
     confidence: candidate.sourceText ? "page" : "snippet",
     excerpt: normalizeWhitespace(chunkText).split(" ").slice(0, 48).join(" "),
-    submittedEvidence: longestRun >= 5 ? sourceRunTokens.slice(commonRun.sourceStart, commonRun.sourceStart + longestRun).join(" ") : undefined,
-    sourceEvidence: longestRun >= 5 && candidate.sourceText ? candidateRunTokens.slice(commonRun.candidateStart, commonRun.candidateStart + longestRun).join(" ") : undefined
+    submittedEvidence: longestRun >= 4 ? sourceRunTokens.slice(commonRun.sourceStart, commonRun.sourceStart + longestRun).join(" ") : undefined,
+    sourceEvidence: longestRun >= 4 && candidate.sourceText ? candidateRunTokens.slice(commonRun.candidateStart, commonRun.candidateStart + longestRun).join(" ") : undefined
   };
 }

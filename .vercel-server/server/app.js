@@ -113,10 +113,10 @@ function fullCoverageSettings(settings, wordCount) {
 }
 function thresholdFor(settings) {
     if (settings.sensitivity === "quick")
-        return 38;
-    if (settings.sensitivity === "deep")
         return 24;
-    return 32;
+    if (settings.sensitivity === "deep")
+        return 12;
+    return 16;
 }
 async function mapWithConcurrency(items, concurrency, worker) {
     const results = new Array(items.length);
@@ -188,7 +188,7 @@ async function runScan(request, fileEvidence, onProgress) {
     const preliminaryMatches = matchedByChunk.flatMap((result) => result.matches);
     let searchDiagnostics = mergeSearchDiagnostics(...matchedByChunk.map((result) => result.diagnostics));
     const hydrationTargets = preliminaryMatches
-        .filter(({ match }) => match.confidence === "snippet" && (match.score >= thresholdFor(settings) - 10 || match.longestRun >= 7))
+        .filter(({ match }) => match.confidence === "snippet" && (match.score >= Math.max(12, thresholdFor(settings) - 6) || match.longestRun >= 4 || match.overlapPercent >= 20))
         .sort((a, b) => b.match.score - a.match.score || b.match.longestRun - a.match.longestRun)
         .slice(0, veryLongDocumentMode ? 32 : longDocumentMode ? 48 : 80);
     const hydration = await hydrateSearchCandidatesDetailed(hydrationTargets.map(({ match }) => match), hydrationTargets.length);
@@ -196,7 +196,7 @@ async function runScan(request, fileEvidence, onProgress) {
     const hydratedMatches = hydration.candidates.map((candidate, index) => scoreCandidate(hydrationTargets[index].chunkText, candidate, hydrationTargets[index].match.chunkIndex));
     const allMatches = [...preliminaryMatches.map(({ match }) => match), ...hydratedMatches];
     const matches = uniqueMatches(allMatches)
-        .filter((match) => match.score >= thresholdFor(settings) || match.longestRun >= 10)
+        .filter((match) => match.score >= thresholdFor(settings) || match.longestRun >= 5 || (match.confidence === "page" && match.overlapPercent >= 22))
         .sort((a, b) => b.score - a.score || b.longestRun - a.longestRun)
         .slice(0, 24);
     const plagiarismScore = calculateConfirmedPlagiarismScore(matches);
