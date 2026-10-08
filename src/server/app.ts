@@ -261,7 +261,7 @@ async function runScan(request: ScanRequest, fileEvidence?: FileEvidence, onProg
     skippedTitleWords: prepared.skippedTitleWords,
     fileEvidence,
     matches,
-    aiSignals: fileEvidence ? [...fileEvidence.signals, ...localAi.signals] : localAi.signals,
+    aiSignals: localAi.signals,
     summary: summarizeReport(plagiarismScore, localAi.probability, matches, searchDiagnostics, localAi.verdict)
   };
 }

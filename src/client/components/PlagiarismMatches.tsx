@@ -43,13 +43,27 @@ export function PlagiarismMatches({
       </div>
       {diagnosticsNode}
       {matches.length === 0 ? (
-        <p className={`empty-state compact-empty${allSearchProvidersFailed ? " search-failed-state" : ""}`}>
-          {allSearchProvidersFailed
-            ? lang === "uk"
-              ? "Вебпошук не завершено: доступні індекси не відповіли. Відсутність збігів не підтверджена."
-              : "Web search incomplete: indexes did not respond. Zero matches not confirmed."
-            : t("noMatchesFound")}
-        </p>
+        <div className={`p-5 rounded-xl border border-emerald-500/25 bg-emerald-500/10 flex items-start gap-3.5${allSearchProvidersFailed ? " search-failed-state border-risk/40 bg-risk/10" : ""}`}>
+          <span className="material-symbols-outlined text-[24px] text-emerald-400 shrink-0 mt-0.5">
+            {allSearchProvidersFailed ? "error_outline" : "verified"}
+          </span>
+          <div>
+            <strong className="block text-slate-100 font-semibold mb-1">
+              {allSearchProvidersFailed
+                ? (lang === "uk" ? "Пошук не завершено" : "Search incomplete")
+                : (lang === "uk" ? "Плагіату не виявлено" : "No plagiarism detected")}
+            </strong>
+            <p className="text-body-sm text-slate-300 m-0 leading-relaxed">
+              {allSearchProvidersFailed
+                ? (lang === "uk"
+                  ? "Доступні пошукові індекси не відповіли. Відсутність збігів не підтверджена."
+                  : "Search indexes did not respond. Zero matches not confirmed.")
+                : (lang === "uk"
+                  ? "Перевірка по відкритих вебіндексах та наукових базах не знайшла збігів чи запозичень. Текст є унікальним."
+                  : "Search across open web indexes and academic repositories found no matches or borrowings. The submission appears unique.")}
+            </p>
+          </div>
+        </div>
       ) : (
         <div className="match-list">
           {matches.map((match) => (

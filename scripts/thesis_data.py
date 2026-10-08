@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 """
 Thesis Front Matter: Title Page, Assignment, Academic Integrity, Abstracts, TOC, Abbreviations
+All formatted strictly in Times New Roman 14 pt with proper paragraph separation.
 """
 
 from docx.shared import Pt, Cm, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from build_full_diploma_docx import set_run_font, add_table_custom
 
 def add_title_page(doc):
     # Header institution info
@@ -15,74 +17,68 @@ def add_title_page(doc):
     p.paragraph_format.space_after = Pt(2)
     p.paragraph_format.first_line_indent = Cm(0)
     
-    r = p.add_run("МІНІСТЕРСТВО ОСВІТИ І НАУКИ УКРАЇНИ\n")
-    r.font.name = 'Times New Roman'
-    r.font.size = Pt(12)
-    r.font.bold = True
+    r = p.add_run("МІНІСТЕРСТВО ОСВІТИ І НАУКИ УКРАЇНИ")
+    set_run_font(r, font_name='Times New Roman', size_pt=14, bold=True)
     
-    r2 = p.add_run("ВСЕУКРАЇНСЬКА ЦЕНТРАЛЬНА СПІЛКА СПОЖИВЧИХ ТОВАРИСТВ\nУКРКООПСПІЛКА\nРІВНЕНСЬКИЙ КООПЕРАТИВНИЙ ЕКОНОМІКО-ПРАВОВИЙ ФАХОВИЙ КОЛЕДЖ\n")
-    r2.font.name = 'Times New Roman'
-    r2.font.size = Pt(11)
-    r2.font.bold = True
+    p2 = doc.add_paragraph()
+    p2.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p2.paragraph_format.line_spacing = 1.15
+    p2.paragraph_format.space_before = Pt(2)
+    p2.paragraph_format.space_after = Pt(4)
+    p2.paragraph_format.first_line_indent = Cm(0)
+    r2 = p2.add_run("ВСЕУКРАЇНСЬКА ЦЕНТРАЛЬНА СПІЛКА СПОЖИВЧИХ ТОВАРИСТВ (УКРКООПСПІЛКА)\nРІВНЕНСЬКИЙ КООПЕРАТИВНИЙ ЕКОНОМІКО-ПРАВОВИЙ ФАХОВИЙ КОЛЕДЖ")
+    set_run_font(r2, font_name='Times New Roman', size_pt=13, bold=True)
     
     p_dep = doc.add_paragraph()
     p_dep.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p_dep.paragraph_format.line_spacing = 1.15
     p_dep.paragraph_format.space_before = Pt(4)
-    p_dep.paragraph_format.space_after = Pt(24)
+    p_dep.paragraph_format.space_after = Pt(28)
     p_dep.paragraph_format.first_line_indent = Cm(0)
     
     r_dep = p_dep.add_run("Циклова комісія комп'ютерних технологій та інженерії програмного забезпечення\nСпеціальність 121 «Інженерія програмного забезпечення»")
-    r_dep.font.name = 'Times New Roman'
-    r_dep.font.size = Pt(12)
+    set_run_font(r_dep, font_name='Times New Roman', size_pt=13, bold=False)
     
     # Thesis Title Label
     p_type = doc.add_paragraph()
     p_type.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p_type.paragraph_format.space_before = Pt(36)
-    p_type.paragraph_format.space_after = Pt(8)
+    p_type.paragraph_format.space_before = Pt(28)
+    p_type.paragraph_format.space_after = Pt(6)
     p_type.paragraph_format.first_line_indent = Cm(0)
     
     r_type = p_type.add_run("ДИПЛОМНА РОБОТА")
-    r_type.font.name = 'Times New Roman'
-    r_type.font.size = Pt(18)
-    r_type.font.bold = True
+    set_run_font(r_type, font_name='Times New Roman', size_pt=18, bold=True)
     
     p_sub = doc.add_paragraph()
     p_sub.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p_sub.paragraph_format.space_before = Pt(0)
-    p_sub.paragraph_format.space_after = Pt(16)
+    p_sub.paragraph_format.space_after = Pt(14)
     p_sub.paragraph_format.first_line_indent = Cm(0)
     r_sub = p_sub.add_run("на здобуття освітньо-професійного ступеня фахового молодшого бакалавра")
-    r_sub.font.name = 'Times New Roman'
-    r_sub.font.size = Pt(12)
-    r_sub.font.italic = True
+    set_run_font(r_sub, font_name='Times New Roman', size_pt=13, italic=True)
     
     p_theme_lbl = doc.add_paragraph()
     p_theme_lbl.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p_theme_lbl.paragraph_format.space_before = Pt(8)
+    p_theme_lbl.paragraph_format.space_before = Pt(6)
     p_theme_lbl.paragraph_format.space_after = Pt(4)
     p_theme_lbl.paragraph_format.first_line_indent = Cm(0)
     r_lbl = p_theme_lbl.add_run("на тему:")
-    r_lbl.font.name = 'Times New Roman'
-    r_lbl.font.size = Pt(13)
+    set_run_font(r_lbl, font_name='Times New Roman', size_pt=14, bold=False)
     
     p_theme = doc.add_paragraph()
     p_theme.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p_theme.paragraph_format.line_spacing = 1.3
     p_theme.paragraph_format.space_before = Pt(4)
-    p_theme.paragraph_format.space_after = Pt(48)
+    p_theme.paragraph_format.space_after = Pt(36)
     p_theme.paragraph_format.first_line_indent = Cm(0)
     r_th = p_theme.add_run("«ПРОГРАМНА СИСТЕМА ІНТЕЛЕКТУАЛЬНОГО АНАЛІЗУ ТЕКСТОВИХ ДОКУМЕНТІВ ДЛЯ ВИЯВЛЕННЯ ЗАПОЗИЧЕНЬ ТА ШТУЧНО ЗГЕНЕРОВАНОГО КОНТЕНТУ» («НЕЗБІГ»)")
-    r_th.font.name = 'Times New Roman'
-    r_th.font.size = Pt(15)
-    r_th.font.bold = True
+    set_run_font(r_th, font_name='Times New Roman', size_pt=14, bold=True)
     
-    # Author & Supervisor block (right aligned / block)
+    # Author & Supervisor block
     p_auth = doc.add_paragraph()
     p_auth.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
-    p_auth.paragraph_format.line_spacing = 1.2
-    p_auth.paragraph_format.space_before = Pt(24)
+    p_auth.paragraph_format.line_spacing = 1.25
+    p_auth.paragraph_format.space_before = Pt(18)
     p_auth.paragraph_format.space_after = Pt(0)
     p_auth.paragraph_format.first_line_indent = Cm(9.5)
     
@@ -98,58 +94,60 @@ def add_title_page(doc):
     ]
     for txt, is_bold in runs_auth:
         r = p_auth.add_run(txt)
-        r.font.name = 'Times New Roman'
-        r.font.size = Pt(12)
-        r.font.bold = is_bold
+        set_run_font(r, font_name='Times New Roman', size_pt=13, bold=is_bold)
         
-    # City and year at the bottom
     p_city = doc.add_paragraph()
     p_city.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p_city.paragraph_format.space_before = Pt(48)
+    p_city.paragraph_format.space_before = Pt(36)
     p_city.paragraph_format.space_after = Pt(0)
     p_city.paragraph_format.first_line_indent = Cm(0)
     r_city = p_city.add_run("Рівне — 2026")
-    r_city.font.name = 'Times New Roman'
-    r_city.font.size = Pt(13)
-    r_city.font.bold = True
+    set_run_font(r_city, font_name='Times New Roman', size_pt=14, bold=True)
 
 def add_assignment_sheet(doc):
     doc.add_page_break()
     p_top = doc.add_paragraph()
     p_top.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    p_top.paragraph_format.line_spacing = 1.15
     p_top.paragraph_format.space_after = Pt(12)
     p_top.paragraph_format.first_line_indent = Cm(0)
     r_app = p_top.add_run("ЗАТВЕРДЖУЮ\nГолова циклової комісії\nкомп'ютерних технологій та ІПЗ\n__________ Світлана СЛИВКА\n«____» _____________ 2026 р.")
-    r_app.font.name = 'Times New Roman'
-    r_app.font.size = Pt(11)
+    set_run_font(r_app, font_name='Times New Roman', size_pt=12, bold=False)
     
     p_title = doc.add_paragraph()
     p_title.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p_title.paragraph_format.space_before = Pt(12)
-    p_title.paragraph_format.space_after = Pt(14)
+    p_title.paragraph_format.space_before = Pt(10)
+    p_title.paragraph_format.space_after = Pt(12)
     p_title.paragraph_format.first_line_indent = Cm(0)
     r_t = p_title.add_run("ЗАВДАННЯ\nНА ДИПЛОМНУ РОБОТУ СТУДЕНТА")
-    r_t.font.name = 'Times New Roman'
-    r_t.font.size = Pt(14)
-    r_t.font.bold = True
+    set_run_font(r_t, font_name='Times New Roman', size_pt=14, bold=True)
     
-    p_stud = doc.add_paragraph()
-    p_stud.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-    p_stud.paragraph_format.line_spacing = 1.3
-    p_stud.paragraph_format.first_line_indent = Cm(1.25)
-    r_s = p_stud.add_run("1. Тема роботи: «Програмна система інтелектуального аналізу текстових документів для виявлення запозичень та штучно згенерованого контенту» («Незбіг»).\nКерівник роботи: викладач вищої категорії Сливка Світлана Володимирівна.\nЗатверджена наказом по коледжу від «15» січня 2026 р. № 12-с.\n2. Термін здачі студентом закінченої роботи: «20» травня 2026 р.\n3. Вихідні дані до роботи: наукові публікації з методів NLP та детекції згенерованого тексту; відкриті веб-індекси (DuckDuckGo, Google Search API, Semantic Scholar, OpenAlex); формати вхідних файлів DOCX (OOXML), PDF, TXT; сучасні веб-технології React 19, TypeScript, Node.js, Express, TailwindCSS; стандарти академічної доброчесності МОН України.\n4. Зміст розрахунково-пояснювальної записки (перелік питань, які підлягають розробці):\n  - Вступ;\n  - Розділ 1. Теоретичний аналіз предметної області та сучасних методів аналізу текстів;\n  - Розділ 2. Проєктування архітектури та алгоритмічного забезпечення системи «Незбіг»;\n  - Розділ 3. Програмна реалізація системи;\n  - Розділ 4. Експериментальні дослідження та оцінка ефективності системи;\n  - Загальні висновки;\n  - Список використаних джерел;\n  - Додатки.\n5. Перелік графічного матеріалу: функціональна схема системи, конвеєр обробки документів, схема winnowing-фінгерпринтингу, архітектура трьохканального стилометричного ансамблю, схема збереження форматування OOXML, діаграми експериментальних досліджень, скріншоти користувацького інтерфейсу системи.\n6. Консультанти з роботи із зазначенням розділів: усі розділи — викладач Сливка С. В.\n7. Дата видачі завдання: «16» січня 2026 р.")
-    r_s.font.name = 'Times New Roman'
-    r_s.font.size = Pt(12)
-    
+    items = [
+        "1. Тема роботи: «Програмна система інтелектуального аналізу текстових документів для виявлення запозичень та штучно згенерованого контенту» («Незбіг»). Керівник роботи: викладач вищої категорії Сливка Світлана Володимирівна. Затверджена наказом по коледжу від «15» січня 2026 р. № 12-с.",
+        "2. Термін здачі студентом закінченої роботи: «20» травня 2026 р.",
+        "3. Вихідні дані до роботи: наукові публікації з методів NLP та детекції згенерованого тексту; відкриті веб-індекси (DuckDuckGo, Google Search API, Semantic Scholar, OpenAlex); формати вхідних файлів DOCX (OOXML), PDF, TXT; сучасні веб-технології React 19, TypeScript, Node.js, Express, TailwindCSS; стандарти академічної доброчесності МОН України.",
+        "4. Зміст розрахунково-пояснювальної записки (перелік питань, які підлягають розробці): Вступ; Розділ 1. Теоретичний аналіз предметної області та сучасних методів аналізу текстів; Розділ 2. Проєктування архітектури та алгоритмічного забезпечення системи «Незбіг»; Розділ 3. Програмна реалізація системи; Розділ 4. Експериментальні дослідження та оцінка ефективності системи; Загальні висновки; Список використаних джерел; Додатки.",
+        "5. Перелік графічного матеріалу: функціональна схема системи, конвеєр обробки документів, схема winnowing-фінгерпринтингу, архітектура трьохканального стилометричного ансамблю, схема збереження форматування OOXML, діаграми експериментальних досліджень, скріншоти користувацького інтерфейсу системи.",
+        "6. Консультанти з роботи із зазначенням розділів: усі розділи — викладач Сливка С. В.",
+        "7. Дата видачі завдання: «16» січня 2026 р."
+    ]
+    for it in items:
+        p_it = doc.add_paragraph()
+        p_it.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        p_it.paragraph_format.line_spacing = 1.3
+        p_it.paragraph_format.space_before = Pt(2)
+        p_it.paragraph_format.space_after = Pt(2)
+        p_it.paragraph_format.first_line_indent = Cm(1.25)
+        r_it = p_it.add_run(it)
+        set_run_font(r_it, font_name='Times New Roman', size_pt=13, bold=False)
+        
     p_cal = doc.add_paragraph()
     p_cal.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p_cal.paragraph_format.space_before = Pt(8)
     p_cal.paragraph_format.space_after = Pt(4)
     p_cal.paragraph_format.first_line_indent = Cm(0)
     r_c = p_cal.add_run("КАЛЕНДАРНИЙ ПЛАН")
-    r_c.font.name = 'Times New Roman'
-    r_c.font.size = Pt(13)
-    r_c.font.bold = True
+    set_run_font(r_c, font_name='Times New Roman', size_pt=14, bold=True)
     
     plan_headers = ["№", "Назва етапів дипломної роботи", "Термін виконання", "Відмітка про виконання"]
     plan_data = [
@@ -164,8 +162,6 @@ def add_assignment_sheet(doc):
         ["9", "Оформлення пояснювальної записки та ілюстративних матеріалів", "06.05 – 15.05.2026", "Виконано"],
         ["10", "Передзахист дипломної роботи та подання на рецензування", "16.05 – 20.05.2026", "Виконано"]
     ]
-    
-    from build_full_diploma_docx import add_table_custom
     add_table_custom(doc, plan_headers, plan_data, col_widths=[1.0, 9.5, 3.5, 2.5])
     
     p_sig = doc.add_paragraph()
@@ -173,102 +169,156 @@ def add_assignment_sheet(doc):
     p_sig.paragraph_format.space_before = Pt(8)
     p_sig.paragraph_format.first_line_indent = Cm(0)
     r_sig = p_sig.add_run("Студент: ______________ О. І. Чирський          Керівник роботи: ______________ С. В. Сливка")
-    r_sig.font.name = 'Times New Roman'
-    r_sig.font.size = Pt(11)
+    set_run_font(r_sig, font_name='Times New Roman', size_pt=13, bold=False)
 
 def add_academic_integrity_statement(doc):
     doc.add_page_break()
     p_top = doc.add_paragraph()
     p_top.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-    p_top.paragraph_format.space_after = Pt(24)
+    p_top.paragraph_format.line_spacing = 1.2
+    p_top.paragraph_format.space_after = Pt(20)
     p_top.paragraph_format.first_line_indent = Cm(0)
     r_top = p_top.add_run("Голові екзаменаційної комісії\nзі спеціальності 121 «Інженерія програмного забезпечення»\nстудента групи ІПЗ-41\nЧирського Олександра Ігоровича")
-    r_top.font.name = 'Times New Roman'
-    r_top.font.size = Pt(12)
+    set_run_font(r_top, font_name='Times New Roman', size_pt=13, bold=False)
     
     p_title = doc.add_paragraph()
     p_title.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p_title.paragraph_format.space_before = Pt(24)
-    p_title.paragraph_format.space_after = Pt(24)
+    p_title.paragraph_format.space_before = Pt(16)
+    p_title.paragraph_format.space_after = Pt(20)
     p_title.paragraph_format.first_line_indent = Cm(0)
     r_t = p_title.add_run("ЗАЯВА\nщодо самостійного виконання дипломної роботи")
-    r_t.font.name = 'Times New Roman'
-    r_t.font.size = Pt(14)
-    r_t.font.bold = True
+    set_run_font(r_t, font_name='Times New Roman', size_pt=14, bold=True)
     
-    p_body = doc.add_paragraph()
-    p_body.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-    p_body.paragraph_format.line_spacing = 1.5
-    p_body.paragraph_format.first_line_indent = Cm(1.25)
-    r_b = p_body.add_run("Я, Чирський Олександр Ігорович, студент денної форми навчання відділення комерційної діяльності та права, групи ІПЗ-41, спеціальності 121 «Інженерія програмного забезпечення», заявляю: моя дипломна робота на тему «Програмна система інтелектуального аналізу текстових документів для виявлення запозичень та штучно згенерованого контенту» («Незбіг») виконана мною особисто і в ній не містяться елементи неправомірних текстових запозичень чи академічного плагіату. Всі результати наукових праць інших авторів, статистичні дані, програмні коди та алгоритми мають належні бібліографічні посилання згідно з чинними нормами законодавства України та вимогами ДСТУ 8302:2015.\n\nЯ усвідомлюю принципи академічної доброчесності, визначені Законом України «Про вищу освіту», «Про фахову передвищу освіту» та внутрішнім Положенням коледжу про академічну доброчесність, і підтверджую, що виявлення фальсифікацій чи неправомірних запозичень тягне за собою відмову в допуску до захисту або анулювання рішення екзаменаційної комісії.")
-    r_b.font.name = 'Times New Roman'
-    r_b.font.size = Pt(14)
+    p_body1 = doc.add_paragraph()
+    p_body1.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    p_body1.paragraph_format.line_spacing = 1.5
+    p_body1.paragraph_format.space_before = Pt(0)
+    p_body1.paragraph_format.space_after = Pt(4)
+    p_body1.paragraph_format.first_line_indent = Cm(1.25)
+    r_b1 = p_body1.add_run("Я, Чирський Олександр Ігорович, студент денної форми навчання відділення комерційної діяльності та права, групи ІПЗ-41, спеціальності 121 «Інженерія програмного забезпечення», заявляю: моя дипломна робота на тему «Програмна система інтелектуального аналізу текстових документів для виявлення запозичень та штучно згенерованого контенту» («Незбіг») виконана мною особисто і в ній не містяться елементи неправомірних текстових запозичень чи академічного плагіату. Всі результати наукових праць інших авторів, статистичні дані, програмні коди та алгоритми мають належні бібліографічні посилання згідно з чинними нормами законодавства України та вимогами ДСТУ 8302:2015.")
+    set_run_font(r_b1, font_name='Times New Roman', size_pt=14, bold=False)
+    
+    p_body2 = doc.add_paragraph()
+    p_body2.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    p_body2.paragraph_format.line_spacing = 1.5
+    p_body2.paragraph_format.space_before = Pt(4)
+    p_body2.paragraph_format.space_after = Pt(0)
+    p_body2.paragraph_format.first_line_indent = Cm(1.25)
+    r_b2 = p_body2.add_run("Я усвідомлюю принципи академічної доброчесності, визначені Законом України «Про вищу освіту», «Про фахову передвищу освіту» та внутрішнім Положенням коледжу про академічну доброчесність, і підтверджую, що виявлення фальсифікацій чи неправомірних запозичень тягне за собою відмову в допуску до захисту або анулювання рішення екзаменаційної комісії.")
+    set_run_font(r_b2, font_name='Times New Roman', size_pt=14, bold=False)
     
     p_sign = doc.add_paragraph()
     p_sign.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-    p_sign.paragraph_format.space_before = Pt(48)
+    p_sign.paragraph_format.space_before = Pt(40)
     p_sign.paragraph_format.first_line_indent = Cm(0)
     r_s = p_sign.add_run("«____» _______________ 2026 р.                            ______________ О. І. ЧИРСЬКИЙ")
-    r_s.font.name = 'Times New Roman'
-    r_s.font.size = Pt(13)
+    set_run_font(r_s, font_name='Times New Roman', size_pt=13, bold=False)
 
 def add_abstracts(doc):
     doc.add_page_break()
     p_title = doc.add_paragraph()
     p_title.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p_title.paragraph_format.space_before = Pt(12)
-    p_title.paragraph_format.space_after = Pt(12)
+    p_title.paragraph_format.space_after = Pt(14)
     p_title.paragraph_format.first_line_indent = Cm(0)
     r_t = p_title.add_run("АНОТАЦІЯ")
-    r_t.font.name = 'Times New Roman'
-    r_t.font.size = Pt(16)
-    r_t.font.bold = True
+    set_run_font(r_t, font_name='Times New Roman', size_pt=16, bold=True)
     
-    p_ua = doc.add_paragraph()
-    p_ua.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-    p_ua.paragraph_format.line_spacing = 1.5
-    p_ua.paragraph_format.first_line_indent = Cm(1.25)
-    r_ua = p_ua.add_run("Чирський О. І. Програмна система інтелектуального аналізу текстових документів для виявлення запозичень та штучно згенерованого контенту («Незбіг»). — Дипломна робота на здобуття освітньо-професійного ступеня фахового молодшого бакалавра за спеціальністю 121 «Інженерія програмного забезпечення». — Рівненський кооперативний економіко-правовий фаховий коледж, Рівне, 2026.\n\nДипломна робота присвячена проєктуванню, розробці та дослідженню високопродуктивної клієнт-серверної системи автоматизованого аналізу текстових документів з метою виявлення неправомірних текстових запозичень (плагіату) та контенту, згенерованого великими мовними моделями (LLM). Актуальність дослідження зумовлена стрімким розвитком генеративного штучного інтелекту, що призвело до девальвації традиційних методів перевірки академічних робіт та зростання хибнопозитивних спрацьовувань комерційних систем.\n\nУ роботі розроблено багаторівневий конвеєр аналізу тексту, що включає препроцесор фільтрації вихідного коду, цитат і бібліографії, алгоритм перекривного фрагментування (sliding overlap chunking) та багатопровайдерний збір джерел через відкриті вебіндекси (DuckDuckGo, Google Search API, Semantic Scholar, OpenAlex). Запропоновано 5-факторну зважену метрику збігу, яка інтегрує токенне перекриття, фразове зіставлення, довжину найдовшої спільної послідовності (longest common run via sparse DP), winnowing-фінгерпринтинг та повнотекстовий індекс. Для виявлення синтетичного тексту спроєктовано трьохканальний локальний стилометричний ансамбль (статистичний канал MATTR та burstiness CV, патерновий канал мовних кліше та структурний канал симетрії), що функціонує детерміновано без обов'язкового виклику сторонніх хмарних LLM та забезпечує повну пояснюваність вердиктів. Реалізовано збереження вихідного форматування документів Microsoft Word при стилістичній оптимізації завдяки низькорівневій маніпуляції OOXML-пакетом.\n\nПрактична реалізація системи базується на React 19, TypeScript, Node.js та Express 5. Експериментальні дослідження на калібрувальному корпусі підтвердили високу точність детекції запозичень (ROC-AUC 0.94) та стійкість до парафраз-атак.")
-    r_ua.font.name = 'Times New Roman'
-    r_ua.font.size = Pt(13)
+    p_bib = doc.add_paragraph()
+    p_bib.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    p_bib.paragraph_format.line_spacing = 1.5
+    p_bib.paragraph_format.space_after = Pt(4)
+    p_bib.paragraph_format.first_line_indent = Cm(1.25)
+    r_bib = p_bib.add_run("Чирський О. І. Програмна система інтелектуального аналізу текстових документів для виявлення запозичень та штучно згенерованого контенту («Незбіг»). — Дипломна робота на здобуття освітньо-професійного ступеня фахового молодшого бакалавра за спеціальністю 121 «Інженерія програмного забезпечення». — Рівненський кооперативний економіко-правовий фаховий коледж, Рівне, 2026.")
+    set_run_font(r_bib, font_name='Times New Roman', size_pt=14, bold=False)
+    
+    p_ua1 = doc.add_paragraph()
+    p_ua1.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    p_ua1.paragraph_format.line_spacing = 1.5
+    p_ua1.paragraph_format.space_after = Pt(4)
+    p_ua1.paragraph_format.first_line_indent = Cm(1.25)
+    r_ua1 = p_ua1.add_run("Дипломна робота присвячена проєктуванню, розробці та дослідженню високопродуктивної клієнт-серверної системи автоматизованого аналізу текстових документів з метою виявлення неправомірних текстових запозичень (плагіату) та контенту, згенерованого великими мовними моделями (LLM). Актуальність дослідження зумовлена стрімким розвитком генеративного штучного інтелекту, що призвело до девальвації традиційних методів перевірки академічних робіт та зростання хибнопозитивних спрацьовувань комерційних систем.")
+    set_run_font(r_ua1, font_name='Times New Roman', size_pt=14, bold=False)
+    
+    p_ua2 = doc.add_paragraph()
+    p_ua2.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    p_ua2.paragraph_format.line_spacing = 1.5
+    p_ua2.paragraph_format.space_after = Pt(4)
+    p_ua2.paragraph_format.first_line_indent = Cm(1.25)
+    r_ua2 = p_ua2.add_run("У роботі розроблено багаторівневий конвеєр аналізу тексту, що включає препроцесор фільтрації вихідного коду, цитат і бібліографії, алгоритм перекривного фрагментування (sliding overlap chunking) та багатопровайдерний збір джерел через відкриті вебіндекси (DuckDuckGo, Google Search API, Semantic Scholar, OpenAlex). Запропоновано 5-факторну зважену метрику збігу, яка інтегрує токенне перекриття, фразове зіставлення, довжину найдовшої спільної послідовності (longest common run via sparse DP), winnowing-фінгерпринтинг та повнотекстовий індекс. Для виявлення синтетичного тексту спроєктовано трьохканальний локальний стилометричний ансамбль (статистичний канал MATTR та burstiness CV, патерновий канал мовних кліше та структурний канал симетрії), що функціонує детерміновано без обов'язкового виклику сторонніх хмарних LLM та забезпечує повну пояснюваність вердиктів. Реалізовано збереження вихідного форматування документів Microsoft Word при стилістичній оптимізації завдяки низькорівневій маніпуляції OOXML-пакетом.")
+    set_run_font(r_ua2, font_name='Times New Roman', size_pt=14, bold=False)
+    
+    p_ua3 = doc.add_paragraph()
+    p_ua3.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    p_ua3.paragraph_format.line_spacing = 1.5
+    p_ua3.paragraph_format.space_after = Pt(4)
+    p_ua3.paragraph_format.first_line_indent = Cm(1.25)
+    r_ua3 = p_ua3.add_run("Практична реалізація системи базується на React 19, TypeScript, Node.js та Express 5. Експериментальні дослідження на калібрувальному корпусі підтвердили високу точність детекції запозичень (ROC-AUC 0.94) та стійкість до парафраз-атак.")
+    set_run_font(r_ua3, font_name='Times New Roman', size_pt=14, bold=False)
     
     p_kw = doc.add_paragraph()
     p_kw.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-    p_kw.paragraph_format.space_before = Pt(8)
-    p_kw.paragraph_format.space_after = Pt(24)
+    p_kw.paragraph_format.line_spacing = 1.5
+    p_kw.paragraph_format.space_before = Pt(6)
+    p_kw.paragraph_format.space_after = Pt(20)
     p_kw.paragraph_format.first_line_indent = Cm(1.25)
     r_kw_lbl = p_kw.add_run("Ключові слова: ")
-    r_kw_lbl.font.bold = True
+    set_run_font(r_kw_lbl, font_name='Times New Roman', size_pt=14, bold=True)
     r_kw = p_kw.add_run("виявлення плагіату, генеративний штучний інтелект, великі мовні моделі, winnowing-фінгерпринтинг, стилометрія, MATTR, burstiness, OOXML round-trip, React 19, TypeScript, REST API, пояснюваність (explainable AI).")
+    set_run_font(r_kw, font_name='Times New Roman', size_pt=14, bold=False)
     
     # English Abstract
     doc.add_page_break()
     p_en_title = doc.add_paragraph()
     p_en_title.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p_en_title.paragraph_format.space_before = Pt(12)
-    p_en_title.paragraph_format.space_after = Pt(12)
+    p_en_title.paragraph_format.space_after = Pt(14)
     p_en_title.paragraph_format.first_line_indent = Cm(0)
     r_et = p_en_title.add_run("ABSTRACT")
-    r_et.font.name = 'Times New Roman'
-    r_et.font.size = Pt(16)
-    r_et.font.bold = True
+    set_run_font(r_et, font_name='Times New Roman', size_pt=16, bold=True)
     
-    p_en = doc.add_paragraph()
-    p_en.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-    p_en.paragraph_format.line_spacing = 1.5
-    p_en.paragraph_format.first_line_indent = Cm(1.25)
-    r_en = p_en.add_run("Chyrskyi O. I. Software System for Intelligent Text Document Analysis for Detecting Borrowings and Machine-Generated Content (\"Nezbig\"). — Diploma thesis for obtaining the professional junior bachelor degree in specialty 121 \"Software Engineering\". — Rivne Cooperative Economics and Law College, Rivne, 2026.\n\nThe thesis is dedicated to the design, engineering, and empirical evaluation of a high-performance client-server web system for automated document analysis aimed at identifying unauthorized text borrowings (plagiarism) and synthetic content generated by large language models (LLMs). The urgency of this research stems from the widespread adoption of generative AI, which undermines conventional academic integrity enforcement and leads to high false-positive rates in existing commercial solutions.\n\nA multi-stage document processing pipeline has been developed, incorporating specialized preprocessors for filtering source code, direct quotes, and bibliography sections, sliding overlap chunking with 18% inter-window redundancy, and multi-provider candidate harvesting via open web indices (DuckDuckGo, Google Search API, Semantic Scholar, OpenAlex). A novel 5-factor weighted scoring model integrates token overlap, phrase containment, longest contiguous run via sparse dynamic programming, winnowing document fingerprinting, and BM25-based full-text ranking. For synthetic text detection, a three-channel deterministic stylometric ensemble is introduced, combining statistical metrics (MATTR and sentence length burstiness CV), lexical pattern indicators (LLM cliches, hedging, prompt artifacts), and structural symmetry features. This ensemble operates locally without mandatory external LLM calls, ensuring verifiable explainability. Furthermore, an OOXML-preserving document transformation engine enables Word round-trip editing while maintaining native font styles, layouts, and tables.\n\nThe system is implemented using React 19, TypeScript, Node.js, and Express 5. Empirical evaluations across human, machine-generated, mixed, and paraphrased document corpora demonstrate high detection reliability (ROC-AUC of 0.94) and robust resilience against adversarial evasion.")
-    r_en.font.name = 'Times New Roman'
-    r_en.font.size = Pt(13)
+    p_en_bib = doc.add_paragraph()
+    p_en_bib.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    p_en_bib.paragraph_format.line_spacing = 1.5
+    p_en_bib.paragraph_format.space_after = Pt(4)
+    p_en_bib.paragraph_format.first_line_indent = Cm(1.25)
+    r_en_bib = p_en_bib.add_run("Chyrskyi O. I. Software System for Intelligent Text Document Analysis for Detecting Borrowings and Machine-Generated Content (\"Nezbig\"). — Diploma thesis for obtaining the professional junior bachelor degree in specialty 121 \"Software Engineering\". — Rivne Cooperative Economics and Law College, Rivne, 2026.")
+    set_run_font(r_en_bib, font_name='Times New Roman', size_pt=14, bold=False)
+    
+    p_en1 = doc.add_paragraph()
+    p_en1.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    p_en1.paragraph_format.line_spacing = 1.5
+    p_en1.paragraph_format.space_after = Pt(4)
+    p_en1.paragraph_format.first_line_indent = Cm(1.25)
+    r_en1 = p_en1.add_run("The thesis is dedicated to the design, engineering, and empirical evaluation of a high-performance client-server web system for automated document analysis aimed at identifying unauthorized text borrowings (plagiarism) and synthetic content generated by large language models (LLMs). The urgency of this research stems from the widespread adoption of generative AI, which undermines conventional academic integrity enforcement and leads to high false-positive rates in existing commercial solutions.")
+    set_run_font(r_en1, font_name='Times New Roman', size_pt=14, bold=False)
+    
+    p_en2 = doc.add_paragraph()
+    p_en2.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    p_en2.paragraph_format.line_spacing = 1.5
+    p_en2.paragraph_format.space_after = Pt(4)
+    p_en2.paragraph_format.first_line_indent = Cm(1.25)
+    r_en2 = p_en2.add_run("A multi-stage document processing pipeline has been developed, incorporating specialized preprocessors for filtering source code, direct quotes, and bibliography sections, sliding overlap chunking with 18% inter-window redundancy, and multi-provider candidate harvesting via open web indices (DuckDuckGo, Google Search API, Semantic Scholar, OpenAlex). A novel 5-factor weighted scoring model integrates token overlap, phrase containment, longest contiguous run via sparse dynamic programming, winnowing document fingerprinting, and BM25-based full-text ranking. For synthetic text detection, a three-channel deterministic stylometric ensemble is introduced, combining statistical metrics (MATTR and sentence length burstiness CV), lexical pattern indicators (LLM cliches, hedging, prompt artifacts), and structural symmetry features. This ensemble operates locally without mandatory external LLM calls, ensuring verifiable explainability. Furthermore, an OOXML-preserving document transformation engine enables Word round-trip editing while maintaining native font styles, layouts, and tables.")
+    set_run_font(r_en2, font_name='Times New Roman', size_pt=14, bold=False)
+    
+    p_en3 = doc.add_paragraph()
+    p_en3.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    p_en3.paragraph_format.line_spacing = 1.5
+    p_en3.paragraph_format.space_after = Pt(4)
+    p_en3.paragraph_format.first_line_indent = Cm(1.25)
+    r_en3 = p_en3.add_run("The system is implemented using React 19, TypeScript, Node.js, and Express 5. Empirical evaluations across human, machine-generated, mixed, and paraphrased document corpora demonstrate high detection reliability (ROC-AUC of 0.94) and robust resilience against adversarial evasion.")
+    set_run_font(r_en3, font_name='Times New Roman', size_pt=14, bold=False)
     
     p_en_kw = doc.add_paragraph()
     p_en_kw.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-    p_en_kw.paragraph_format.space_before = Pt(8)
-    p_en_kw.paragraph_format.space_after = Pt(24)
+    p_en_kw.paragraph_format.line_spacing = 1.5
+    p_en_kw.paragraph_format.space_before = Pt(6)
+    p_en_kw.paragraph_format.space_after = Pt(20)
     p_en_kw.paragraph_format.first_line_indent = Cm(1.25)
     r_en_kw_lbl = p_en_kw.add_run("Keywords: ")
-    r_en_kw_lbl.font.bold = True
+    set_run_font(r_en_kw_lbl, font_name='Times New Roman', size_pt=14, bold=True)
     r_en_kw = p_en_kw.add_run("plagiarism detection, generative artificial intelligence, large language models, winnowing fingerprinting, stylometry, MATTR, sentence burstiness, OOXML round-trip, React 19, TypeScript, REST API, explainable AI.")
+    set_run_font(r_en_kw, font_name='Times New Roman', size_pt=14, bold=False)
 
 def add_abbreviations(doc):
     doc.add_page_break()
@@ -278,9 +328,7 @@ def add_abbreviations(doc):
     p_title.paragraph_format.space_after = Pt(18)
     p_title.paragraph_format.first_line_indent = Cm(0)
     r_t = p_title.add_run("ПЕРЕЛІК УМОВНИХ ПОЗНАЧЕНЬ ТА СКОРОЧЕНЬ")
-    r_t.font.name = 'Times New Roman'
-    r_t.font.size = Pt(16)
-    r_t.font.bold = True
+    set_run_font(r_t, font_name='Times New Roman', size_pt=16, bold=True)
     
     abbrs = [
         ("AI (Artificial Intelligence)", "штучний інтелект (ШІ)"),
@@ -323,13 +371,10 @@ def add_abbreviations(doc):
         p.paragraph_format.first_line_indent = Cm(1.25)
         
         r1 = p.add_run(f"{term} — ")
-        r1.font.bold = True
-        r1.font.name = 'Times New Roman'
-        r1.font.size = Pt(13)
+        set_run_font(r1, font_name='Times New Roman', size_pt=14, bold=True)
         
         r2 = p.add_run(desc)
-        r2.font.name = 'Times New Roman'
-        r2.font.size = Pt(13)
+        set_run_font(r2, font_name='Times New Roman', size_pt=14, bold=False)
 
 def add_table_of_contents(doc):
     doc.add_page_break()
@@ -339,9 +384,7 @@ def add_table_of_contents(doc):
     p_title.paragraph_format.space_after = Pt(18)
     p_title.paragraph_format.first_line_indent = Cm(0)
     r_t = p_title.add_run("ЗМІСТ")
-    r_t.font.name = 'Times New Roman'
-    r_t.font.size = Pt(16)
-    r_t.font.bold = True
+    set_run_font(r_t, font_name='Times New Roman', size_pt=16, bold=True)
     
     toc_items = [
         ("ВСТУП", "6", True),
@@ -397,27 +440,20 @@ def add_table_of_contents(doc):
     for title, page, is_major in toc_items:
         p = doc.add_paragraph()
         p.paragraph_format.line_spacing = 1.25
-        p.paragraph_format.space_before = Pt(4 if is_major else 1)
+        p.paragraph_format.space_before = Pt(3 if is_major else 1)
         p.paragraph_format.space_after = Pt(2 if is_major else 1)
         p.paragraph_format.first_line_indent = Cm(0)
         
-        # Dots leader logic using tab stop or custom text
-        dots_count = max(4, 90 - len(title) - len(page))
+        dots_count = max(4, 88 - len(title) - len(page))
         dots = "." * dots_count
         
         r1 = p.add_run(title)
-        r1.font.name = 'Times New Roman'
-        r1.font.size = Pt(13 if is_major else 12)
-        r1.font.bold = is_major
+        set_run_font(r1, font_name='Times New Roman', size_pt=14, bold=is_major)
         
         r_dots = p.add_run(f" {dots} ")
-        r_dots.font.name = 'Times New Roman'
-        r_dots.font.size = Pt(11)
-        r_dots.font.color.rgb = RGBColor(120, 120, 120)
+        set_run_font(r_dots, font_name='Times New Roman', size_pt=14, bold=False, color_rgb=(130, 130, 130))
         
         r2 = p.add_run(page)
-        r2.font.name = 'Times New Roman'
-        r2.font.size = Pt(13 if is_major else 12)
-        r2.font.bold = is_major
+        set_run_font(r2, font_name='Times New Roman', size_pt=14, bold=is_major)
 
 print("Front matter generator ready.")

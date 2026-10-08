@@ -9,7 +9,9 @@ function providerDiagnosticLabel(provider: NonNullable<ScanReport["searchDiagnos
     }
     return lang === "uk" ? "пропущено" : "skipped";
   }
-  if (provider.succeeded === 0) return lang === "uk" ? "недоступний" : "unavailable";
+  if (provider.succeeded === 0) {
+    return lang === "uk" ? "ліміт квоти" : "quota limit";
+  }
   const resWord = lang === "uk" ? "рез." : "res.";
   return `${provider.succeeded}/${provider.attempted} · ${provider.results} ${resWord}`;
 }
@@ -18,9 +20,13 @@ export function ProviderDiagnostics({ diagnostics }: { diagnostics: ScanReport["
   const { lang } = useLanguage();
   if (!diagnostics) return null;
 
+  // Filter out optional unconfigured providers so the report only shows active, participating engines
+  const visibleProviders = diagnostics.providers.filter((p) => p.attempted > 0);
+  if (visibleProviders.length === 0 && diagnostics.pages.attempted === 0) return null;
+
   return (
     <div className="provider-health" aria-label={lang === "uk" ? "Стан пошукових провайдерів" : "Search provider diagnostics"}>
-      {diagnostics.providers.map((provider) => (
+      {visibleProviders.map((provider) => (
         <span
           className={provider.succeeded === 0 ? "provider-health-issue" : ""}
           key={provider.provider}
@@ -34,12 +40,14 @@ export function ProviderDiagnostics({ diagnostics }: { diagnostics: ScanReport["
           </span>
         </span>
       ))}
-      <span title={lang === "uk" ? "Сторінки, текст яких сервер зміг прочитати для підтвердження збігу" : "Pages fetched and verified in full"}>
-        <strong>{lang === "uk" ? "Сторінки" : "Pages"}</strong>
-        {lang === "uk"
-          ? `${diagnostics.pages.verified} підтвердж. · ${diagnostics.pages.unavailable} недоступ.`
-          : `${diagnostics.pages.verified} verified · ${diagnostics.pages.unavailable} unavailable`}
-      </span>
+      {diagnostics.pages.attempted > 0 || diagnostics.pages.verified > 0 ? (
+        <span title={lang === "uk" ? "Сторінки, текст яких сервер зміг прочитати для підтвердження збігу" : "Pages fetched and verified in full"}>
+          <strong>{lang === "uk" ? "Сторінки" : "Pages"}</strong>
+          {lang === "uk"
+            ? `${diagnostics.pages.verified} підтвердж. · ${diagnostics.pages.unavailable} недоступ.`
+            : `${diagnostics.pages.verified} verified · ${diagnostics.pages.unavailable} unavailable`}
+        </span>
+      ) : null}
     </div>
   );
 }

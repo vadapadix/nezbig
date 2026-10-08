@@ -36,10 +36,9 @@ export function mergeSearchDiagnostics(...items) {
     return { providers: [...providers.values()], pages };
 }
 export function searchDiagnosticsNotes(diagnostics) {
-    const providerSummary = diagnostics.providers
+    const attempted = diagnostics.providers.filter((provider) => provider.attempted > 0);
+    const providerSummary = attempted
         .map((provider) => {
-        if (provider.attempted === 0)
-            return `${provider.provider}: пропущено`;
         const issue = provider.failed ? `, ${provider.failed} пом.` : "";
         return `${provider.provider}: ${provider.succeeded}/${provider.attempted}, ${provider.results} рез.${issue}`;
     })

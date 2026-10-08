@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """
 Thesis Conclusions, References, and Appendices Module
+All formatted strictly in Times New Roman 14 pt with proper academic layout.
 """
 
 import os
 from docx.shared import Pt, Cm
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from build_full_diploma_docx import (
-    add_chapter_heading, add_section_heading, add_subsection_heading, 
-    add_p, add_formula, add_table_custom, add_figure, add_code_block
+    add_chapter_heading, add_p, add_figure, add_code_block, set_run_font
 )
 
 def add_conclusions(doc):
@@ -21,47 +21,47 @@ def add_conclusions(doc):
              "На основі проведених теоретичних досліджень та експериментальної апробації сформульовано такі підсумкові висновки:")
              
     conclusions_list = [
-        ("1. Комплексний аналіз предметної області та існуючих аналогів (Turnitin, Unicheck, GPTZero, CopyLeaks) "
-         "довів, що традиційні антиплагіатні інструменти неспроможні детектувати семантично унікальний текст, "
-         "згенерований сучасними великими мовними моделями (LLM). Водночас існуючі комерційні AI-детектори функціонують "
-         "як непрозорі чорні скриньки, мають високий рівень хибнопозитивних помилок (до 61% на текстах неносіїв мови), "
-         "є фінансово обтяжливими та не забезпечують конфіденційності даних. Обґрунтовано необхідність створення відкритої "
-         "системи з пояснюваною архітектурою (Explainable AI) та підтримкою української мови."),
+        "1. Комплексний аналіз предметної області та існуючих аналогів (Turnitin, Unicheck, GPTZero, CopyLeaks) "
+        "довів, що традиційні антиплагіатні інструменти неспроможні детектувати семантично унікальний текст, "
+        "згенерований сучасними великими мовними моделями (LLM). Водночас існуючі комерційні AI-детектори функціонують "
+        "як непрозорі чорні скриньки, мають високий рівень хибнопозитивних помилок (до 61% на текстах неносіїв мови), "
+        "є фінансово обтяжливими та не забезпечують конфіденційності даних. Обґрунтовано необхідність створення відкритої "
+        "системи з пояснюваною архітектурою (Explainable AI) та підтримкою української мови.",
          
-        ("2. Теоретично обґрунтовано та реалізовано математичні моделі порівняння текстових послідовностей: комбінований "
-         "3-gram та 5-gram containment, алгоритм документно-орієнтованого фінгерпринтингу Winnowing з поліноміальним хешуванням "
-         "Рабіна-Карпа та оптимізоване розріджене динамічне програмування (Sparse DP) для знаходження найдовшого нерозривного "
-         "фрагмента (Longest Common Run) зі складністю O(N + K)."),
+        "2. Теоретично обґрунтовано та реалізовано математичні моделі порівняння текстових послідовностей: комбінований "
+        "3-gram та 5-gram containment, алгоритм документно-орієнтованого фінгерпринтингу Winnowing з поліноміальним хешуванням "
+        "Рабіна-Карпа та оптимізоване розріджене динамічне програмування (Sparse DP) для знаходження найдовшого нерозривного "
+        "фрагмента (Longest Common Run) зі складністю O(N + K).",
          
-        ("3. Спроєктовано та реалізовано трьохканальний детермінований стилометричний AI-ансамбль, що поєднує статистичний канал "
-         "(ковзне лексичне багатство MATTR вікном 50 токенів, коефіцієнт варіації довжини речень Burstiness CV, повтори 4-грам), "
-         "патерновий канал (лінгвістичні кліше LLM, hedging, безособові формули) та структурний канал (синтаксична симетрія переліків). "
-         "Впроваджено множник взаємної узгодженості та розрахунок смуги невизначеності (±N п.п.), що унеможливлює безпідставні "
-         "звинувачення авторів на основі окремих випадкових слів."),
+        "3. Спроєктовано та реалізовано трьохканальний детермінований стилометричний AI-ансамбль, що поєднує статистичний канал "
+        "(ковзне лексичне багатство MATTR вікном 50 токенів, коефіцієнт варіації довжини речень Burstiness CV, повтори 4-грам), "
+        "патерновий канал (лінгвістичні кліше LLM, hedging, безособові формули) та структурний канал (синтаксична симетрія переліків). "
+        "Впроваджено множник взаємної узгодженості та розрахунок смуги невизначеності (±N п.п.), що унеможливлює безпідставні "
+        "звинувачення авторів на основі окремих випадкових слів.",
          
-        ("4. Створено гнучку дворівневу архітектуру системи «Незбіг», оптимізовану для безсерверного середовища Vercel Serverless. "
-         "Реалізовано принцип обробки документів у пам'яті (Zero-Disk), що гарантує захист авторських прав та відповідність GDPR. "
-         "Інтегровано механізм диспетчеризації запитів до відкритих вебіндексів (DuckDuckGo, Google Search API, Semantic Scholar, OpenAlex) "
-         "із захистом від збоїв за патерном Circuit Breaker."),
+        "4. Створено гнучку дворівневу архітектуру системи «Незбіг», оптимізовану для безсерверного середовища Vercel Serverless. "
+        "Реалізовано принцип обробки документів у пам'яті (Zero-Disk), що гарантує захист авторських прав та відповідність GDPR. "
+        "Інтегровано механізм диспетчеризації запитів до відкритих вебіндексів (DuckDuckGo, Google Search API, Semantic Scholar, OpenAlex) "
+        "із захистом від збоїв за патерном Circuit Breaker.",
          
-        ("5. Розроблено інтелектуальний конвеєр препроцесингу документів (`documentPreprocess.ts`, `proseFilter.ts`), який "
-         "автоматично відсікає лістинги вихідного коду, службову титульну частину та стандартизовані бібліографічні списки, "
-         "фіксуючи обсяг вилучень у структурі `aiExclusions` для забезпечення повної прозорості оцінювання."),
+        "5. Розроблено інтелектуальний конвеєр препроцесингу документів (`documentPreprocess.ts`, `proseFilter.ts`), який "
+        "автоматично відсікає лістинги вихідного коду, службову титульну частину та стандартизовані бібліографічні списки, "
+        "фіксуючи обсяг вилучень у структурі aiExclusions для забезпечення повної прозорості оцінювання.",
          
-        ("6. Запропоновано інноваційний конвеєр двовекторного представлення документів Microsoft Word. Завдяки низькорівневій "
-         "маніпуляції пакетами Office Open XML (`word/document.xml`) через бібліотеку JSZip та токенному вирівнюванню `textAlignment.ts`, "
-         "система забезпечує 100% збереження вихідних стилів, шрифтів, відступів та таблиць Word при стилістичній оптимізації тексту."),
+        "6. Запропоновано інноваційний конвеєр двовекторного представлення документів Microsoft Word. Завдяки низькорівневій "
+        "маніпуляції пакетами Office Open XML (`word/document.xml`) через бібліотеку JSZip та токенному вирівнюванню `textAlignment.ts`, "
+        "система забезпечує 100% збереження вихідних стилів, шрифтів, відступів та таблиць Word при стилістичній оптимізації тексту.",
          
-        ("7. Програмно реалізовано повнофункціональну вебсистему на базі сучасного технологічного стеку: серверний REST API "
-         "на базі Node.js 24 та Express 5.2, клієнтський односторінковий застосунок на базі React 19, TypeScript та TailwindCSS, "
-         "а також детермінований стилістичний редактор Text Humanizer з трьома режимами адаптації (Academic, Natural, Concise)."),
+        "7. Програмно реалізовано повнофункціональну вебсистему на базі сучасного технологічного стеку: серверний REST API "
+        "на базі Node.js 24 та Express 5.2, клієнтський односторінковий застосунок на базі React 19, TypeScript та TailwindCSS, "
+        "а також детермінований стилістичний редактор Text Humanizer з трьома режимами адаптації (Academic, Natural, Concise).",
          
-        ("8. Проведено всебічні експериментальні дослідження та тестування системи. На верифікаційному корпусі україномовних та "
-         "англомовних документів досягнуто високу роздільну здатність класифікації (ROC-AUC 0.942, Macro-F1 0.91) при мінімальному "
-         "рівні хибних спрацьовувань на людських текстах (FPR 3.3%). Експерименти зі стійкості довели, що алгоритм Winnowing "
-         "зберігає 94.8% точності детекції при вставках стороннього тексту (проти 34.1% у класичного шинглування). Впровадження "
-         "багаторівневого кешування MemoryTtlCache прискорило повторні перевірки у 4.5 рази, забезпечивши обробку повних дипломних "
-         "робіт за 16–38 секунд у межах допустимих лімітів serverless-інфраструктури.")
+        "8. Проведено всебічні експериментальні дослідження та тестування системи. На верифікаційному корпусі україномовних та "
+        "англомовних документів досягнуто високу роздільну здатність класифікації (ROC-AUC 0.942, Macro-F1 0.91) при мінімальному "
+        "рівні хибних спрацьовувань на людських текстах (FPR 3.3%). Експерименти зі стійкості довели, що алгоритм Winnowing "
+        "зберігає 94.8% точності детекції при вставках стороннього тексту (проти 34.1% у класичного шинглування). Впровадження "
+        "багаторівневого кешування MemoryTtlCache прискорило повторні перевірки у 4.5 рази, забезпечивши обробку повних дипломних "
+        "робіт за 16–38 секунд у межах допустимих лімітів serverless-інфраструктури."
     ]
     
     for c_text in conclusions_list:
@@ -127,13 +127,10 @@ def add_references(doc):
         p.paragraph_format.first_line_indent = Cm(1.25)
         
         r_num = p.add_run(f"{idx}. ")
-        r_num.font.bold = True
-        r_num.font.name = 'Times New Roman'
-        r_num.font.size = Pt(12)
+        set_run_font(r_num, font_name="Times New Roman", size_pt=14, bold=True)
         
         r_txt = p.add_run(ref)
-        r_txt.font.name = 'Times New Roman'
-        r_txt.font.size = Pt(12)
+        set_run_font(r_txt, font_name="Times New Roman", size_pt=14, bold=False)
 
 def add_appendices(doc):
     # Appendix A
@@ -143,18 +140,14 @@ def add_appendices(doc):
     p_top_a.paragraph_format.space_after = Pt(4)
     p_top_a.paragraph_format.first_line_indent = Cm(0)
     r_a = p_top_a.add_run("ДОДАТОК А")
-    r_a.font.name = 'Times New Roman'
-    r_a.font.size = Pt(14)
-    r_a.font.bold = True
+    set_run_font(r_a, font_name='Times New Roman', size_pt=14, bold=True)
     
     p_title_a = doc.add_paragraph()
     p_title_a.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p_title_a.paragraph_format.space_after = Pt(18)
     p_title_a.paragraph_format.first_line_indent = Cm(0)
     r_ta = p_title_a.add_run("ІЛЮСТРАТИВНІ МАТЕРІАЛИ КОРИСТУВАЦЬКОГО ІНТЕРФЕЙСУ СИСТЕМИ «НЕЗБІГ»")
-    r_ta.font.name = 'Times New Roman'
-    r_ta.font.size = Pt(15)
-    r_ta.font.bold = True
+    set_run_font(r_ta, font_name='Times New Roman', size_pt=15, bold=True)
     
     sc_home = os.path.abspath("docs/screenshots/01_home_main.png")
     add_figure(doc, sc_home, "Рис. А.1 — Повнорозмірний вигляд головної панелі системи з темною темою оформлення", width_cm=16.0)
@@ -169,18 +162,14 @@ def add_appendices(doc):
     p_top_b.paragraph_format.space_after = Pt(4)
     p_top_b.paragraph_format.first_line_indent = Cm(0)
     r_b = p_top_b.add_run("ДОДАТОК Б")
-    r_b.font.name = 'Times New Roman'
-    r_b.font.size = Pt(14)
-    r_b.font.bold = True
+    set_run_font(r_b, font_name='Times New Roman', size_pt=14, bold=True)
     
     p_title_b = doc.add_paragraph()
     p_title_b.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p_title_b.paragraph_format.space_after = Pt(18)
     p_title_b.paragraph_format.first_line_indent = Cm(0)
     r_tb = p_title_b.add_run("ЛІСТИНГИ ВИХІДНОГО КОДУ КЛЮЧОВИХ АЛГОРИТМІЧНИХ МОДУЛІВ")
-    r_tb.font.name = 'Times New Roman'
-    r_tb.font.size = Pt(15)
-    r_tb.font.bold = True
+    set_run_font(r_tb, font_name='Times New Roman', size_pt=15, bold=True)
     
     code_chunking = """// src/server/chunking.ts - Повне перекривне фрагментування документа
 export function splitIntoChunksWithOverlap(text: string, chunkWords = 160, overlapPercent = 0.18): Chunk[] {
@@ -249,18 +238,14 @@ export class ProviderCircuitBreaker {
     p_top_c.paragraph_format.space_after = Pt(4)
     p_top_c.paragraph_format.first_line_indent = Cm(0)
     r_c = p_top_c.add_run("ДОДАТОК В")
-    r_c.font.name = 'Times New Roman'
-    r_c.font.size = Pt(14)
-    r_c.font.bold = True
+    set_run_font(r_c, font_name='Times New Roman', size_pt=14, bold=True)
     
     p_title_c = doc.add_paragraph()
     p_title_c.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p_title_c.paragraph_format.space_after = Pt(18)
     p_title_c.paragraph_format.first_line_indent = Cm(0)
     r_tc = p_title_c.add_run("СПЕЦИФІКАЦІЯ REST API МАРШРУТІВ ТА МОДЕЛЕЙ ДАНИХ СИСТЕМИ")
-    r_tc.font.name = 'Times New Roman'
-    r_tc.font.size = Pt(15)
-    r_tc.font.bold = True
+    set_run_font(r_tc, font_name='Times New Roman', size_pt=15, bold=True)
     
     code_schema = """// src/shared/types.ts - Базові інтерфейси звіту перевірки
 export interface ScanReport {

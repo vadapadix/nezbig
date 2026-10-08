@@ -685,6 +685,110 @@ async function searchBrave(query: string, maxResults: number): Promise<SearchCan
 }
 
 /**
+ * Searches Tavily AI Search (if API key provided)
+ */
+async function searchTavily(query: string, maxResults: number): Promise<SearchCandidate[]> {
+  const apiKey = process.env.TAVILY_API_KEY?.trim();
+  if (!apiKey) return [];
+
+  const key = cacheKey("tavily", query, maxResults);
+  const cached = await searchCache.get(key);
+  if (cached) return cached;
+
+  const response = await fetch("https://api.tavily.com/search", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "User-Agent": "Mozilla/5.0 Nezbig/1.0 (+local plagiarism checker)"
+    },
+    body: JSON.stringify({
+      api_key: apiKey,
+      query,
+      search_depth: "basic",
+      max_results: Math.min(10, maxResults),
+      include_answer: false
+    }),
+    signal: withTimeout(SEARCH_TIMEOUT_MS)
+  });
+
+  if (!response.ok) throw new Error(`Tavily Search HTTP ${response.status}`);
+
+  const payload = (await response.json()) as {
+    results?: Array<{
+      title?: string;
+      url?: string;
+      content?: string;
+    }>;
+  };
+
+  const results = (payload.results ?? [])
+    .filter((item) => item.title && item.url && item.content)
+    .slice(0, maxResults)
+    .map((item): SearchCandidate => ({
+      title: normalizeWhitespace(item.title ?? ""),
+      url: item.url ?? "",
+      snippet: normalizeWhitespace(item.content ?? ""),
+      query,
+      provider: "Tavily"
+    }));
+
+  await searchCache.set(key, results);
+  return results;
+}
+
+/**
+ * Searches Google via Serper.dev API (if API key provided)
+ */
+async function searchSerper(query: string, maxResults: number): Promise<SearchCandidate[]> {
+  const apiKey = process.env.SERPER_API_KEY?.trim();
+  if (!apiKey) return [];
+
+  const key = cacheKey("serper", query, maxResults);
+  const cached = await searchCache.get(key);
+  if (cached) return cached;
+
+  const response = await fetch("https://google.serper.dev/search", {
+    method: "POST",
+    headers: {
+      "X-API-KEY": apiKey,
+      "Content-Type": "application/json",
+      "User-Agent": "Mozilla/5.0 Nezbig/1.0 (+local plagiarism checker)"
+    },
+    body: JSON.stringify({
+      q: query,
+      num: Math.min(10, maxResults),
+      gl: "ua",
+      hl: "uk"
+    }),
+    signal: withTimeout(SEARCH_TIMEOUT_MS)
+  });
+
+  if (!response.ok) throw new Error(`Serper Search HTTP ${response.status}`);
+
+  const payload = (await response.json()) as {
+    organic?: Array<{
+      title?: string;
+      link?: string;
+      snippet?: string;
+    }>;
+  };
+
+  const results = (payload.organic ?? [])
+    .filter((item) => item.title && item.link && item.snippet)
+    .slice(0, maxResults)
+    .map((item): SearchCandidate => ({
+      title: normalizeWhitespace(item.title ?? ""),
+      url: item.link ?? "",
+      snippet: normalizeWhitespace(item.snippet ?? ""),
+      query,
+      provider: "Serper"
+    }));
+
+  await searchCache.set(key, results);
+  return results;
+}
+
+/**
  * Fetches page content (supporting HTML, plaintext, and PDF documents)
  */
 async function fetchReadablePageText(url: string): Promise<PageReadResult> {
@@ -776,6 +880,8 @@ export async function searchWebCandidatesDetailed(chunkText: string, maxResults 
   const diagnostics = emptySearchDiagnostics();
   const googleConfigured = Boolean(process.env.GOOGLE_SEARCH_API_KEY?.trim() && process.env.GOOGLE_SEARCH_ENGINE_ID?.trim());
   const braveConfigured = Boolean(process.env.BRAVE_SEARCH_API_KEY?.trim());
+  const tavilyConfigured = Boolean(process.env.TAVILY_API_KEY?.trim());
+  const serperConfigured = Boolean(process.env.SERPER_API_KEY?.trim());
   const academicEnabled = profile.includeAcademic !== false;
 
   for (const query of queries) {
@@ -786,12 +892,16 @@ export async function searchWebCandidatesDetailed(chunkText: string, maxResults 
       tasks.push({ provider: "OpenAlex", run: () => searchOpenAlex(query, Math.min(4, perQuery)) });
       tasks.push({ provider: "Semantic Scholar", run: () => searchSemanticScholar(query, Math.min(3, perQuery)) });
     }
+    if (serperConfigured) tasks.push({ provider: "Serper", run: () => searchSerper(query, perQuery) });
+    if (tavilyConfigured) tasks.push({ provider: "Tavily", run: () => searchTavily(query, perQuery) });
     if (googleConfigured) tasks.push({ provider: "Google", run: () => searchGoogleCustom(query, perQuery) });
     if (braveConfigured) tasks.push({ provider: "Brave", run: () => searchBrave(query, perQuery) });
   }
 
   if (!googleConfigured) diagnostics.providers.push(skippedProvider("Google", "не налаштовано API-ключ і Search Engine ID"));
   if (!braveConfigured) diagnostics.providers.push(skippedProvider("Brave", "не налаштовано API-ключ"));
+  if (!tavilyConfigured) diagnostics.providers.push(skippedProvider("Tavily", "не налаштовано API-ключ"));
+  if (!serperConfigured) diagnostics.providers.push(skippedProvider("Serper", "не налаштовано API-ключ"));
 
   const taskResults = await Promise.all(tasks.map(runProviderTask));
   const providerDiagnostics = mergeSearchDiagnostics(diagnostics, ...taskResults.map(({ diagnostic }) => ({ ...emptySearchDiagnostics(), providers: [diagnostic] })));
