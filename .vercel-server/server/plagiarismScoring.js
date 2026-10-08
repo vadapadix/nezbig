@@ -73,6 +73,35 @@ function setOverlapPercent(source, candidate) {
     }
     return overlap / source.size;
 }
+const BOILERPLATE_PATTERNS = [
+    /поставленої\s+мети\s+визначено\s+(?:та\s+)?вирішено/i,
+    /для\s+досягнення\s+поставленої\s+мети/i,
+    /визначено\s+(?:та\s+)?вирішено\s+такі\s+(?:наукові\s+)?завдання/i,
+    /спеціальніст(?:ю|ь|і)\s+\d+\s+інженерія\s+програмного\s+забезпечення/i,
+    /галузь\s+знань\s+\d+\s+інформаційні\s+технології/i,
+    /міністерство\s+освіти\s+і\s+науки/i,
+    /київський\s+фаховий\s+коледж/i,
+    /національний\s+університет/i,
+    /об['’]єктом\s+дослідження\s+є/i,
+    /предметом\s+дослідження\s+є/i,
+    /методи\s+дослідження/i,
+    /наукова\s+новизна\s+(?:одержаних\s+)?результатів/i,
+    /практичне\s+значення\s+(?:одержаних\s+)?результатів/i,
+    /кваліфікаційна\s+робота\s+на\s+здобуття/i,
+    /освітньо-професійна\s+програма/i,
+    /ступінь\s+вищої\s+освіти/i,
+    /association\s+for\s+computational\s+linguistics/i,
+    /proceedings\s+of\s+the/i,
+    /annual\s+meeting\s+of\s+the/i,
+    /international\s+conference\s+on/i,
+    /advances\s+in\s+neural\s+information/i,
+    /student\s+research\s+workshop/i,
+    /department\s+of\s+computer\s+science/i,
+    /ieee\s+transactions\s+on/i
+];
+export function isAcademicBoilerplate(phrase) {
+    return BOILERPLATE_PATTERNS.some((pattern) => pattern.test(phrase));
+}
 export function scoreCandidate(chunkText, candidate, chunkIndex) {
     const sourceTokens = tokenize(chunkText);
     const sourceRunTokens = tokenize(chunkText, true);
@@ -90,13 +119,21 @@ export function scoreCandidate(chunkText, candidate, chunkIndex) {
     const fullTextRank = candidateIndex.rank(sourceTokens);
     const commonRun = longestCommonRun(sourceRunTokens, candidateRunTokens);
     const longestRun = commonRun.length;
-    const runScore = Math.min(1, longestRun / 10);
+    const runPhrase = longestRun >= 4 ? sourceRunTokens.slice(commonRun.sourceStart, commonRun.sourceStart + longestRun).join(" ") : "";
+    const isBoilerplate = runPhrase ? isAcademicBoilerplate(runPhrase) : false;
+    // Runs under 6 words or common boilerplate phrases receive no run bonus
+    const effectiveRun = isBoilerplate ? 0 : longestRun;
+    const runScore = effectiveRun >= 9 ? Math.min(1, effectiveRun / 14) : effectiveRun >= 7 ? 0.35 : 0;
     const phraseScore = Math.max(twoGramOverlap * 0.45 + threeGramOverlap * 0.55, fourGramOverlap);
     const pageBonus = candidate.sourceText ? 1 : 0.85;
     let baseScore = (overlapPercent * 0.24 + fullTextRank * 0.20 + phraseScore * 0.22 + runScore * 0.20 + hashOverlap * 0.14) * 100 * pageBonus;
-    // Verbatim copy-paste boost when significant contiguous runs exist
-    if (longestRun >= 8) {
-        baseScore = Math.max(baseScore, Math.min(100, longestRun * 6.5) * pageBonus);
+    // Boilerplate clichés in search snippets or without substantial document overlap should not inflate score
+    if (isBoilerplate && (!candidate.sourceText || overlapPercent < 0.35)) {
+        baseScore = Math.min(baseScore * 0.45, 20);
+    }
+    // Verbatim copy-paste boost when significant contiguous non-boilerplate runs exist
+    if (effectiveRun >= 9) {
+        baseScore = Math.max(baseScore, Math.min(100, effectiveRun * 6.5) * pageBonus);
     }
     const score = clampScore(baseScore);
     return {
@@ -110,7 +147,7 @@ export function scoreCandidate(chunkText, candidate, chunkIndex) {
         longestRun,
         confidence: candidate.sourceText ? "page" : "snippet",
         excerpt: normalizeWhitespace(chunkText).split(" ").slice(0, 48).join(" "),
-        submittedEvidence: longestRun >= 4 ? sourceRunTokens.slice(commonRun.sourceStart, commonRun.sourceStart + longestRun).join(" ") : undefined,
-        sourceEvidence: longestRun >= 4 && candidate.sourceText ? candidateRunTokens.slice(commonRun.candidateStart, commonRun.candidateStart + longestRun).join(" ") : undefined
+        submittedEvidence: longestRun >= 7 && !isBoilerplate ? sourceRunTokens.slice(commonRun.sourceStart, commonRun.sourceStart + longestRun).join(" ") : undefined,
+        sourceEvidence: longestRun >= 7 && !isBoilerplate && candidate.sourceText ? candidateRunTokens.slice(commonRun.candidateStart, commonRun.candidateStart + longestRun).join(" ") : undefined
     };
 }

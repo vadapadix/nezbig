@@ -1,5 +1,6 @@
 import { countWords, normalizeWhitespace } from "./chunking.js";
 import { filterProseText } from "./proseFilter.js";
+import { BIBLIOGRAPHY_PATTERNS } from "./documentPreprocess.js";
 import type { AiContentExclusions } from "../shared/types.js";
 
 type PreparedAiText = {
@@ -8,13 +9,24 @@ type PreparedAiText = {
 };
 
 function stripReferenceTail(text: string): { text: string; removedWords: number } {
-  const marker = /(?<![\p{L}\p{N}_])(?:список\s+(?:використаних\s+)?джерел|бібліографія|references|bibliography)(?![\p{L}\p{N}_])\s*[.:</—-]*/iu;
-  const match = marker.exec(text);
-  if (!match || match.index < text.length * 0.45) return { text, removedWords: 0 };
-  return {
-    text: text.slice(0, match.index),
-    removedWords: countWords(text.slice(match.index))
-  };
+  const minPos = Math.floor(text.length * 0.35);
+  for (const pattern of BIBLIOGRAPHY_PATTERNS) {
+    const slice = text.slice(minPos);
+    const match = pattern.exec(slice);
+    if (match && match.index !== undefined) {
+      const splitIdx = minPos + match.index;
+      const tail = text.slice(splitIdx);
+      const tailWords = countWords(tail);
+      const bodyWords = countWords(text.slice(0, splitIdx));
+      if (tailWords >= 8 && bodyWords >= 20) {
+        return {
+          text: text.slice(0, splitIdx),
+          removedWords: tailWords
+        };
+      }
+    }
+  }
+  return { text, removedWords: 0 };
 }
 
 function stripLongQuotations(text: string): { text: string; removedWords: number } {

@@ -213,6 +213,11 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion }: Repor
                       {lang === "uk" ? "Титулку пропущено:" : "Title page skipped:"} {formatNumber(report.skippedTitleWords, lang)} {t("wordsCount")}
                     </span>
                   ) : null}
+                  {report.skippedBibliographyWords ? (
+                    <span className="px-3 py-1.5 rounded-lg border border-indigo-500/30 bg-indigo-500/10 text-body-sm text-indigo-300 font-medium">
+                      {lang === "uk" ? "Список джерел виключено:" : "Bibliography excluded:"} {formatNumber(report.skippedBibliographyWords, lang)} {t("wordsCount")}
+                    </span>
+                  ) : null}
                   {filteredNotes.map((note) => (
                     <span key={note} className="px-3 py-1.5 rounded-lg border border-slate-700/60 bg-surface-container text-body-sm text-slate-300">
                       {translateScanNote(note, lang)}

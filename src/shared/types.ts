@@ -174,6 +174,7 @@ export type ScanReport = {
   scanNotes?: string[];
   searchDiagnostics?: SearchDiagnostics;
   skippedTitleWords?: number;
+  skippedBibliographyWords?: number;
   fileEvidence?: FileEvidence;
   matches: PlagiarismMatch[];
   aiSignals: AiSignal[];

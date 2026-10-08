@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { calculateConfirmedPlagiarismScore, detectAiSignals, scoreCandidate, summarizeReport } from "./scoring.js";
+import { isAcademicBoilerplate } from "./plagiarismScoring.js";
 
 describe("scoreCandidate", () => {
   it("gives a high score to overlapping source pages", () => {
@@ -383,5 +384,38 @@ describe("detectAiSignals", () => {
 
     expect(mixed.signals.find((signal) => signal.label === "Часті формальні переходи")?.score ?? 0).toBeGreaterThan(0);
     expect(pureUkrainian.probability).toBeGreaterThanOrEqual(mixed.probability - 12);
+  });
+
+  it("identifies academic boilerplate clichés correctly", () => {
+    expect(isAcademicBoilerplate("поставленої мети визначено та вирішено такі завдання")).toBe(true);
+    expect(isAcademicBoilerplate("спеціальністю 121 інженерія програмного забезпечення")).toBe(true);
+    expect(isAcademicBoilerplate("the association for computational linguistics volume")).toBe(true);
+    expect(isAcademicBoilerplate("proceedings of the 62nd annual meeting")).toBe(true);
+    expect(isAcademicBoilerplate("оригінальний текст про нову архітектуру нейронної мережі")).toBe(false);
+  });
+
+  it("does not inflate plagiarism score for short boilerplate cliches", () => {
+    const chunk = "Для досягнення поставленої мети визначено та вирішено такі наукові та практичні завдання у межах курсової роботи.";
+    const candidate = {
+      title: "Інший студентський звіт",
+      url: "https://example.com/other",
+      snippet: "Для досягнення поставленої мети визначено та вирішено такі завдання розробки клієнтського застосунку.",
+      provider: "test"
+    };
+
+    const match = scoreCandidate(chunk, candidate, 0);
+    // Boilerplate should receive no verbatim boost and no evidence quote
+    expect(match.submittedEvidence).toBeUndefined();
+    expect(match.score).toBeLessThan(25);
+  });
+
+  it("does not flag bibliography citation lines as AI suspicious segments", () => {
+    const bibText = Array.from({ length: 6 }, (_, index) =>
+      `${index + 1}. Wang Y., Mansurov M. Evaluation of machine-generated text detectors. Proceedings of the Association for Computational Linguistics, 2024. P. 1245–1263. DOI: https://doi.org/10.18653/v1/2024.acl-long.674.`
+    ).join("\n");
+
+    const result = detectAiSignals(bibText);
+    expect(result.suspiciousSegments.length).toBe(0);
+    expect(result.probability).toBeLessThanOrEqual(15);
   });
 });

@@ -69,8 +69,7 @@ const AI_PATTERN_GROUPS = [
             /it's not just\b[\s\S]{0,90}\bit'?s/gi,
             /(?:не лише|не тільки)[\s\S]{0,90}(?:а й|але й|а також)/gi,
             /(?:по-перше|по-друге|по-третє)/gi,
-            /(?:firstly|secondly|thirdly)/gi,
-            /\d\.\s.*\d\.\s.*\d\.\s/g // Списки 1. 2. 3.
+            /(?:firstly|secondly|thirdly)/gi
         ]
     },
     {
@@ -114,8 +113,14 @@ function isSectionHeading(sentence) {
         return false;
     return /^(?:зміст|вступ|висновки|список використаних джерел|розділ\s+(?:[0-9]+|[ivx]+)(?:\s+.+)?|introduction|conclusion|references|chapter\s+(?:[0-9]+|[ivx]+)(?:\s+.+)?)$/iu.test(normalized);
 }
+function isBibliographicText(text) {
+    const bibIndicators = countRegexMatches(text, /\b(?:doi|doi\.org|isbn|issn|proceedings|conference|journal|vol\.|volume|issue|pp?\.\s*\d+|pages?\s*\d+|in\s+press|et\s+al\.|url:|arxiv|springer|ieee|elsevier|acm)\b|https?:\/\/\S+|\b\d{4}\b.*(?:p\.|pp\.|c\.|ст\.)\s*\d+/giu);
+    const numberedEntries = countRegexMatches(text, /(?:^|\s)\d{1,3}[\.\)]\s+[A-ZА-ЯІЇЄҐ]/gu);
+    return bibIndicators.length >= 3 || (numberedEntries.length >= 2 && bibIndicators.length >= 1);
+}
 function sentenceStartRepetition(sentences) {
-    const starts = sentences.map((sentence) => tokenize(sentence, true).slice(0, 3).join(" ")).filter((start) => start.length > 4);
+    const proseSentences = sentences.filter((s) => !/^\s*(?:\d+[\.\)]|[\-–—•*])\s+/iu.test(s));
+    const starts = proseSentences.map((sentence) => tokenize(sentence, true).slice(0, 3).join(" ")).filter((start) => start.length > 4);
     const counts = new Map();
     for (const start of starts)
         counts.set(start, (counts.get(start) ?? 0) + 1);
@@ -169,12 +174,14 @@ function impersonalAcademicVoice(text, wordCount) {
     };
 }
 function safeguardScore(normalized, wordCount, placeholderText, academicStructure) {
+    const isBib = isBibliographicText(normalized);
     const citations = countRegexMatches(normalized, /\[[0-9]{1,3}\]|\([A-ZА-ЯІЇЄҐ][\p{L}'-]+,\s*20[0-9]{2}\)|https?:\/\/\S+|doi:\s*\S+|дсту\s+[0-9]+|режим\s+доступу:|с\.\s*[0-9]+-[0-9]+|т\.\s*[0-9]+|№\s*[0-9]+/giu);
     const figuresAndTables = countRegexMatches(normalized, /(?:рис\.|рисунок|табл\.|таблиця|схема|формула)\s*(?:[0-9]+|\([0-9]+\))/giu);
     const numbers = countRegexMatches(normalized, /\b\d+(?:[.,]\d+)?\s*(?:%|грн|uah|usd|eur|км|м|см|мм|року|р\.|рік|years?|с|хв|год)\b/giu);
     const firstPerson = countRegexMatches(normalized, /(?<![\p{L}\p{N}_])(?:я|мені|мою|моє|ми|наш|наша|нашому|наших|i|my|we|our)(?![\p{L}\p{N}_])/giu);
     const quotes = countRegexMatches(normalized, /["“„«][^"”»]{12,}["”»]/gu);
     const evidence = [
+        isBib ? "бібліографічний блок або список джерел" : "",
         citations.length ? `${citations.length} посилань або бібліографічних маркерів` : "",
         figuresAndTables.length ? `${figuresAndTables.length} посилань на таблиці/рисунки` : "",
         numbers.length >= 3 ? `${numbers.length} числових/фактичних маркерів` : "",
@@ -184,7 +191,8 @@ function safeguardScore(normalized, wordCount, placeholderText, academicStructur
         placeholderText ? "lorem ipsum / шаблонний наповнювач" : "",
         academicStructure ? "академічна структура: вступ, розділи або висновки не вважаються AI-ознакою" : ""
     ].filter(Boolean);
-    const score = clampScore(citations.length * 14 +
+    const score = clampScore((isBib ? 60 : 0) +
+        citations.length * 14 +
         figuresAndTables.length * 10 +
         Math.min(22, numbers.length * 2.5) +
         Math.min(18, firstPerson.length * 3.5) +
@@ -414,6 +422,10 @@ function analyzeSinglePass(text) {
     let rawProbability = weightedRaw * corroboration * lengthAdjust;
     rawProbability += Math.max(0, evidenceSignals.length - 1) * 4;
     rawProbability += Math.max(0, weakEvidenceSignals.length - 3) * 1.5;
+    const isBib = isBibliographicText(normalized);
+    if (isBib) {
+        rawProbability = Math.min(rawProbability * 0.2, 8);
+    }
     const promptLeak = signalDrafts.find((signal) => signal.label === "Prompt-leak та ШІ-відмови")?.score ?? 0;
     const strongAverage = evidenceSignals
         .map((signal) => signal.score)
@@ -421,7 +433,13 @@ function analyzeSinglePass(text) {
         .slice(0, 3)
         .reduce((sum, score, _index, scores) => sum + score / Math.max(1, scores.length), 0);
     const evidenceFloor = promptLeak >= 40 ? 45 : evidenceSignals.length >= 3 ? Math.max(22, strongAverage * 0.5) : weakEvidenceSignals.length >= 5 ? 8 : weakEvidenceSignals.length >= 2 ? 3 : 0;
-    const probability = clampScore(placeholderText ? Math.min(10, weightedRaw) : Math.max(rawProbability, corroboratedFloor, evidenceFloor));
+    const adjustedCorroboratedFloor = isBib ? 0 : corroboratedFloor;
+    const adjustedEvidenceFloor = isBib ? 0 : evidenceFloor;
+    const probability = clampScore(placeholderText
+        ? Math.min(10, weightedRaw)
+        : isBib
+            ? Math.min(10, rawProbability)
+            : Math.max(rawProbability, adjustedCorroboratedFloor, adjustedEvidenceFloor));
     const signals = signalDrafts
         .map(({ weight: _weight, ...signal }) => signal)
         .filter((signal) => signal.score >= 5 || signal.evidence?.length)
@@ -511,6 +529,9 @@ function suspiciousSegments(windows, results) {
     return results
         .map((result, index) => {
         const window = windows[index];
+        if (isBibliographicText(window.text)) {
+            return null;
+        }
         const evidence = result.signals
             .filter((signal) => signal.category !== "safeguard" && signal.score >= 12)
             .slice(0, 4)
@@ -518,7 +539,7 @@ function suspiciousSegments(windows, results) {
         const excerpt = window.text.length > 280 ? `${window.text.slice(0, 277).trimEnd()}…` : window.text;
         return { index: window.index, startWord: window.startWord, endWord: window.endWord, score: result.probability, excerpt, evidence };
     })
-        .filter((segment) => segment.score >= 18 && segment.evidence.length > 0)
+        .filter((segment) => segment !== null && segment.score >= 18 && segment.evidence.length > 0)
         .sort((left, right) => right.score - left.score)
         .slice(0, 5);
 }

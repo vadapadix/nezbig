@@ -19,6 +19,7 @@ import { humanizeText } from "./humanizer.js";
 import { analyzeWithLlmProviders } from "./llmOpinion.js";
 import { emptySearchDiagnostics, mergeSearchDiagnostics, searchDiagnosticsNotes } from "./searchDiagnostics.js";
 import { calculateConfirmedPlagiarismScore, scoreCandidate, detectAiSignals, summarizeReport, rerankCandidates } from "./scoring.js";
+import { isAcademicBoilerplate } from "./plagiarismScoring.js";
 import { decodeUploadFileName, extractTextFromUpload } from "./textExtraction.js";
 import { hydrateSearchCandidatesDetailed, searchWebCandidatesDetailed } from "./webSearch.js";
 import { authMiddleware, saveUserReport } from "./auth.js";
@@ -125,9 +126,40 @@ function fullCoverageSettings(settings: ScanSettings, wordCount: number): ScanSe
 }
 
 function thresholdFor(settings: ScanSettings): number {
-  if (settings.sensitivity === "quick") return 24;
-  if (settings.sensitivity === "deep") return 12;
-  return 16;
+  if (settings.sensitivity === "quick") return 32;
+  if (settings.sensitivity === "deep") return 20;
+  return 24;
+}
+
+function isValidPlagiarismMatch(match: PlagiarismMatch, settings: ScanSettings): boolean {
+  const threshold = thresholdFor(settings);
+  const evidence = match.submittedEvidence || match.sourceEvidence || "";
+  const isBoilerplate = evidence ? isAcademicBoilerplate(evidence) : false;
+
+  // Academic boilerplate (e.g. ministerial titles, introductory formulas, conference names)
+  // must have substantial overall document match to not be discarded as academic clichés.
+  if (isBoilerplate) {
+    return match.score >= 35 && match.overlapPercent >= 35;
+  }
+
+  // 1. Verbatim continuous match: at least 9 consecutive words
+  if (match.longestRun >= 9) {
+    return true;
+  }
+
+  // 2. High overlap with solid score and phrase match
+  if (match.score >= threshold && match.overlapPercent >= 24) {
+    if (match.ngramOverlapPercent >= 16 || match.longestRun >= 6) {
+      return true;
+    }
+  }
+
+  // 3. Hydrated full page with verified high overlap
+  if (match.confidence === "page" && match.score >= threshold && match.overlapPercent >= 28) {
+    return true;
+  }
+
+  return false;
 }
 
 async function mapWithConcurrency<T, R>(items: T[], concurrency: number, worker: (item: T) => Promise<R>): Promise<R[]> {
@@ -223,7 +255,7 @@ async function runScan(request: ScanRequest, fileEvidence?: FileEvidence, onProg
   const allMatches = [...preliminaryMatches.map(({ match }) => match), ...hydratedMatches];
 
   const matches = uniqueMatches(allMatches)
-    .filter((match) => match.score >= thresholdFor(settings) || match.longestRun >= 5 || (match.confidence === "page" && match.overlapPercent >= 22))
+    .filter((match) => isValidPlagiarismMatch(match, settings))
     .sort((a, b) => b.score - a.score || b.longestRun - a.longestRun)
     .slice(0, 24);
 
@@ -259,6 +291,7 @@ async function runScan(request: ScanRequest, fileEvidence?: FileEvidence, onProg
     scanNotes,
     searchDiagnostics,
     skippedTitleWords: prepared.skippedTitleWords,
+    skippedBibliographyWords: prepared.skippedBibliographyWords,
     fileEvidence,
     matches,
     aiSignals: localAi.signals,
