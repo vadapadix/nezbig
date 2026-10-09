@@ -97,6 +97,61 @@ describe("humanizeText", () => {
     expect(result.changes.some((change) => change.label === "Переписано академічні заготовки")).toBe(true);
   });
 
+  it("smooths triadic rule-of-three listings into natural asymmetric conjunctions", () => {
+    const text =
+      "Програмна система забезпечує швидкість, надійність та безпеку обробки персональних даних користувачів. Алгоритм одночасно оптимізує точність, продуктивність і масштабованість для всіх сервісів платформи.";
+    const result = humanizeText(text);
+
+    expect(result.revisedText).toContain("швидкість та надійність, а також безпеку");
+    expect(result.revisedText).toContain("точність та продуктивність, а також масштабованість");
+    expect(result.changes.some((c) => c.label.includes("Rule of Three"))).toBe(true);
+  });
+
+  it("softens dialectical hedging and antithetical balancing", () => {
+    const text =
+      "З одного боку, впровадження нових технологій створює додаткові виклики для розробників, з іншого боку, воно дозволяє підвищити загальну швидкість виконання завдань команди. Хоча архітектура залишається складною, проте вона забезпечує стабільність.";
+    const result = humanizeText(text);
+
+    expect(result.revisedText).not.toContain("з одного боку");
+    expect(result.revisedText).not.toContain("з іншого боку");
+    expect(result.revisedText).not.toContain("хоча архітектура залишається складною, проте");
+    expect(result.changes.some((c) => c.label.includes("балансування"))).toBe(true);
+  });
+
+  it("de-clusters split nominalizations into direct active verbs", () => {
+    const text =
+      "Система здійснює аналіз вхідних запитів та робить можливим швидке ухвалення рішень. Дослідники беруть до уваги ці показники, оскільки новий алгоритм має суттєвий вплив на роботу компонентів.";
+    const result = humanizeText(text);
+
+    expect(result.revisedText).toContain("аналізує");
+    expect(result.revisedText).toContain("дозволяє");
+    expect(result.revisedText).toContain("враховують");
+    expect(result.revisedText).toContain("суттєво впливає");
+    expect(result.changes.some((c) => c.label.includes("Nominalization"))).toBe(true);
+  });
+
+  it("modulates sentence pacing in academic mode for long compound clauses", () => {
+    const text =
+      "Розроблена програмна архітектура поєднує різноманітні компоненти для обробки великих масивів інформації, при цьому додаткові сервіси здійснюють фільтрацію неструктурованих даних у режимі реального часу без затримок передачі потоків. Це забезпечує надійність.";
+    const result = humanizeText(text, "academic");
+
+    expect(result.revisedText).toContain(". При цьому, додаткові сервіси");
+    expect(result.changes.some((c) => c.label.includes("Burstiness"))).toBe(true);
+  });
+
+  it("varies consecutive demonstrative starts and removes 2024-2026 AI tropes", () => {
+    const text =
+      "Цей метод виступає фундаментом подальшого розвитку проєкту та слугує каталізатором прогресу. Цей метод визначає стратегічний вектор розробки та створює новий вимір взаємодії в системі.";
+    const result = humanizeText(text);
+
+    expect(result.revisedText).not.toContain("виступає фундаментом");
+    expect(result.revisedText).not.toContain("слугує каталізатором");
+    expect(result.revisedText).not.toContain("стратегічний вектор");
+    expect(result.revisedText).not.toContain("новий вимір");
+    expect(result.revisedText).toContain("Подібний метод");
+    expect(result.changes.some((c) => c.label.includes("гіпертрофованої значущості"))).toBe(true);
+  });
+
   it("rejects text that is too short for reliable editing", () => {
     expect(() => humanizeText("Занадто мало тексту.")).toThrow(/20 слів/);
   });

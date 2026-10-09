@@ -39,6 +39,7 @@ export type HumanizeChange = {
   label: string;
   count: number;
   detail: string;
+  category?: "cliche" | "syntax" | "vocabulary" | "style" | "pacing";
 };
 
 export type HumanizeResult = {

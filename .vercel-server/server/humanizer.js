@@ -219,6 +219,179 @@ const RULES = [
         category: "style",
         pattern: /(\*\*|__|[🚀✅💡🔥⭐️✨])/gu,
         replacement: ""
+    },
+    // 5. Сучасні маркери значущості та AI-тропи 2024–2026 (ACL / Nature Human Behaviour)
+    {
+        label: "Усунено штампи гіпертрофованої значущості",
+        detail: "Замінено штучні метафори важливості (наріжний камінь, каталізатор, стратегічний вектор) на прямі значення.",
+        category: "vocabulary",
+        pattern: /(?<![\p{L}\p{N}_])(?:наріжний камінь|слугує каталізатором|служить каталізатором|виступає фундаментом|стратегічний вектор|новий вимір|втілення інновацій|крок до вдосконалення|свідченням вагомого|невіддільним елементом|невід'ємним елементом|невід’ємним елементом|покликаний слугувати|варто окреслити|вирішальне значення|акцентувати увагу|динамічно трансформується|комплексне осмислення|відіграє невід'ємну роль|відіграє невід’ємну роль|нерозривно пов['’]язан(?:ий|а|е|і)?|розкриває потенціал|важливо розуміти|варто відмітити|вимагає уваги)(?![\p{L}\p{N}_])/giu,
+        replacement: (match) => {
+            const lower = match.toLowerCase();
+            if (lower.includes("наріжний камінь"))
+                return "базова основа";
+            if (lower.includes("каталізатором"))
+                return "стимулом";
+            if (lower.includes("виступає фундаментом"))
+                return "є підґрунтям";
+            if (lower.includes("стратегічний вектор"))
+                return "головний напрям";
+            if (lower.includes("новий вимір"))
+                return "новий рівень";
+            if (lower.includes("втілення інновацій"))
+                return "інноваційне рішення";
+            if (lower.includes("крок до вдосконалення"))
+                return "покращення";
+            if (lower.includes("свідченням вагомого"))
+                return "показником";
+            if (lower.includes("невіддільним") || lower.includes("невід'ємним") || lower.includes("невід’ємним"))
+                return "важливою складовою";
+            if (lower.includes("покликаний слугувати"))
+                return "має бути";
+            if (lower.includes("варто окреслити"))
+                return "дослідимо";
+            if (lower.includes("вирішальне значення"))
+                return "значний вплив";
+            if (lower.includes("акцентувати увагу"))
+                return "зосередитися";
+            if (lower.includes("динамічно трансформується"))
+                return "швидко змінюється";
+            if (lower.includes("комплексне осмислення"))
+                return "глибокий розгляд";
+            if (lower.includes("відіграє невід"))
+                return "є важливою частиною";
+            if (lower.includes("нерозривно пов"))
+                return "тісно пов'язані";
+            if (lower.includes("розкриває потенціал"))
+                return "демонструє можливості";
+            if (lower.includes("важливо розуміти"))
+                return "слід враховувати";
+            if (lower.includes("варто відмітити"))
+                return "зауважимо";
+            if (lower.includes("вимагає уваги"))
+                return "потребує уваги";
+            return match;
+        }
+    },
+    {
+        label: "Усунено прикінцеві та вступні AI-шаблони",
+        detail: "Замінено канцеляризми висновків та переходів ('підсумовуючи викладене', 'враховуючи вищезазначене').",
+        category: "style",
+        pattern: /(?<![\p{L}\p{N}_])(?:підсумовуючи викладене,?\s*|узагальнюючи викладений матеріал,?\s*|підсумуємо викладене,?\s*|узагальнюючи вищесказане,?\s*|враховуючи вищезазначене,?\s*|нижче наведено основні:?\s*|розглянемо детальніше:?\s*)(?![\p{L}\p{N}_])/giu,
+        replacement: (match) => {
+            const lower = match.toLowerCase();
+            if (lower.includes("підсумовуючи") || lower.includes("узагальнюючи") || lower.includes("підсумуємо"))
+                return "Отже, ";
+            if (lower.includes("враховуючи"))
+                return "З огляду на це, ";
+            if (lower.includes("нижче наведено"))
+                return "Нижче подано: ";
+            return "Детальніше: ";
+        }
+    },
+    {
+        label: "Очищено прийменникові канцеляризми",
+        detail: "Усунено невластиві українській мові штампи ('на сьогоднішній день', 'на протязі', 'в якості').",
+        category: "vocabulary",
+        pattern: /(?<![\p{L}\p{N}_])(?:на сьогоднішній день|на протязі (?:року|місяця|тижня|періоду|часу)|в якості|за рахунок того, що|приймати участь|прийняття рішень|прийнятті рішень|у зв['’]язку з тим, що|в першу чергу|на регулярній основі|у більшості випадків)(?![\p{L}\p{N}_])/giu,
+        replacement: (match) => {
+            const lower = match.toLowerCase();
+            if (lower.includes("на сьогоднішній день"))
+                return "сьогодні";
+            if (lower.includes("на протязі"))
+                return match.replace(/на протязі/i, "протягом");
+            if (lower.includes("в якості"))
+                return "як";
+            if (lower.includes("за рахунок того, що"))
+                return "завдяки тому, що";
+            if (lower.includes("приймати участь"))
+                return "брати участь";
+            if (lower.includes("прийняття рішень"))
+                return "ухвалення рішень";
+            if (lower.includes("прийнятті рішень"))
+                return "ухваленні рішень";
+            if (lower.includes("у зв'язку з тим, що") || lower.includes("у зв’язку з тим, що"))
+                return "оскільки";
+            if (lower.includes("в першу чергу"))
+                return "насамперед";
+            if (lower.includes("на регулярній основі"))
+                return "регулярно";
+            return "переважно";
+        }
+    },
+    {
+        label: "Активовано розщеплені присудки (Nominalization)",
+        detail: "Замінено віддієслівні іменники та пасивні звороти на прямі дієслова для підвищення динаміки тексту.",
+        category: "syntax",
+        pattern: /(?<![\p{L}\p{N}_])(?:здійснення аналізу|проведення аналізу|проведення дослідження|брати до уваги|бере до уваги|беруть до уваги|беручи до уваги|робить можливим|роблять можливим|надавати допомогу|надає допомогу|виступає в ролі|носить характер|знаходиться під впливом|знаходяться під впливом|має суттєвий вплив|мати суттєвий вплив|мають суттєвий вплив)(?![\p{L}\p{N}_])/giu,
+        replacement: (match) => {
+            const lower = match.toLowerCase();
+            if (lower.includes("здійснення аналізу") || lower.includes("проведення аналізу"))
+                return "аналіз";
+            if (lower.includes("проведення дослідження"))
+                return "дослідження";
+            if (lower.includes("брати до уваги"))
+                return "враховувати";
+            if (lower.includes("бере до уваги"))
+                return "враховує";
+            if (lower.includes("беруть до уваги"))
+                return "враховують";
+            if (lower.includes("беручи до уваги"))
+                return "враховуючи";
+            if (lower.includes("робить можливим"))
+                return "дозволяє";
+            if (lower.includes("роблять можливим"))
+                return "дозволяють";
+            if (lower.includes("надавати допомогу"))
+                return "допомагати";
+            if (lower.includes("надає допомогу"))
+                return "допомагає";
+            if (lower.includes("виступає в ролі"))
+                return "є";
+            if (lower.includes("носить характер"))
+                return "має ознаки";
+            if (lower.includes("знаходиться під впливом"))
+                return "зазнає впливу";
+            if (lower.includes("знаходяться під впливом"))
+                return "зазнають впливу";
+            if (lower.includes("має суттєвий вплив"))
+                return "суттєво впливає";
+            if (lower.includes("мати суттєвий вплив"))
+                return "суттєво впливати";
+            return "суттєво впливають";
+        }
+    },
+    {
+        label: "Розширено сучасні англійські LLM-тропи",
+        detail: "Замінено клішовані вислови 2024–2026 років (catalyst for, cornerstone of, profound impact).",
+        category: "vocabulary",
+        pattern: /\b(?:catalyst for|cornerstone of|profound impact|spearhead|intertwined with|plays an indispensable role|new era of|fosters an environment|intricate tapestry|navigating the nuances|delve deeper into|crucial step)\b/gi,
+        replacement: (match) => {
+            const lower = match.toLowerCase();
+            if (lower.includes("catalyst"))
+                return "driver of";
+            if (lower.includes("cornerstone"))
+                return "foundation of";
+            if (lower.includes("profound impact"))
+                return "clear impact";
+            if (lower.includes("spearhead"))
+                return "lead";
+            if (lower.includes("intertwined"))
+                return "linked";
+            if (lower.includes("indispensable"))
+                return "is essential";
+            if (lower.includes("new era"))
+                return "period of";
+            if (lower.includes("fosters an environment"))
+                return "enables";
+            if (lower.includes("tapestry"))
+                return "complex system";
+            if (lower.includes("nuances"))
+                return "understanding the details";
+            if (lower.includes("delve deeper"))
+                return "examine further";
+            return "key step";
+        }
     }
 ];
 function applyRule(text, rule, mode) {
@@ -243,8 +416,57 @@ function normalizeParagraphs(text) {
         .join("\n\n");
 }
 /**
+ * Triadic Smoothing Engine (Anti "Rule-of-Three" bias):
+ * LLMs exhibit a pronounced bias toward grouping arguments, adjectives, and items in sets of three ("X, Y та Z").
+ * Transforms "X, Y та Z" -> "X та Y, а також Z", breaking the rigid triadic detection n-gram.
+ */
+function smoothTriadicStructures(text, _mode) {
+    let count = 0;
+    // Match Ukrainian triadic listing: "слово1, слово2 та/і/й слово3"
+    let revised = text.replace(/([\p{L}\p{N}'-]+),\s+([\p{L}\p{N}'-]+),?\s+(та|і|й)\s+([\p{L}\p{N}'-]+)(?=[ ,.;:!?])/giu, (_match, w1, w2, _conj, w4) => {
+        count += 1;
+        return `${w1} та ${w2}, а також ${w4}`;
+    });
+    // Match English triadic listing: "word1, word2, and word3"
+    revised = revised.replace(/\b([a-zA-Z0-9'-]+),\s+([a-zA-Z0-9'-]+),?\s+(and)\s+([a-zA-Z0-9'-]+)\b/gi, (_match, w1, w2, _conj, w4) => {
+        count += 1;
+        return `${w1} and ${w2}, as well as ${w4}`;
+    });
+    return { text: revised, count };
+}
+/**
+ * Dialectical Hedging Softener:
+ * Neutralizes artificial thesis-antithesis balancing ("з одного боку ... з іншого боку", "хоча ..., проте ...").
+ */
+function softenDialecticalHedging(text) {
+    let count = 0;
+    let revised = text;
+    // Ukrainian "з одного боку ..., з іншого боку ..."
+    revised = revised.replace(/(?<![\p{L}\p{N}_])з одного боку,?\s*([^.!?]{10,140}?)(?:,\s*)з іншого боку,?\s*/giu, (_match, clause) => {
+        count += 1;
+        return `Поряд із тим, що ${clause.trim()}, водночас `;
+    });
+    // English "on the one hand ..., on the other hand ..."
+    revised = revised.replace(/\bon the one hand,?\s*([^.!?]{10,140}?)(?:,\s*)on the other hand,?\s*/gi, (_match, clause) => {
+        count += 1;
+        return `While ${clause.trim()}, at the same time `;
+    });
+    // Double-hedging: "хоча ..., проте/однак ..."
+    revised = revised.replace(/(?<![\p{L}\p{N}_])хоча\s+([^,.!?]{5,80}?),\s*(?:проте|однак)\s+/giu, (_match, clause) => {
+        count += 1;
+        return `хоча ${clause.trim()}, `;
+    });
+    // "попри ..., проте/однак ..."
+    revised = revised.replace(/(?<![\p{L}\p{N}_])попри\s+([^,.!?]{5,80}?),\s*(?:проте|однак|разом з тим)\s+/giu, (_match, clause) => {
+        count += 1;
+        return `попри ${clause.trim()}, `;
+    });
+    return { text: revised, count };
+}
+/**
  * Pacing & Burstiness Restructuring Engine:
- * Breaks overly long, monotonous compound sentences (>26 words) into dynamic, natural sentence pairs.
+ * Breaks overly long, monotonous compound sentences into dynamic, natural sentence pairs.
+ * Natural human prose features high sentence length variability (CV > 0.40).
  */
 function modulateSentencePacing(text, mode) {
     let count = 0;
@@ -254,9 +476,38 @@ function modulateSentencePacing(text, mode) {
         for (const sentence of sentences) {
             const trimmed = sentence.trim();
             const words = trimmed.split(/\s+/).filter(Boolean);
-            // In Natural and Concise modes, actively split long robotic compound sentences (>25 words)
-            if (words.length >= 26 && mode !== "academic") {
-                const splitMatch = trimmed.match(/^(.{40,140}?)(?:,\s+(?:зокрема|водночас|разом з тим|при цьому|однак|проте|що свідчить про те, що|що дає змогу))\s+(.+)$/iu);
+            // In Academic mode: split long compound sentences (>= 25 words) at clean formal conjunctions
+            if (mode === "academic" && words.length >= 25) {
+                const splitMatch = trimmed.match(/^(.{30,160}?)(?:,\s*(при цьому|водночас|разом з тим|зокрема|що свідчить про те, що|що свідчить про|що підтверджує|що зумовлює|що дає змогу))\s+(.+)$/iu);
+                if (splitMatch && splitMatch[1] && splitMatch[2] && splitMatch[3]) {
+                    const firstPart = splitMatch[1].trim();
+                    const conj = splitMatch[2].trim().toLowerCase();
+                    const secondPart = splitMatch[3].trim();
+                    let newSecond = "";
+                    if (conj.startsWith("що свідчить про")) {
+                        newSecond = `Це свідчить про ${conj.includes("те, що") ? "те, що " : ""}${secondPart}`;
+                    }
+                    else if (conj === "що підтверджує") {
+                        newSecond = `Це підтверджує ${secondPart}`;
+                    }
+                    else if (conj === "що зумовлює") {
+                        newSecond = `Це зумовлює ${secondPart}`;
+                    }
+                    else if (conj === "що дає змогу") {
+                        newSecond = `Це дає змогу ${secondPart}`;
+                    }
+                    else {
+                        const capitalizedConj = conj.charAt(0).toUpperCase() + conj.slice(1);
+                        newSecond = `${capitalizedConj}, ${secondPart}`;
+                    }
+                    revised.push(`${firstPart}. ${newSecond}`);
+                    count += 1;
+                    continue;
+                }
+            }
+            // In Natural and Concise modes: split long robotic compound sentences (>= 24 words)
+            if (mode !== "academic" && words.length >= 24) {
+                const splitMatch = trimmed.match(/^(.{35,140}?)(?:,\s+(?:зокрема|водночас|разом з тим|при цьому|однак|проте|що свідчить про те, що|що дає змогу|тому що|оскільки))\s+(.+)$/iu);
                 if (splitMatch && splitMatch[1] && splitMatch[2]) {
                     const firstPart = splitMatch[1].trim();
                     const secondPart = splitMatch[2].trim();
@@ -314,25 +565,56 @@ function removeDuplicateSentences(text) {
     return { text: paragraphs.join("\n\n"), count };
 }
 function varyRepeatedSentenceStarts(text) {
-    const counts = new Map();
     let count = 0;
     const paragraphs = text.split(/\n{2,}/).map((paragraph) => {
         const sentences = paragraph.match(/[^.!?]+[.!?]+|[^.!?]+$/gu) ?? [paragraph];
         const revised = [];
+        let previousDemonstrative = null;
+        const seenStarts = new Map();
         for (const sentence of sentences) {
-            const trimmed = sentence.trim();
+            let trimmed = sentence.trim();
             const tokens = trimmed
                 .toLowerCase()
                 .replace(/[^\p{L}\p{N}\s'-]/gu, " ")
                 .split(/\s+/)
                 .filter(Boolean);
-            const start = tokens.slice(0, 3).join(" ");
-            const seen = counts.get(start) ?? 0;
-            counts.set(start, seen + 1);
-            if (seen > 0 && start.length > 6 && /^(у|в)\s+роботі\b/iu.test(trimmed)) {
-                revised.push(trimmed.replace(/^(у|в)\s+роботі\s+/iu, "У цьому контексті "));
+            const firstWord = tokens[0] ?? "";
+            const isDemonstrative = /^(цей|ця|це|ці|такий|така|таке|такі)$/iu.test(firstWord);
+            // If consecutive sentences start with demonstratives, vary the second
+            if (isDemonstrative && previousDemonstrative) {
+                if (/^цей\s+/iu.test(trimmed)) {
+                    trimmed = trimmed.replace(/^цей\s+/iu, "Подібний ");
+                    count += 1;
+                }
+                else if (/^ця\s+/iu.test(trimmed)) {
+                    trimmed = trimmed.replace(/^ця\s+/iu, "Відповідна ");
+                    count += 1;
+                }
+                else if (/^це\s+/iu.test(trimmed)) {
+                    trimmed = trimmed.replace(/^це\s+/iu, "Зазначене ");
+                    count += 1;
+                }
+                else if (/^ці\s+/iu.test(trimmed)) {
+                    trimmed = trimmed.replace(/^ці\s+/iu, "Відповідні ");
+                    count += 1;
+                }
+                else if (/^такий\s+/iu.test(trimmed)) {
+                    trimmed = trimmed.replace(/^такий\s+/iu, "Подібний ");
+                    count += 1;
+                }
+                else if (/^така\s+/iu.test(trimmed)) {
+                    trimmed = trimmed.replace(/^така\s+/iu, "Подібна ");
+                    count += 1;
+                }
+            }
+            previousDemonstrative = isDemonstrative ? firstWord : null;
+            // Handle repeated "у роботі"
+            const threeWordStart = tokens.slice(0, 3).join(" ");
+            const seen = seenStarts.get(threeWordStart) ?? 0;
+            seenStarts.set(threeWordStart, seen + 1);
+            if (seen > 0 && threeWordStart.length > 6 && /^(у|в)\s+роботі\b/iu.test(trimmed)) {
+                trimmed = trimmed.replace(/^(у|в)\s+роботі\s+/iu, "У цьому контексті ");
                 count += 1;
-                continue;
             }
             revised.push(trimmed);
         }
@@ -354,43 +636,78 @@ export function humanizeText(input, mode = "academic") {
         const result = applyRule(revised, rule, mode);
         revised = result.text;
         if (result.count > 0) {
-            changes.push({ label: rule.label, count: result.count, detail: rule.detail });
+            changes.push({
+                label: rule.label,
+                count: result.count,
+                detail: rule.detail,
+                category: rule.category
+            });
         }
     }
+    // Smooth Triadic listings (anti Rule-of-Three bias)
+    const triadic = smoothTriadicStructures(revised, mode);
+    revised = triadic.text;
+    if (triadic.count > 0) {
+        changes.push({
+            label: "Згладжено тріадичні переліки (Rule of Three)",
+            count: triadic.count,
+            detail: "Перетворено штучні тричленні переліки ('X, Y та Z') у природний асиметричний синтаксис.",
+            category: "syntax"
+        });
+    }
+    // Soften Dialectical Hedging (thesis-antithesis balancing)
+    const hedging = softenDialecticalHedging(revised);
+    revised = hedging.text;
+    if (hedging.count > 0) {
+        changes.push({
+            label: "Пом'якшено діалектичне балансування",
+            count: hedging.count,
+            detail: "Усунено штучне симетричне хеджування ('з одного боку ..., з іншого боку').",
+            category: "style"
+        });
+    }
+    // Modulate Sentence Pacing & Burstiness
     const pacing = modulateSentencePacing(revised, mode);
     revised = pacing.text;
     if (pacing.count > 0) {
         changes.push({
             label: "Модуляція темпоритму (Burstiness)",
             count: pacing.count,
-            detail: "Розбито надмірно довгі штучні конструкції для створення природного чергування коротких і складних речень."
+            detail: "Розбито монотонні конструкції для створення природного контрасту довжини речень.",
+            category: "pacing"
         });
     }
+    // Soften rigid machine transitions
     const softened = softenRigidTransitions(revised);
     revised = softened.text;
     if (softened.count > 0) {
         changes.push({
             label: "Послаблено механічні переходи",
             count: softened.count,
-            detail: "Зменшено кількість явних переходів, які роблять текст схожим на шаблонну AI-відповідь."
+            detail: "Зменшено кількість явних переходів, які роблять текст схожим на шаблонну AI-відповідь.",
+            category: "style"
         });
     }
+    // Remove duplicate sentences
     const deduplicated = removeDuplicateSentences(revised);
     revised = deduplicated.text;
     if (deduplicated.count > 0) {
         changes.push({
             label: "Прибрано повторені речення",
             count: deduplicated.count,
-            detail: "Вилучено дублікати, які підсилюють показники шаблонності та лексичної передбачуваності."
+            detail: "Вилучено дублікати, які підсилюють показники шаблонності та лексичної передбачуваності.",
+            category: "cliche"
         });
     }
+    // Vary repeated sentence starts & consecutive demonstratives
     const variedStarts = varyRepeatedSentenceStarts(revised);
     revised = variedStarts.text;
     if (variedStarts.count > 0) {
         changes.push({
             label: "Урізноманітнено початки речень",
             count: variedStarts.count,
-            detail: "Повторювані початки речень переписано, щоб текст не читався як серія однакових шаблонів."
+            detail: "Повторювані вказівні займенники та початки речень переписано для природності викладу.",
+            category: "syntax"
         });
     }
     revised = revised
@@ -407,7 +724,8 @@ export function humanizeText(input, mode = "academic") {
     const notes = [
         `Режим олюднення: ${mode === "academic" ? "Академічний" : mode === "natural" ? "Природний" : "Лаконічний"}.`,
         "Форматування абзаців, лапок, тире та спеціальних термінів збережено.",
-        "Факти, цитати та посилання на першоджерела перевірено на збереження точності."
+        "Факти, цитати та посилання на першоджерела перевірено на збереження точності.",
+        "Застосовано метрики емпіричних досліджень: розрив тріадичних переліків, темпоритм (burstiness) та де-номіналізація."
     ];
     const vagueAttributions = original.match(/(?<![\p{L}\p{N}_])(?:експерти вважають|дослідження показують|багато джерел|experts argue|observers note|studies show|research suggests)(?![\p{L}\p{N}_])/giu) ?? [];
     if (vagueAttributions.length > 0) {
