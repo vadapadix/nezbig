@@ -24,7 +24,14 @@ export function extractJsonObject(content) {
     if (start === -1 || end === -1 || end <= start) {
         throw new Error("Model returned no JSON object.");
     }
-    return JSON.parse(raw.slice(start, end + 1));
+    const jsonSubstring = raw.slice(start, end + 1);
+    try {
+        return JSON.parse(jsonSubstring);
+    }
+    catch {
+        const cleaned = jsonSubstring.replace(/,\s*([}\]])/g, "$1");
+        return JSON.parse(cleaned);
+    }
 }
 export function withTimeout(ms) {
     const controller = new AbortController();
@@ -57,8 +64,10 @@ export function buildAnalysisSample(text, suspiciousExcerpts = []) {
 }
 export function parseAuthorshipResult(content, fallbackLabel, emptyDetail) {
     const parsed = extractJsonObject(content);
-    const probability = asScore(parsed.probability);
-    const signals = (Array.isArray(parsed.signals) ? parsed.signals : [])
+    const rawProb = parsed.probability ?? parsed.ai_probability ?? parsed.aiProbability ?? parsed.score;
+    const probability = asScore(rawProb);
+    const rawSignals = Array.isArray(parsed.signals) ? parsed.signals : [];
+    const signals = rawSignals
         .slice(0, 6)
         .map((signal) => ({
         label: String(signal.label || fallbackLabel).slice(0, 80),
