@@ -160,7 +160,7 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion }: Repor
         <div className="metrics grid grid-cols-2 lg:grid-cols-4 gap-4 m-0">
           {/* 1. Plagiarism Score */}
           <article className="p-4 md:p-5 rounded-2xl bg-surface-container-high/60 border border-white/5 flex flex-col justify-between">
-            <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="w-full flex items-center justify-between gap-2 mb-2">
               <span className="text-label-md font-semibold text-slate-400 uppercase tracking-wider">{t("plagiarism")}</span>
               <span
                 className={`w-2.5 h-2.5 rounded-full shrink-0 ${
@@ -188,7 +188,7 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion }: Repor
 
           {/* 2. AI Stylometry Analysis */}
           <article className="p-4 md:p-5 rounded-2xl bg-surface-container-high/60 border border-white/5 flex flex-col justify-between">
-            <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="w-full flex items-center justify-between gap-2 mb-2">
               <span className="text-label-md font-semibold text-slate-400 uppercase tracking-wider">{t("aiAnalysis")}</span>
               <span
                 className={`w-2.5 h-2.5 rounded-full shrink-0 ${
@@ -200,9 +200,9 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion }: Repor
             {report.aiVerdict === "insufficient" ? (
               <strong>—</strong>
             ) : (
-              <div>
+              <div className="flex items-baseline gap-1.5">
                 <strong>{report.aiProbability}%</strong>
-                <span className="uncertainty-band text-xs text-slate-400 ml-1.5">
+                <span className="uncertainty-band text-xs text-slate-400">
                   ±{uncertaintyBand(report)} {lang === "uk" ? "п.п." : "pts"}
                 </span>
               </div>
@@ -220,7 +220,7 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion }: Repor
 
           {/* 3. AI Opinion (LLM) */}
           <article className="p-4 md:p-5 rounded-2xl bg-surface-container-high/60 border border-white/5 flex flex-col justify-between">
-            <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="w-full flex items-center justify-between gap-2 mb-2">
               <span className="text-label-md font-semibold text-slate-400 uppercase tracking-wider">{t("aiOpinion")}</span>
               <span
                 className={`w-2.5 h-2.5 rounded-full shrink-0 ${
@@ -257,7 +257,7 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion }: Repor
 
           {/* 4. Document Volume & Chunks */}
           <article className="p-4 md:p-5 rounded-2xl bg-surface-container-high/60 border border-white/5 flex flex-col justify-between">
-            <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="w-full flex items-center justify-between gap-2 mb-2">
               <span className="text-label-md font-semibold text-slate-400 uppercase tracking-wider">{t("fragments")}</span>
               <span className="w-2.5 h-2.5 rounded-full shrink-0 bg-primary/70 shadow-[0_0_8px_rgba(86,219,198,0.4)]" />
             </div>

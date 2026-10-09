@@ -817,11 +817,19 @@ time {
 }
 
 .metrics article {
-  display: grid;
-  gap: 8px;
-  border-radius: 8px;
-  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-radius: 1rem;
+  padding: 1.25rem;
   animation: fade-up 560ms var(--ease-out) both;
+}
+
+.metrics article > div:first-child {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .metrics article:nth-child(2) {

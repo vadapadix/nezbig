@@ -30,16 +30,16 @@ type OpenRouterResponse = {
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const OPENROUTER_TIMEOUT_MS = 24_000;
 const FALLBACK_MODELS = [
-  "deepseek/deepseek-chat:free",
-  "meta-llama/llama-3.3-70b-instruct:free",
-  "google/gemini-2.0-flash-lite-001:free",
-  "mistralai/mistral-small-3.1-24b-instruct:free",
-  "qwen/qwen2.5-72b-instruct:free"
+  "openrouter/free",
+  "nvidia/nemotron-3-super-120b-a12b:free",
+  "nvidia/nemotron-3-ultra-550b-a55b:free",
+  "liquid/lfm-2.5-2.6b:free",
+  "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"
 ];
 
 function getOpenRouterConfig(): { apiKey: string; models: string[] } | null {
   const apiKey = process.env.OPENROUTER_API_KEY?.trim();
-  const primaryModel = process.env.OPENROUTER_MODEL?.trim();
+  const primaryModel = process.env.OPENROUTER_MODEL?.trim() || "openrouter/free";
   const envFallbacks =
     process.env.OPENROUTER_FALLBACK_MODELS?.split(",")
       .map((model) => model.trim())
@@ -89,7 +89,7 @@ export async function analyzeWithOpenRouter(text: string, localAi: LocalAiResult
       model,
       messages: buildMessages(text, localAi),
       temperature: 0.1,
-      max_tokens: 900
+      max_tokens: 2500
     };
   }
 
@@ -138,7 +138,29 @@ export async function analyzeWithOpenRouter(text: string, localAi: LocalAiResult
       }
     }
 
-    const content = payload.choices?.[0]?.message?.content;
+    let content = payload.choices?.[0]?.message?.content?.trim();
+    if (!content) {
+      const rawReasoning = (payload.choices?.[0]?.message as Record<string, unknown> | undefined)?.reasoning ?? (payload.choices?.[0]?.message as Record<string, unknown> | undefined)?.reasoning_content;
+      if (typeof rawReasoning === "string" && rawReasoning.includes("{")) {
+        content = rawReasoning;
+      }
+    }
+
+    if (!content) {
+      try {
+        const plainPayload = await send(model, false);
+        content = plainPayload.choices?.[0]?.message?.content?.trim();
+        if (!content) {
+          const plainReasoning = (plainPayload.choices?.[0]?.message as Record<string, unknown> | undefined)?.reasoning ?? (plainPayload.choices?.[0]?.message as Record<string, unknown> | undefined)?.reasoning_content;
+          if (typeof plainReasoning === "string" && plainReasoning.includes("{")) {
+            content = plainReasoning;
+          }
+        }
+      } catch {
+        // ignore and record failure below
+      }
+    }
+
     if (!content) {
       errors.push(`${model}: OpenRouter returned an empty response.`);
       continue;

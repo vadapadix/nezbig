@@ -52,7 +52,13 @@ export function extractJsonObject(content: string): unknown {
     throw new Error("Model returned no JSON object.");
   }
 
-  return JSON.parse(raw.slice(start, end + 1));
+  const jsonSubstring = raw.slice(start, end + 1);
+  try {
+    return JSON.parse(jsonSubstring);
+  } catch {
+    const cleaned = jsonSubstring.replace(/,\s*([}\]])/g, "$1");
+    return JSON.parse(cleaned);
+  }
 }
 
 export function withTimeout(ms: number): AbortSignal {
@@ -88,18 +94,20 @@ export function buildAnalysisSample(text: string, suspiciousExcerpts: string[] =
 }
 
 export function parseAuthorshipResult(content: string, fallbackLabel: string, emptyDetail: string): AuthorshipSignals {
-  const parsed = extractJsonObject(content) as AuthorshipJson;
-  const probability = asScore(parsed.probability);
+  const parsed = extractJsonObject(content) as Record<string, unknown>;
+  const rawProb = parsed.probability ?? parsed.ai_probability ?? parsed.aiProbability ?? parsed.score;
+  const probability = asScore(rawProb);
 
-  const signals: AiSignal[] = (Array.isArray(parsed.signals) ? parsed.signals : [])
+  const rawSignals = Array.isArray(parsed.signals) ? parsed.signals : [];
+  const signals: AiSignal[] = rawSignals
     .slice(0, 6)
-    .map((signal): AiSignal => ({
+    .map((signal: Record<string, unknown>): AiSignal => ({
       label: String(signal.label || fallbackLabel).slice(0, 80),
       score: asScore(signal.score),
       detail: String(signal.detail || emptyDetail).slice(0, 280),
       category: "pattern",
       evidence: Array.isArray(signal.evidence)
-        ? signal.evidence.map((item) => String(item).slice(0, 140)).slice(0, 4)
+        ? (signal.evidence as unknown[]).map((item) => String(item).slice(0, 140)).slice(0, 4)
         : []
     }));
 
