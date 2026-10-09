@@ -17,7 +17,7 @@ import { mergeRevisedTextIntoHtml } from "./formattedDocument.js";
 import { mergeRevisedTextIntoDocx } from "./formattedDocx.js";
 import { humanizeText } from "./humanizer.js";
 import { analyzeWithLlmProviders } from "./llmOpinion.js";
-import { emptySearchDiagnostics, mergeSearchDiagnostics, searchDiagnosticsNotes } from "./searchDiagnostics.js";
+import { emptySearchDiagnostics, mergeSearchDiagnostics } from "./searchDiagnostics.js";
 import { calculateConfirmedPlagiarismScore, scoreCandidate, detectAiSignals, summarizeReport, rerankCandidates } from "./scoring.js";
 import { isAcademicBoilerplate } from "./plagiarismScoring.js";
 import { decodeUploadFileName, extractTextFromUpload } from "./textExtraction.js";
@@ -228,7 +228,6 @@ async function runScan(request, fileEvidence, onProgress) {
     const plagiarismScore = calculateConfirmedPlagiarismScore(matches);
     const localAi = detectAiSignals(text);
     const scanNotes = [...prepared.notes];
-    scanNotes.push(...searchDiagnosticsNotes(searchDiagnostics));
     if (fileEvidence) {
         const sizeKb = Math.max(1, Math.round(fileEvidence.sizeBytes / 1024));
         scanNotes.push(`Файл перевірено напряму: ${fileEvidence.fileName}, ${sizeKb} KB, метод ${fileEvidence.extractionMethod}, витягнуто ${fileEvidence.extractedWordCount} слів.`);

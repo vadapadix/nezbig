@@ -262,7 +262,6 @@ async function runScan(request: ScanRequest, fileEvidence?: FileEvidence, onProg
   const plagiarismScore = calculateConfirmedPlagiarismScore(matches);
   const localAi = detectAiSignals(text);
   const scanNotes = [...prepared.notes];
-  scanNotes.push(...searchDiagnosticsNotes(searchDiagnostics));
   if (fileEvidence) {
     const sizeKb = Math.max(1, Math.round(fileEvidence.sizeBytes / 1024));
     scanNotes.push(`Файл перевірено напряму: ${fileEvidence.fileName}, ${sizeKb} KB, метод ${fileEvidence.extractionMethod}, витягнуто ${fileEvidence.extractedWordCount} слів.`);

@@ -20,8 +20,23 @@ export function ProviderDiagnostics({ diagnostics }: { diagnostics: ScanReport["
   const { lang } = useLanguage();
   if (!diagnostics) return null;
 
-  // Filter out optional unconfigured providers so the report only shows active, participating engines
-  const visibleProviders = diagnostics.providers.filter((p) => p.attempted > 0);
+  // De-duplicate by provider name to guarantee no duplicate provider chips appear
+  const uniqueProvidersMap = new Map<string, NonNullable<ScanReport["searchDiagnostics"]>["providers"][number]>();
+  for (const p of diagnostics.providers) {
+    if (p.attempted > 0) {
+      const existing = uniqueProvidersMap.get(p.provider);
+      if (!existing) {
+        uniqueProvidersMap.set(p.provider, { ...p });
+      } else {
+        existing.attempted += p.attempted;
+        existing.succeeded += p.succeeded;
+        existing.failed += p.failed;
+        existing.timedOut += p.timedOut;
+        existing.results += p.results;
+      }
+    }
+  }
+  const visibleProviders = Array.from(uniqueProvidersMap.values());
   if (visibleProviders.length === 0 && diagnostics.pages.attempted === 0) return null;
 
   return (
