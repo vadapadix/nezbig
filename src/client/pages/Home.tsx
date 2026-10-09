@@ -178,27 +178,12 @@ export default function Home({ showToast }: { showToast: (msg: string, type?: "s
         )}
         {report && (
           <Suspense fallback={<div className="loading-skeleton">{lang === "uk" ? "Завантаження звіту…" : "Loading report…"}</div>}>
-            {/* Top Back to Editor Action Bar */}
-            <div className="flex items-center justify-between gap-4 p-2 bg-surface-container-high/60 backdrop-blur-md rounded-2xl border border-white/10">
-              <button 
-                type="button"
-                onClick={handleBackToEditor} 
-                className="bg-emerald-glow/15 hover:bg-emerald-glow/25 text-emerald-glow px-5 py-2.5 rounded-xl border border-emerald-glow/40 hover:border-emerald-glow transition-all font-medium flex items-center gap-2 cursor-pointer shadow-md group text-sm md:text-base"
-              >
-                <span className="material-symbols-outlined text-lg transition-transform group-hover:-translate-x-1">arrow_back</span>
-                <span>{lang === "uk" ? "Повернутись до редактора" : "Back to Editor"}</span>
-              </button>
-              <div className="hidden sm:flex items-center gap-2 text-xs text-on-surface-variant font-mono">
-                <span className="material-symbols-outlined text-sm text-emerald-glow">verified</span>
-                <span className="truncate max-w-[280px]">{report.fileName}</span>
-              </div>
-            </div>
-
             <ReportView
               report={report}
               llmBusy={llmBusy}
               reportRef={reportRef}
               onRetryOpinion={handleRetryOpinion}
+              onBackToEditor={handleBackToEditor}
             />
             <div className="flex justify-center mt-8">
               <button 

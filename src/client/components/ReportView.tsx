@@ -15,9 +15,10 @@ interface ReportViewProps {
   llmBusy: boolean;
   reportRef: React.RefObject<HTMLElement | null>;
   onRetryOpinion?: () => void;
+  onBackToEditor?: () => void;
 }
 
-export function ReportView({ report, llmBusy, reportRef, onRetryOpinion }: ReportViewProps) {
+export function ReportView({ report, llmBusy, reportRef, onRetryOpinion, onBackToEditor }: ReportViewProps) {
   const { lang, t } = useLanguage();
   const [copiedLink, setCopiedLink] = useState(false);
   const [activeTab, setActiveTab] = useState<"sources" | "ai" | "technical">(
@@ -61,7 +62,20 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion }: Repor
         {/* Header Bar: Meta & Export Actions */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-white/10">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-1.5">
+            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+              {onBackToEditor && (
+                <button
+                  type="button"
+                  onClick={onBackToEditor}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-container-high/80 hover:bg-surface-bright text-slate-300 hover:text-white border border-white/10 hover:border-emerald-glow/40 text-xs font-medium transition-all cursor-pointer group shadow-sm mr-1"
+                  title={lang === "uk" ? "Повернутись до редактора" : "Back to Editor"}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-hover:-translate-x-0.5">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                  </svg>
+                  <span>{lang === "uk" ? "Повернутись до редактора" : "Back to Editor"}</span>
+                </button>
+              )}
               <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-glow border border-emerald-500/30">
                 {lang === "uk" ? "Офіційний звіт Незбіг" : "Official Nezbig Report"}
               </span>
