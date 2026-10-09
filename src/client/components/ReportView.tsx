@@ -246,13 +246,34 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion }: Repor
                 style={{ width: `${Math.min(100, Math.max(4, report.aiOpinionProbability ?? 0))}%` }}
               />
             </div>
-            <small className="text-xs text-slate-300 truncate">
-              {report.aiOpinionProbability !== undefined
-                ? `${riskLabel(report.aiOpinionProbability, lang)} ${t("levelFromModel")}`
-                : llmBusy
-                  ? t("modelThinking")
-                  : t("noModelResponse")}
-            </small>
+            <div className="flex items-center justify-between gap-1.5 w-full mt-auto pt-1">
+              <small className="text-xs text-slate-300 truncate">
+                {report.aiOpinionProbability !== undefined
+                  ? `${riskLabel(report.aiOpinionProbability, lang)} ${t("levelFromModel")}`
+                  : llmBusy
+                    ? t("modelThinking")
+                    : t("noModelResponse")}
+              </small>
+              {report.aiOpinionProbability === undefined && !llmBusy && onRetryOpinion && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRetryOpinion();
+                  }}
+                  title={lang === "uk" ? "Повторити запит до ШІ-моделі" : "Retry AI model request"}
+                  className="px-2 py-0.5 rounded-md bg-emerald-glow/20 hover:bg-emerald-glow/35 border border-emerald-glow/50 hover:border-emerald-glow text-emerald-glow text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer shrink-0 shadow-sm hover:scale-105 active:scale-95"
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                    <path d="M21 3v5h-5" />
+                    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                    <path d="M8 16H3v5" />
+                  </svg>
+                  <span>Retry</span>
+                </button>
+              )}
+            </div>
           </article>
 
           {/* 4. Document Volume & Chunks */}
@@ -477,17 +498,39 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion }: Repor
                 </span>
               </div>
             ) : (
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-surface-container-high/50 border border-white/5">
-                <span className="text-body-sm text-slate-300">
-                  {lang === "uk" ? "AI-думка ще не була отримана для цього документа." : "AI opinion has not been fetched yet for this document."}
-                </span>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-surface-container-high/60 border border-amber-500/25 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/15 text-amber-400 flex items-center justify-center shrink-0 mt-0.5 border border-amber-500/30">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="8" x2="12" y2="12" />
+                      <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                  </div>
+                  <div>
+                    <strong className="block text-white font-medium mb-1">
+                      {lang === "uk" ? "Немає відповіді моделі" : "No model response"}
+                    </strong>
+                    <p className="text-xs text-slate-300 m-0 leading-relaxed">
+                      {report.aiOpinionError || (lang === "uk"
+                        ? "ШІ-провайдер не надав відповіді (можливий таймаут або черга навантаження). Ви можете повторити запит до моделі окремо без перезапуску перевірки плагіату."
+                        : "AI provider did not return a response (possible timeout or queue). You can retry the model request without re-running plagiarism scan.")}
+                    </p>
+                  </div>
+                </div>
                 {onRetryOpinion && (
                   <button
                     type="button"
                     onClick={onRetryOpinion}
-                    className="px-4 py-2 rounded-xl bg-emerald-glow/20 border border-emerald-glow text-emerald-glow text-xs font-semibold hover:bg-emerald-glow/30 transition-all cursor-pointer shrink-0"
+                    className="px-5 py-2.5 rounded-xl bg-emerald-glow/20 hover:bg-emerald-glow/30 border border-emerald-glow/60 hover:border-emerald-glow text-emerald-glow text-sm font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0 shadow-md hover:-translate-y-0.5 active:translate-y-0"
                   >
-                    {lang === "uk" ? "Запитати AI-думку" : "Request AI Opinion"}
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                      <path d="M21 3v5h-5" />
+                      <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                      <path d="M8 16H3v5" />
+                    </svg>
+                    <span>{lang === "uk" ? "Спробувати ще раз (Retry)" : "Retry Model Request"}</span>
                   </button>
                 )}
               </div>

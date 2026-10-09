@@ -31,14 +31,15 @@ async function persistLlmOpinion(reportId, opinion) {
         return;
     try {
         const stored = await getReport(reportId);
-        if (!stored || stored.aiOpinionProbability !== undefined)
+        if (!stored)
             return;
         await saveReport(reportId, {
             ...stored,
             aiOpinionProbability: opinion.aiProbability,
             aiOpinionModel: opinion.aiModel,
             aiOpinionNote: opinion.aiNote,
-            aiOpinionSignals: opinion.aiSignals
+            aiOpinionSignals: opinion.aiSignals,
+            aiOpinionError: undefined
         });
     }
     catch (error) {
@@ -259,7 +260,8 @@ async function runScan(request, fileEvidence, onProgress) {
         fileEvidence,
         matches,
         aiSignals: localAi.signals,
-        summary: summarizeReport(plagiarismScore, localAi.probability, matches, searchDiagnostics, localAi.verdict)
+        summary: summarizeReport(plagiarismScore, localAi.probability, matches, searchDiagnostics, localAi.verdict),
+        sourceText: request.text.slice(0, 100000)
     };
 }
 app.get("/api/health", (_request, response) => {

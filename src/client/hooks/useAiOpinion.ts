@@ -11,6 +11,7 @@ export function useAiOpinion(setReport: React.Dispatch<React.SetStateAction<Scan
     sourceFile: File | null
   ): Promise<LlmOpinion | void> => {
     setLlmBusy(true);
+    setReport((current) => (current?.id === baseReport.id ? { ...current, aiOpinionError: undefined } : current));
     try {
       let response: Response;
       const suspiciousExcerpts = (baseReport.aiSuspiciousSegments ?? []).slice(0, 5).map((segment) => segment.excerpt);

@@ -33,13 +33,14 @@ async function persistLlmOpinion(reportId: string | undefined, opinion: LlmOpini
   if (!reportId) return;
   try {
     const stored = await getReport(reportId);
-    if (!stored || stored.aiOpinionProbability !== undefined) return;
+    if (!stored) return;
     await saveReport(reportId, {
       ...stored,
       aiOpinionProbability: opinion.aiProbability,
       aiOpinionModel: opinion.aiModel,
       aiOpinionNote: opinion.aiNote,
-      aiOpinionSignals: opinion.aiSignals
+      aiOpinionSignals: opinion.aiSignals,
+      aiOpinionError: undefined
     });
   } catch (error) {
     logger.warn(error);
@@ -294,7 +295,8 @@ async function runScan(request: ScanRequest, fileEvidence?: FileEvidence, onProg
     fileEvidence,
     matches,
     aiSignals: localAi.signals,
-    summary: summarizeReport(plagiarismScore, localAi.probability, matches, searchDiagnostics, localAi.verdict)
+    summary: summarizeReport(plagiarismScore, localAi.probability, matches, searchDiagnostics, localAi.verdict),
+    sourceText: request.text.slice(0, 100000)
   };
 }
 

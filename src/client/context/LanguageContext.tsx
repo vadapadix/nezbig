@@ -76,6 +76,7 @@ export const translations = {
     levelFromModel: "рівень від моделі",
     modelThinking: "модель ще думає",
     noModelResponse: "немає відповіді моделі",
+    retryModel: "Спробувати ще раз",
 
     // Footer & Modals
     aboutUs: "Про нас",
@@ -151,6 +152,7 @@ export const translations = {
     levelFromModel: "level from model",
     modelThinking: "AI model thinking...",
     noModelResponse: "no model response",
+    retryModel: "Retry",
 
     // Footer & Modals
     aboutUs: "About",

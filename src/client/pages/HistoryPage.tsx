@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useLanguage } from "../context/LanguageContext";
 import { AuthModal } from "../components/AuthModal";
+import { useAiOpinion } from "../hooks/useAiOpinion";
 import type { ScanReport } from "../../shared/types";
 
 const ReportView = lazy(() => import("../components/ReportView").then(m => ({ default: m.ReportView })));
@@ -28,6 +29,15 @@ export default function HistoryPage() {
   const [loadingReport, setLoadingReport] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
   const reportRef = useRef<HTMLElement | null>(null);
+  const { llmBusy, loadLlmOpinion } = useAiOpinion(setSelectedReport);
+
+  const handleRetryOpinion = useCallback(() => {
+    if (!selectedReport) return;
+    const text = selectedReport.sourceText;
+    if (text) {
+      loadLlmOpinion(selectedReport, text, null).catch(() => {});
+    }
+  }, [selectedReport, loadLlmOpinion]);
 
   useEffect(() => {
     async function loadHistory() {
@@ -168,7 +178,12 @@ export default function HistoryPage() {
           <span>{lang === "uk" ? "Назад до списку перевірок" : "Back to History"}</span>
         </button>
         <Suspense fallback={<div className="text-center py-12 text-on-surface-variant">{lang === "uk" ? "Завантаження звіту..." : "Loading report..."}</div>}>
-          <ReportView report={selectedReport} llmBusy={false} reportRef={reportRef} />
+          <ReportView
+            report={selectedReport}
+            llmBusy={llmBusy}
+            reportRef={reportRef}
+            onRetryOpinion={selectedReport.sourceText ? handleRetryOpinion : undefined}
+          />
         </Suspense>
       </div>
     );

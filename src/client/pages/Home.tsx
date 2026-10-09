@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, useEffect, Suspense, lazy } from "react";
+import { useMemo, useState, useRef, useEffect, useCallback, Suspense, lazy } from "react";
 import { useSearchParams, useLocation } from "react-router-dom";
 import { useScan } from "../hooks/useScan";
 import { useAiOpinion } from "../hooks/useAiOpinion";
@@ -109,6 +109,20 @@ export default function Home({ showToast }: { showToast: (msg: string, type?: "s
     });
   }
 
+  const handleRetryOpinion = useCallback(() => {
+    if (!report) return;
+    const input =
+      lastScanInput ||
+      (report.sourceText ? { text: report.sourceText, file: null } : null) ||
+      (editor.text.trim().length >= 25 ? { text: editor.text, file: editor.selectedFile } : null);
+
+    if (input) {
+      requestAiOpinion(report, input);
+    } else {
+      showToast(lang === "uk" ? "Текст документа недоступний для повторного запиту." : "Document text is unavailable for retry.", "error");
+    }
+  }, [report, lastScanInput, editor.text, editor.selectedFile, lang, showToast]);
+
   async function handleSubmit() {
     if (!canScan) {
       showToast(lang === "uk" ? "Додайте файл або щонайменше 120 символів тексту." : "Please add a file or at least 120 characters of text.", "error");
@@ -184,7 +198,7 @@ export default function Home({ showToast }: { showToast: (msg: string, type?: "s
               report={report}
               llmBusy={llmBusy}
               reportRef={reportRef}
-              onRetryOpinion={lastScanInput ? () => requestAiOpinion(report, lastScanInput) : undefined}
+              onRetryOpinion={handleRetryOpinion}
             />
             <div className="flex justify-center mt-8">
               <button 

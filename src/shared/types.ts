@@ -180,6 +180,7 @@ export type ScanReport = {
   matches: PlagiarismMatch[];
   aiSignals: AiSignal[];
   summary: string;
+  sourceText?: string;
 };
 
 export type LlmOpinion = {
