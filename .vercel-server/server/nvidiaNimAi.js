@@ -74,6 +74,7 @@ export async function analyzeWithNvidiaNim(text, localAi) {
                 aiProvider: "nvidia-nim",
                 aiModel: model,
                 aiNote: note,
+                aiVerdictText: result.verdict,
                 aiSignals: result.signals
             };
         }

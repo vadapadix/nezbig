@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AiLanguageCoverage, AiReliability, ScanReport } from "../../shared/types";
-import { summarizeAiError, uncertaintyBand } from "./reportLabels";
+import { summarizeAiError, uncertaintyBand, formatAiOpinionVerdict } from "./reportLabels";
 
 const reliability = (score: number, spread: number): AiReliability => ({ level: "medium", score, segmentCount: 4, segmentSpread: spread, reason: "тест" });
 const language: AiLanguageCoverage = { code: "uk", supportedPercent: 95, reason: "тест" };
@@ -50,5 +50,28 @@ describe("summarizeAiError", () => {
     expect(summarizeAiError(new Error("HTTP 429 rate-limited"))).toContain("лімітом");
     expect(summarizeAiError(new Error("insufficient_quota"))).toContain("квота");
     expect(summarizeAiError(new Error("The operation was aborted due to timeout"))).toContain("не відповіла");
+  });
+});
+
+describe("formatAiOpinionVerdict", () => {
+  it("uses custom aiOpinionVerdict when provided", () => {
+    const report = baseReport({ aiOpinionProbability: 10, aiOpinionVerdict: "Текст містить автентичну структуру автора." });
+    expect(formatAiOpinionVerdict(report, "uk")).toBe("Текст містить автентичну структуру автора.");
+  });
+
+  it("filters out technical fallback messages and provides an intelligent linguistic conclusion", () => {
+    const report = baseReport({
+      aiOpinionProbability: 8,
+      aiOpinionNote: "AI fallback: спрацювала nvidia/nemotron-3-super-120b-a12b:free; перед цим пробували openrouter/free"
+    });
+    const verdict = formatAiOpinionVerdict(report, "uk");
+    expect(verdict).not.toContain("fallback");
+    expect(verdict).not.toContain("nvidia");
+    expect(verdict).toContain("природн");
+  });
+
+  it("returns appropriate verdict for high AI probability", () => {
+    const report = baseReport({ aiOpinionProbability: 85 });
+    expect(formatAiOpinionVerdict(report, "uk")).toContain("генерації штучним інтелектом");
   });
 });

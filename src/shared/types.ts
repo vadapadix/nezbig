@@ -170,6 +170,7 @@ export type ScanReport = {
   aiOpinionProbability?: number;
   aiOpinionModel?: string;
   aiOpinionNote?: string;
+  aiOpinionVerdict?: string;
   aiOpinionSignals?: AiSignal[];
   aiOpinionError?: string;
   scanNotes?: string[];
@@ -188,6 +189,7 @@ export type LlmOpinion = {
   aiProvider: "openrouter" | "nvidia-nim";
   aiModel: string;
   aiNote?: string;
+  aiVerdictText?: string;
   aiSignals: AiSignal[];
 };
 

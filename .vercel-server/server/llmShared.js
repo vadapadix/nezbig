@@ -6,8 +6,9 @@ const MAX_SUSPICIOUS_EXCERPTS = 3;
 export const JSON_SHAPE_PROMPT = `Return JSON with this exact shape:
 {
   "probability": 0-100,
+  "verdict": "короткий чіткий висновок українською мовою (1-2 речення: чи це природний авторський текст, чи присутні ознаки ШІ і які саме фактори це підтверджують)",
   "signals": [
-    { "label": "short Ukrainian label", "score": 0-100, "detail": "one sentence explaining the signal and uncertainty", "evidence": ["short quoted or paraphrased evidence"] }
+    { "label": "коротка назва сигналу", "score": 0-100, "detail": "одне речення з поясненням сигналу", "evidence": ["коротка цитата або приклад"] }
   ]
 }`;
 export function asScore(value) {
@@ -78,6 +79,8 @@ export function parseAuthorshipResult(content, fallbackLabel, emptyDetail) {
             ? signal.evidence.map((item) => String(item).slice(0, 140)).slice(0, 4)
             : []
     }));
+    const rawVerdict = typeof parsed.verdict === "string" ? parsed.verdict : typeof parsed.explanation === "string" ? parsed.explanation : typeof parsed.summary === "string" ? parsed.summary : undefined;
+    const verdict = rawVerdict?.trim().slice(0, 500);
     if (signals.length === 0) {
         signals.push({
             label: fallbackLabel,
@@ -86,5 +89,5 @@ export function parseAuthorshipResult(content, fallbackLabel, emptyDetail) {
             category: "pattern"
         });
     }
-    return { probability, signals };
+    return { probability, signals, verdict };
 }

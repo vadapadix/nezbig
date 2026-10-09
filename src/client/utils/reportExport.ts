@@ -1,7 +1,7 @@
 import { jsPDF } from "jspdf";
 import type { ScanReport } from "../../shared/types";
 import type { Language } from "../context/LanguageContext";
-import { riskLabel, aiVerdictLabel, reportSummaryText, formatNumber } from "./reportLabels";
+import { riskLabel, aiVerdictLabel, reportSummaryText, formatNumber, formatAiOpinionVerdict } from "./reportLabels";
 import {
   translateReportSummary,
   translateScanNote,
@@ -159,7 +159,8 @@ export function generateReportCanvas(report: ScanReport, lang: Language = getFal
   y = wrapCanvasText(context, translateReportSummary(reportSummaryText(report, lang), lang), 60, y + 34, 1080, 30) + 16;
 
   // AI Opinion Summary (if present)
-  if (report.aiOpinionNote) {
+  if (report.aiOpinionProbability !== undefined) {
+    const verdictText = formatAiOpinionVerdict(report, lang);
     context.fillStyle = printCardBg;
     context.strokeStyle = accentEmerald;
     context.lineWidth = 1.5;
@@ -174,7 +175,7 @@ export function generateReportCanvas(report: ScanReport, lang: Language = getFal
 
     context.fillStyle = printDark;
     context.font = "400 18px Actay, sans-serif";
-    wrapCanvasText(context, report.aiOpinionNote, 80, y + 60, 1040, 25);
+    wrapCanvasText(context, verdictText, 80, y + 60, 1040, 25);
     y += 120;
   }
 

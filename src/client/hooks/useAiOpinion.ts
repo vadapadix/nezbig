@@ -48,6 +48,7 @@ export function useAiOpinion(setReport: React.Dispatch<React.SetStateAction<Scan
               aiOpinionProbability: payload.aiProbability,
               aiOpinionModel: payload.aiModel,
               aiOpinionNote: payload.aiNote,
+              aiOpinionVerdict: payload.aiVerdictText,
               aiOpinionSignals: payload.aiSignals
             }
           : current

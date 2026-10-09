@@ -1,7 +1,7 @@
 import type { ScanReport } from "../../shared/types";
 import { SignalCard } from "./SignalCard";
 import { useLanguage } from "../context/LanguageContext";
-import { reliabilityLabel, languageLabel, formatNumber, isDuplicateOpinionSignal } from "../utils/reportLabels";
+import { reliabilityLabel, languageLabel, formatNumber, isDuplicateOpinionSignal, formatAiOpinionVerdict } from "../utils/reportLabels";
 import { translateReliabilityReason } from "../utils/reportI18n";
 import { stripHtml } from "../utils/sanitizeHtml";
 
@@ -68,8 +68,7 @@ export function AiAnalysisPanel({ report, llmBusy, primarySignals, onRetryOpinio
       {report.aiOpinionProbability !== undefined ? (
         <div className="opinion-panel">
           <strong>{lang === "uk" ? "AI-думка:" : "AI Opinion:"} {report.aiOpinionProbability}%</strong>
-          <span>{report.aiOpinionModel}</span>
-          {report.aiOpinionNote ? <p>{stripHtml(report.aiOpinionNote)}</p> : null}
+          <p>{formatAiOpinionVerdict(report, lang)}</p>
         </div>
       ) : null}
       <p className="section-note">

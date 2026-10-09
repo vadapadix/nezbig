@@ -38,6 +38,7 @@ async function persistLlmOpinion(reportId, opinion) {
             aiOpinionProbability: opinion.aiProbability,
             aiOpinionModel: opinion.aiModel,
             aiOpinionNote: opinion.aiNote,
+            aiOpinionVerdict: opinion.aiVerdictText,
             aiOpinionSignals: opinion.aiSignals,
             aiOpinionError: undefined
         });

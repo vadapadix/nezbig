@@ -7,7 +7,7 @@ import { PlagiarismMatches } from "./PlagiarismMatches";
 import { ProviderDiagnostics } from "./ProviderDiagnostics";
 import { SignalCard } from "./SignalCard";
 import { useLanguage } from "../context/LanguageContext";
-import { formatNumber, riskLabel, aiMetricCaption, reportSummaryText, uncertaintyBand } from "../utils/reportLabels";
+import { formatNumber, riskLabel, aiMetricCaption, reportSummaryText, uncertaintyBand, formatAiOpinionVerdict } from "../utils/reportLabels";
 import { translateReportSummary, translateScanNote } from "../utils/reportI18n";
 
 interface ReportViewProps {
@@ -54,6 +54,7 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion, onBackT
 
   const isClean = report.plagiarismScore <= 15 && report.aiProbability <= 20;
   const isHighRisk = report.plagiarismScore >= 35 || report.aiProbability >= 50;
+  const opinionVerdict = formatAiOpinionVerdict(report, lang);
 
   return (
     <section ref={reportRef} className="report flex flex-col gap-6" aria-labelledby="report-title">
@@ -248,7 +249,7 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion, onBackT
                       ? "bg-purple-400 animate-pulse shadow-[0_0_8px_rgba(192,132,252,0.5)]"
                       : "bg-slate-600"
                 }`}
-                title={report.aiOpinionModel || "AI model"}
+                title={lang === "uk" ? "Незалежна оцінка AI-моделі" : "Independent AI model assessment"}
               />
             </div>
             <strong>{report.aiOpinionProbability !== undefined ? `${report.aiOpinionProbability}%` : "…"}</strong>
@@ -459,7 +460,7 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion, onBackT
                     {lang === "uk" ? "AI-думка від нейромережі" : "Independent AI Opinion"}
                   </h3>
                   <span className="text-xs text-slate-400">
-                    {report.aiOpinionModel ? `Модель: ${report.aiOpinionModel}` : (lang === "uk" ? "Глибинний семантичний аналіз" : "Deep semantic inspection")}
+                    {lang === "uk" ? "Глибинний семантичний та стилометричний аналіз" : "Deep semantic & stylometric evaluation"}
                   </span>
                 </div>
               </div>
@@ -478,12 +479,49 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion, onBackT
             </div>
 
             {report.aiOpinionProbability !== undefined ? (
-              <div className="flex flex-col gap-3">
-                <p className="text-body-md text-slate-200 m-0 leading-relaxed">
-                  {report.aiOpinionNote || (lang === "uk" ? "Модель перевірила стилістику та структуру речень." : "Model verified style and phrasing.")}
-                </p>
+              <div className="flex flex-col gap-4">
+                {/* 1. Main result: Substantive conclusion about the text */}
+                <div className={`p-4 md:p-5 rounded-xl border leading-relaxed ${
+                  report.aiOpinionProbability >= 50
+                    ? "bg-rose-500/10 border-rose-500/25 text-rose-100"
+                    : report.aiOpinionProbability >= 20
+                      ? "bg-amber-500/10 border-amber-500/25 text-amber-100"
+                      : "bg-emerald-500/10 border-emerald-500/25 text-emerald-100"
+                }`}>
+                  <p className="text-body-md m-0 leading-relaxed font-normal">
+                    {opinionVerdict}
+                  </p>
+                </div>
+
+                {/* 2. Key factors from the AI model if available */}
+                {report.aiOpinionSignals && report.aiOpinionSignals.length > 0 && (
+                  <div className="flex flex-col gap-2 pt-1">
+                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                      {lang === "uk" ? "Ключові фактори аналізу" : "Key Assessment Factors"}
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {report.aiOpinionSignals.map((signal, idx) => (
+                        <div key={idx} className="p-3.5 rounded-xl bg-surface-container-high/60 border border-white/5 flex flex-col gap-1.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-semibold text-slate-200">{signal.label}</span>
+                            <span className={`text-xs font-bold ${
+                              signal.score >= 50 ? "text-rose-400" : signal.score >= 25 ? "text-amber-400" : "text-emerald-400"
+                            }`}>
+                              {signal.score}%
+                            </span>
+                          </div>
+                          {signal.detail && (
+                            <p className="text-xs text-slate-300 m-0 leading-normal">{signal.detail}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. Discrete Retry / Refresh button */}
                 {onRetryOpinion && (
-                  <div className="pt-2">
+                  <div className="pt-1">
                     <button
                       type="button"
                       onClick={onRetryOpinion}
@@ -658,6 +696,41 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion, onBackT
                 </summary>
                 <div className="pt-3 pb-1">
                   <ProviderDiagnostics diagnostics={report.searchDiagnostics} />
+                </div>
+              </details>
+            </div>
+          )}
+
+          {/* 6. AI Model Technical Diagnostics (Strictly in Technical Tab) */}
+          {(report.aiOpinionModel || (report.aiOpinionNote && /fallback|спрацювала|пробували/i.test(report.aiOpinionNote))) && (
+            <div className="border-t border-slate-800/80 pt-4 mt-1">
+              <details className="group cursor-pointer">
+                <summary className="flex items-center justify-between text-xs font-semibold text-slate-400 hover:text-slate-200 transition-colors uppercase tracking-wider select-none py-1">
+                  <div className="flex items-center gap-2">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400 shrink-0">
+                      <path d="M12 2a4 4 0 0 0-4 4v1H7a3 3 0 0 0-3 3v8a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-8a3 3 0 0 0-3-3h-1V6a4 4 0 0 0-4-4z" />
+                      <circle cx="9" cy="13" r="1" />
+                      <circle cx="15" cy="13" r="1" />
+                    </svg>
+                    <span>{lang === "uk" ? "Технічні відомості ШІ-моделі" : "AI Model Technical Diagnostics"}</span>
+                  </div>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500 group-open:rotate-180 transition-transform shrink-0">
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </summary>
+                <div className="pt-3 pb-1 flex flex-col gap-2 font-mono text-xs text-slate-400">
+                  {report.aiOpinionModel && (
+                    <div className="p-3 rounded-xl bg-surface-container border border-slate-800/80 flex items-center justify-between">
+                      <span className="text-slate-500">{lang === "uk" ? "Ідентифікатор моделі:" : "Engine model ID:"}</span>
+                      <span className="text-slate-300 select-all">{report.aiOpinionModel}</span>
+                    </div>
+                  )}
+                  {report.aiOpinionNote && /fallback|спрацювала|пробували/i.test(report.aiOpinionNote) && (
+                    <div className="p-3 rounded-xl bg-surface-container border border-slate-800/80">
+                      <span className="text-slate-500 block mb-1">{lang === "uk" ? "Маршрутизація провайдерів:" : "Routing trace:"}</span>
+                      <span className="text-slate-400 leading-relaxed">{report.aiOpinionNote}</span>
+                    </div>
+                  )}
                 </div>
               </details>
             </div>

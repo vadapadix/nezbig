@@ -134,6 +134,7 @@ export async function analyzeWithOpenRouter(text, localAi) {
                 aiProvider: "openrouter",
                 aiModel: model,
                 aiNote: note,
+                aiVerdictText: result.verdict,
                 aiSignals: result.signals
             };
         }
