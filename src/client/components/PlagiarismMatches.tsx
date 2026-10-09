@@ -34,20 +34,27 @@ function MatchCardItem({ match }: { match: PlagiarismMatch }) {
                   : "bg-emerald-500/20 border border-emerald-500/40 text-emerald-300"
             }`}
           >
-            <span className="material-symbols-outlined text-[16px]">percent</span>
             {match.score}% {lang === "uk" ? "збіг" : "match"}
           </span>
 
           <span
-            className={`px-2.5 py-1 rounded-xl text-xs font-medium flex items-center gap-1 ${
+            className={`px-2.5 py-1 rounded-xl text-xs font-medium flex items-center gap-1.5 ${
               isConfirmed
                 ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-400"
                 : "bg-slate-700/40 border border-slate-600/40 text-slate-300"
             }`}
           >
-            <span className="material-symbols-outlined text-[14px]">
-              {isConfirmed ? "verified" : "manage_search"}
-            </span>
+            {isConfirmed ? (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-emerald-400">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                <path d="m9 12 2 2 4-4" />
+              </svg>
+            ) : (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-slate-400">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+            )}
             {isConfirmed
               ? lang === "uk" ? "Підтверджена сторінка" : "Verified page"
               : lang === "uk" ? "Пошуковий уривок" : "Search snippet"}
@@ -72,9 +79,11 @@ function MatchCardItem({ match }: { match: PlagiarismMatch }) {
           className="text-slate-100 hover:text-emerald-glow transition-colors inline-flex items-center gap-1.5 group break-words"
         >
           <span className="group-hover:underline">{stripHtml(match.title)}</span>
-          <span className="material-symbols-outlined text-[16px] text-slate-400 group-hover:text-emerald-glow transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 shrink-0">
-            open_in_new
-          </span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400 group-hover:text-emerald-glow transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 shrink-0">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+            <polyline points="15 3 21 3 21 9" />
+            <line x1="10" y1="14" x2="21" y2="3" />
+          </svg>
         </a>
       </h4>
 
@@ -89,7 +98,9 @@ function MatchCardItem({ match }: { match: PlagiarismMatch }) {
       {isConfirmed && match.submittedEvidence && (
         <div className="p-3.5 rounded-xl bg-emerald-500/10 border-l-4 border-emerald-400 flex flex-col gap-1.5 my-0.5">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-300 uppercase tracking-wider">
-            <span className="material-symbols-outlined text-[14px]">format_quote</span>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" className="shrink-0 text-emerald-400">
+              <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.75-2-2-2H4c-1.25 0-2 .75-2 2v6c0 1.25.75 2 2 2h4c0 3-1.5 5-5 5v3zm14 0c3 0 7-1 7-8V5c0-1.25-.75-2-2-2h-4c-1.25 0-2 .75-2 2v6c0 1.25.75 2 2 2h4c0 3-1.5 5-5 5v3z" />
+            </svg>
             <span>{lang === "uk" ? "Підтверджений спільний фрагмент" : "Verified common excerpt"}</span>
           </div>
           <blockquote className="text-body-sm text-slate-100 italic m-0 leading-relaxed font-sans">
@@ -120,9 +131,9 @@ function MatchCardItem({ match }: { match: PlagiarismMatch }) {
           className="text-xs text-emerald-glow hover:text-emerald-300 flex items-center gap-1 cursor-pointer transition-colors font-medium ml-auto"
         >
           <span>{showMetrics ? (lang === "uk" ? "Сховати метрики" : "Hide metrics") : (lang === "uk" ? "Детальні метрики" : "Forensic metrics")}</span>
-          <span className={`material-symbols-outlined text-[14px] transition-transform ${showMetrics ? "rotate-180" : ""}`}>
-            expand_more
-          </span>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform shrink-0 ${showMetrics ? "rotate-180" : ""}`}>
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
         </button>
       </div>
 
@@ -183,11 +194,20 @@ export function PlagiarismMatches({
             ? "border-rose-500/40 bg-rose-500/10 text-rose-200" 
             : "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
         }`}>
-          <span className={`material-symbols-outlined text-[28px] shrink-0 mt-0.5 ${
-            allSearchProvidersFailed ? "text-rose-400" : "text-emerald-400"
-          }`}>
-            {allSearchProvidersFailed ? "error_outline" : "verified"}
-          </span>
+          <div className="shrink-0 mt-0.5">
+            {allSearchProvidersFailed ? (
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-rose-400">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+            ) : (
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-400">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                <path d="m9 12 2 2 4-4" />
+              </svg>
+            )}
+          </div>
           <div>
             <strong className="block text-white font-bold text-body-lg mb-1">
               {allSearchProvidersFailed

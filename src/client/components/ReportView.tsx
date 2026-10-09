@@ -61,7 +61,7 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion }: Repor
         {/* Header Bar: Meta & Export Actions */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-white/10">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-1.5">
               <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-glow border border-emerald-500/30">
                 {lang === "uk" ? "Офіційний звіт Незбіг" : "Official Nezbig Report"}
               </span>
@@ -85,10 +85,20 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion }: Repor
               onClick={handleCopyLink}
               title={copiedLink ? (lang === "uk" ? "Посилання скопійовано" : "Link copied") : (lang === "uk" ? "Копіювати посилання" : "Copy Link")}
             >
-              <span className="material-symbols-outlined text-[18px]">
-                {copiedLink ? "check" : "share"}
-              </span>
-              <span>{copiedLink ? (lang === "uk" ? "Скопійовано!" : "Поділитися") : (lang === "uk" ? "Поділитися" : "Share")}</span>
+              {copiedLink ? (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-glow shrink-0">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              ) : (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                  <circle cx="18" cy="5" r="3" />
+                  <circle cx="6" cy="12" r="3" />
+                  <circle cx="18" cy="19" r="3" />
+                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                  <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                </svg>
+              )}
+              <span>{copiedLink ? (lang === "uk" ? "Скопійовано!" : "Copied!") : (lang === "uk" ? "Поділитися" : "Share")}</span>
             </button>
             <ExportToolbar report={report} />
           </div>
@@ -105,7 +115,7 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion }: Repor
           }`}
         >
           <div
-            className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 text-2xl ${
+            className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
               isClean
                 ? "bg-emerald-500/20 text-emerald-400"
                 : isHighRisk
@@ -113,9 +123,24 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion }: Repor
                   : "bg-amber-500/20 text-amber-400"
             }`}
           >
-            <span className="material-symbols-outlined">
-              {isClean ? "verified" : isHighRisk ? "warning" : "info"}
-            </span>
+            {isClean ? (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                <path d="m9 12 2 2 4-4" />
+              </svg>
+            ) : isHighRisk ? (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+            ) : (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="16" x2="12" y2="12" />
+                <line x1="12" y1="8" x2="12.01" y2="8" />
+              </svg>
+            )}
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="text-body-lg font-bold text-white mb-1 leading-snug">
@@ -131,16 +156,17 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion }: Repor
           </div>
         </div>
 
-        {/* 4 Executive Score Meters (.metrics) */}
+        {/* 4 Executive Score Meters (.metrics) - Uniform & Clean */}
         <div className="metrics grid grid-cols-2 lg:grid-cols-4 gap-4 m-0">
           {/* 1. Plagiarism Score */}
           <article className="p-4 md:p-5 rounded-2xl bg-surface-container-high/60 border border-white/5 flex flex-col justify-between">
             <div className="flex items-center justify-between gap-2 mb-2">
               <span className="text-label-md font-semibold text-slate-400 uppercase tracking-wider">{t("plagiarism")}</span>
               <span
-                className={`w-2.5 h-2.5 rounded-full ${
-                  report.plagiarismScore >= 35 ? "bg-rose-500" : report.plagiarismScore >= 15 ? "bg-amber-500" : "bg-emerald-400"
+                className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                  report.plagiarismScore >= 35 ? "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]" : report.plagiarismScore >= 15 ? "bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" : "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]"
                 }`}
+                title={riskLabel(report.plagiarismScore, lang)}
               />
             </div>
             <strong>{report.plagiarismScore}%</strong>
@@ -165,9 +191,10 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion }: Repor
             <div className="flex items-center justify-between gap-2 mb-2">
               <span className="text-label-md font-semibold text-slate-400 uppercase tracking-wider">{t("aiAnalysis")}</span>
               <span
-                className={`w-2.5 h-2.5 rounded-full ${
-                  report.aiProbability >= 50 ? "bg-rose-500" : report.aiProbability >= 20 ? "bg-amber-500" : "bg-emerald-400"
+                className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                  report.aiProbability >= 50 ? "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]" : report.aiProbability >= 20 ? "bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" : "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]"
                 }`}
+                title={aiMetricCaption(report, lang)}
               />
             </div>
             {report.aiVerdict === "insufficient" ? (
@@ -195,7 +222,20 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion }: Repor
           <article className="p-4 md:p-5 rounded-2xl bg-surface-container-high/60 border border-white/5 flex flex-col justify-between">
             <div className="flex items-center justify-between gap-2 mb-2">
               <span className="text-label-md font-semibold text-slate-400 uppercase tracking-wider">{t("aiOpinion")}</span>
-              <span className="material-symbols-outlined text-slate-400 text-sm">smart_toy</span>
+              <span
+                className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                  report.aiOpinionProbability !== undefined
+                    ? report.aiOpinionProbability >= 50
+                      ? "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]"
+                      : report.aiOpinionProbability >= 20
+                        ? "bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]"
+                        : "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]"
+                    : llmBusy
+                      ? "bg-purple-400 animate-pulse shadow-[0_0_8px_rgba(192,132,252,0.5)]"
+                      : "bg-slate-600"
+                }`}
+                title={report.aiOpinionModel || "AI model"}
+              />
             </div>
             <strong>{report.aiOpinionProbability !== undefined ? `${report.aiOpinionProbability}%` : "…"}</strong>
             <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden my-2">
@@ -219,7 +259,7 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion }: Repor
           <article className="p-4 md:p-5 rounded-2xl bg-surface-container-high/60 border border-white/5 flex flex-col justify-between">
             <div className="flex items-center justify-between gap-2 mb-2">
               <span className="text-label-md font-semibold text-slate-400 uppercase tracking-wider">{t("fragments")}</span>
-              <span className="material-symbols-outlined text-slate-400 text-sm">description</span>
+              <span className="w-2.5 h-2.5 rounded-full shrink-0 bg-primary/70 shadow-[0_0_8px_rgba(86,219,198,0.4)]" />
             </div>
             <strong>{formatNumber(report.chunksChecked, lang)}</strong>
             <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden my-2">
@@ -232,29 +272,40 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion }: Repor
         </div>
 
         {/* Quick Processing Badges */}
-        <div className="flex flex-wrap items-center gap-2 pt-2">
+        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-white/5">
           <span className="px-3 py-1 rounded-lg bg-surface-container-high border border-white/5 text-xs text-slate-300 font-medium flex items-center gap-1.5">
-            <span className="material-symbols-outlined text-[15px] text-slate-400">text_snippet</span>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+            </svg>
             <span>{formatNumber(report.wordCount, lang)} {t("wordsCount")}</span>
           </span>
 
           {report.skippedBibliographyWords ? (
             <span className="px-3 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/30 text-xs text-indigo-300 font-medium flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-[15px] text-indigo-400">menu_book</span>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-400">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+              </svg>
               <span>{lang === "uk" ? "Список джерел виключено:" : "Bibliography excluded:"} {formatNumber(report.skippedBibliographyWords, lang)} {t("wordsCount")}</span>
             </span>
           ) : null}
 
           {report.skippedTitleWords ? (
             <span className="px-3 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-300 font-medium flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-[15px] text-emerald-400">school</span>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-400">
+                <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+                <path d="M6 12v5c3 3 9 3 12 0v-5" />
+              </svg>
               <span>{lang === "uk" ? "Титулку виключено:" : "Title page excluded:"} {formatNumber(report.skippedTitleWords, lang)} {t("wordsCount")}</span>
             </span>
           ) : null}
 
           {report.fileEvidence && (
             <span className="px-3 py-1 rounded-lg bg-surface-container-high border border-white/5 text-xs text-slate-300 font-medium flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-[15px] text-slate-400">attach_file</span>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400">
+                <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+              </svg>
               <span>{report.fileEvidence.fileName} ({Math.round(report.fileEvidence.sizeBytes / 1024)} KB)</span>
             </span>
           )}
@@ -272,7 +323,10 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion }: Repor
               : "text-slate-400 hover:text-white hover:bg-white/5 border border-transparent"
           }`}
         >
-          <span className="material-symbols-outlined text-[20px]">policy</span>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            <path d="m9 12 2 2 4-4" />
+          </svg>
           <span>{lang === "uk" ? "Джерела та збіги" : "Sources & Matches"}</span>
           <span
             className={`px-2 py-0.5 rounded-full text-xs font-mono font-bold ${
@@ -292,7 +346,12 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion }: Repor
               : "text-slate-400 hover:text-white hover:bg-white/5 border border-transparent"
           }`}
         >
-          <span className="material-symbols-outlined text-[20px]">psychology</span>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+            <path d="M12 2a4 4 0 0 0-4 4v1H7a3 3 0 0 0-3 3v8a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-8a3 3 0 0 0-3-3h-1V6a4 4 0 0 0-4-4z" />
+            <circle cx="9" cy="13" r="1" />
+            <circle cx="15" cy="13" r="1" />
+            <path d="M10 17h4" />
+          </svg>
           <span>{lang === "uk" ? "Аналіз ШІ та AI-думка" : "AI Analysis & Opinion"}</span>
           <span
             className={`px-2 py-0.5 rounded-full text-xs font-mono font-bold ${
@@ -316,7 +375,17 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion }: Repor
               : "text-slate-400 hover:text-white hover:bg-white/5 border border-transparent"
           }`}
         >
-          <span className="material-symbols-outlined text-[20px]">tune</span>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+            <line x1="4" y1="21" x2="4" y2="14" />
+            <line x1="4" y1="10" x2="4" y2="3" />
+            <line x1="12" y1="21" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12" y2="3" />
+            <line x1="20" y1="21" x2="20" y2="16" />
+            <line x1="20" y1="12" x2="20" y2="3" />
+            <line x1="1" y1="14" x2="7" y2="14" />
+            <line x1="9" y1="8" x2="15" y2="8" />
+            <line x1="17" y1="16" x2="23" y2="16" />
+          </svg>
           <span>{lang === "uk" ? "Додаткові відомості" : "Technical Details"}</span>
         </button>
       </div>
@@ -343,7 +412,12 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion }: Repor
             <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/10">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-purple-500/15 text-purple-400 border border-purple-500/30 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-[20px]">smart_toy</span>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2a4 4 0 0 0-4 4v1H7a3 3 0 0 0-3 3v8a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-8a3 3 0 0 0-3-3h-1V6a4 4 0 0 0-4-4z" />
+                    <circle cx="9" cy="13" r="1" />
+                    <circle cx="15" cy="13" r="1" />
+                    <path d="M10 17h4" />
+                  </svg>
                 </div>
                 <div>
                   <h3 className="text-body-lg font-bold text-white m-0">
@@ -380,7 +454,12 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion }: Repor
                       onClick={onRetryOpinion}
                       className="text-xs text-slate-400 hover:text-emerald-glow flex items-center gap-1.5 transition-colors cursor-pointer"
                     >
-                      <span className="material-symbols-outlined text-[15px]">refresh</span>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                        <path d="M21 3v5h-5" />
+                        <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                        <path d="M8 16H3v5" />
+                      </svg>
                       <span>{lang === "uk" ? "Оновити оцінку AI-думки" : "Refresh AI opinion"}</span>
                     </button>
                   </div>
@@ -388,7 +467,9 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion }: Repor
               </div>
             ) : llmBusy ? (
               <div className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/25 flex items-center gap-3 text-purple-200">
-                <span className="material-symbols-outlined animate-spin text-[20px] text-purple-400">progress_activity</span>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="animate-spin text-purple-400 shrink-0">
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                </svg>
                 <span className="text-body-sm">
                   {lang === "uk"
                     ? "ШІ-модель формує незалежний вердикт щодо стилю та синтаксису тексту..."
@@ -426,9 +507,12 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion }: Repor
                   <span className="text-xs text-emerald-400 font-semibold">{lang === "uk" ? "0 фрагментів" : "0 segments"}</span>
                 </div>
                 <div className="p-5 rounded-xl border border-emerald-500/25 bg-emerald-500/10 flex items-start gap-3.5">
-                  <span className="material-symbols-outlined text-[24px] text-emerald-400 shrink-0 mt-0.5">
-                    verified
-                  </span>
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                      <path d="m9 12 2 2 4-4" />
+                    </svg>
+                  </div>
                   <div>
                     <strong className="block text-slate-100 font-semibold mb-1">
                       {lang === "uk" ? "ШІ-аномалій не виявлено" : "No AI anomalies detected"}
@@ -446,44 +530,18 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion }: Repor
         </div>
       )}
 
-      {/* TAB 3: Technical Details & Diagnostics */}
+      {/* TAB 3: Technical Details & Diagnostics (Prioritized correctly!) */}
       {activeTab === "technical" && (
         <div className="p-6 md:p-8 rounded-2xl border border-slate-800 bg-surface-container/85 flex flex-col gap-6 shadow-inner animate-in fade-in duration-200">
-          {/* 1. Search Providers Health (Unified, NOT duplicated!) */}
-          {report.searchDiagnostics && (
-            <div>
-              <h4 className="text-label-lg font-bold text-slate-300 uppercase tracking-wider mb-2">
-                {lang === "uk" ? "Стан пошукових індексів" : "Search Provider Status"}
-              </h4>
-              <ProviderDiagnostics diagnostics={report.searchDiagnostics} />
-            </div>
-          )}
-
-          {/* 2. Processing Notes (Filtered to avoid provider duplication) */}
-          {filteredNotes.length > 0 && (
-            <div>
-              <h4 className="text-label-lg font-bold text-slate-300 uppercase tracking-wider mb-2">
-                {lang === "uk" ? "Примітки обробки тексту" : "Processing Notes"}
-              </h4>
-              <div className="flex flex-wrap gap-2">
-                {filteredNotes.map((note) => (
-                  <span key={note} className="px-3 py-1.5 rounded-lg border border-slate-700/60 bg-surface-container text-body-sm text-slate-300">
-                    {translateScanNote(note, lang)}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* 3. Comprehensive NLP Stylometry */}
+          {/* 1. Comprehensive NLP Stylometry (PRIORITY 1 - Top of Technical Details) */}
           <div>
-            <h4 className="text-label-lg font-bold text-slate-300 uppercase tracking-wider mb-3">
+            <h4 className="text-label-lg font-bold text-slate-200 uppercase tracking-wider mb-3">
               {lang === "uk" ? "Повний стилометричний аналіз" : "Comprehensive Stylometric Analysis"}
             </h4>
             <AiAnalysisPanel report={report} llmBusy={llmBusy} primarySignals={primaryAiSignals} onRetryOpinion={onRetryOpinion} />
           </div>
 
-          {/* 4. Secondary Stylometric Factors */}
+          {/* 2. Secondary Stylometric Factors */}
           {secondaryAiSignals.length > 0 && (
             <div>
               <h4 className="text-label-lg font-bold text-slate-300 uppercase tracking-wider mb-3">
@@ -497,12 +555,54 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion }: Repor
             </div>
           )}
 
-          {/* 5. File Details */}
+          {/* 3. Processing Notes */}
+          {filteredNotes.length > 0 && (
+            <div className="border-t border-slate-800/80 pt-5">
+              <h4 className="text-label-lg font-bold text-slate-300 uppercase tracking-wider mb-2">
+                {lang === "uk" ? "Примітки обробки тексту" : "Processing Notes"}
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {filteredNotes.map((note) => (
+                  <span key={note} className="px-3 py-1.5 rounded-lg border border-slate-700/60 bg-surface-container text-body-sm text-slate-300">
+                    {translateScanNote(note, lang)}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 4. File Details */}
           {report.fileEvidence && (
-            <div className="text-label-sm text-slate-400 border-t border-slate-800 pt-3 flex flex-wrap gap-4">
+            <div className="text-label-sm text-slate-400 border-t border-slate-800/80 pt-4 flex flex-wrap gap-4">
               <span><strong>{lang === "uk" ? "Файл:" : "File:"}</strong> {report.fileEvidence.fileName}</span>
               <span><strong>{lang === "uk" ? "Розмір:" : "Size:"}</strong> {Math.round(report.fileEvidence.sizeBytes / 1024)} KB</span>
               <span><strong>{lang === "uk" ? "Метод:" : "Method:"}</strong> {report.fileEvidence.extractionMethod}</span>
+            </div>
+          )}
+
+          {/* 5. Search Engine Technical Diagnostics (Deprioritized & Collapsible at the bottom) */}
+          {report.searchDiagnostics && (
+            <div className="border-t border-slate-800/80 pt-4 mt-1">
+              <details className="group cursor-pointer">
+                <summary className="flex items-center justify-between text-xs font-semibold text-slate-400 hover:text-slate-200 transition-colors uppercase tracking-wider select-none py-1">
+                  <div className="flex items-center gap-2">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400 shrink-0">
+                      <circle cx="11" cy="11" r="8" />
+                      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    </svg>
+                    <span>{lang === "uk" ? "Технічний стан пошукових індексів" : "Search Index Diagnostics"}</span>
+                    <span className="text-[11px] text-slate-500 font-normal lowercase">
+                      ({report.searchDiagnostics.providers.filter((p) => p.attempted > 0).length} {lang === "uk" ? "систем" : "engines"})
+                    </span>
+                  </div>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500 group-open:rotate-180 transition-transform shrink-0">
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </summary>
+                <div className="pt-3 pb-1">
+                  <ProviderDiagnostics diagnostics={report.searchDiagnostics} />
+                </div>
+              </details>
             </div>
           )}
         </div>
