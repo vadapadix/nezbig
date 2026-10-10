@@ -11,8 +11,10 @@ import { useLanguage } from "../context/LanguageContext";
 import { recommendSettings, estimateScanSeconds, formatDuration, defaultSettings } from "../utils/scanSettings";
 import { htmlFromPlainText } from "../richText";
 import type { ScanReport } from "../../shared/types";
+import { parseNezbigReport } from "../utils/nezbigFile";
 import { LoadingPanel } from "../components/LoadingPanel";
 import { RecentScansBar } from "../components/RecentScansBar";
+import { GoogleDrivePickerModal } from "../components/GoogleDrivePickerModal";
 import { BrandLogo } from "../components/BrandLogo";
 
 import { AdsterraBanner } from "../components/AdsterraBanner";
@@ -25,6 +27,7 @@ export default function Home({ showToast }: { showToast: (msg: string, type?: "s
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   const [settings, setSettings] = useState(defaultSettings);
+  const [isDrivePickerOpen, setIsDrivePickerOpen] = useState(false);
   const reportRef = useRef<HTMLElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -34,9 +37,32 @@ export default function Home({ showToast }: { showToast: (msg: string, type?: "s
   const [lastScanInput, setLastScanInput] = useState<{ text: string; file: File | null } | null>(null);
   const mainRef = useRef<HTMLDivElement>(null);
 
-  const isDragging = useDragDrop(mainRef, (file) => {
+  const handleFileSelection = useCallback(async (file: File) => {
+    const lowerName = file.name.toLowerCase();
+    if (lowerName.endsWith(".nezbig") || lowerName.endsWith(".json")) {
+      try {
+        const text = await file.text();
+        const parsed = parseNezbigReport(text);
+        if (parsed) {
+          setReport(parsed);
+          showToast(
+            lang === "uk"
+              ? `Звіт «${parsed.fileName}» успішно завантажено!`
+              : `Report '${parsed.fileName}' loaded successfully!`,
+            "success"
+          );
+          return;
+        }
+      } catch {
+        // fallback
+      }
+    }
     setReport(null);
     void editor.handleFile(file);
+  }, [editor, lang, showToast, setReport]);
+
+  const isDragging = useDragDrop(mainRef, (file) => {
+    void handleFileSelection(file);
   });
 
   const { clearDraft } = useDraft(editor.text, editor.sourceHtml, editor.fileName, (draft) => {
@@ -189,6 +215,15 @@ export default function Home({ showToast }: { showToast: (msg: string, type?: "s
               reportRef={reportRef}
               onRetryOpinion={handleRetryOpinion}
               onBackToEditor={handleBackToEditor}
+              onMessage={showToast}
+            />
+            <GoogleDrivePickerModal
+              isOpen={isDrivePickerOpen}
+              onClose={() => setIsDrivePickerOpen(false)}
+              onSelectReport={(r) => {
+                setReport(r);
+                showToast(lang === "uk" ? `Звіт «${r.fileName}» завантажено з Google Диску!` : `Report '${r.fileName}' loaded from Google Drive!`, "success");
+              }}
             />
             <div className="flex justify-center mt-8">
               <button 
@@ -264,7 +299,19 @@ export default function Home({ showToast }: { showToast: (msg: string, type?: "s
                 </span>
               </div>
 
-              <div className="flex items-center gap-3 shrink-0">
+              <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsDrivePickerOpen(true)}
+                  className="bg-surface-variant/80 hover:bg-surface-bright text-white px-3.5 py-2 rounded-full font-label-sm text-label-sm border border-outline-variant hover:border-[#4285F4] transition-all flex items-center gap-2 cursor-pointer"
+                  title={lang === "uk" ? "Відкрити збережений звіт з Google Диску" : "Open saved report from Google Drive"}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-[#4285F4] shrink-0">
+                    <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4 0-2.05 1.53-3.76 3.56-3.97l1.07-.11.5-.95C8.08 7.14 9.94 6 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5 1.53.11c1.56.1 2.78 1.41 2.78 2.96 0 1.65-1.35 3-3 3z"/>
+                  </svg>
+                  <span className="hidden sm:inline">Google Диск</span>
+                </button>
+
                 <label className={`upload-chip ${editor.formattedPreviewBusy ? "opacity-60 cursor-wait pointer-events-none" : "hover:bg-surface-bright cursor-pointer"} bg-surface-variant/80 text-white px-4 py-2 rounded-full font-label-sm text-label-sm border border-outline-variant hover:border-emerald-glow transition-all flex items-center gap-2`}>
                   <span className={`material-symbols-outlined text-[18px] ${editor.formattedPreviewBusy ? "animate-spin text-emerald-glow" : ""}`}>
                     {editor.formattedPreviewBusy ? "progress_activity" : "upload_file"}
@@ -277,12 +324,11 @@ export default function Home({ showToast }: { showToast: (msg: string, type?: "s
                     type="file"
                     disabled={editor.formattedPreviewBusy}
                     className="hidden"
-                    accept=".docx,.pdf"
+                    accept=".docx,.pdf,.nezbig,.json"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        setReport(null);
-                        void editor.handleFile(file);
+                        void handleFileSelection(file);
                       }
                       e.target.value = "";
                     }}
@@ -460,6 +506,15 @@ export default function Home({ showToast }: { showToast: (msg: string, type?: "s
       <aside className="hidden 2xl:flex w-[160px] shrink-0 sticky top-24 justify-center items-center py-4 text-center">
         {/* Right skyscraper unit can be added here */}
       </aside>
+
+      <GoogleDrivePickerModal
+        isOpen={isDrivePickerOpen}
+        onClose={() => setIsDrivePickerOpen(false)}
+        onSelectReport={(r) => {
+          setReport(r);
+          showToast(lang === "uk" ? `Звіт «${r.fileName}» завантажено з Google Диску!` : `Report '${r.fileName}' loaded from Google Drive!`, "success");
+        }}
+      />
     </div>
   );
 }

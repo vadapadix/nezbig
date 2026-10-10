@@ -3,6 +3,8 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useLanguage } from "../context/LanguageContext";
 import { AuthModal } from "../components/AuthModal";
+import { GoogleDrivePickerModal } from "../components/GoogleDrivePickerModal";
+import { parseNezbigReport } from "../utils/nezbigFile";
 import { useAiOpinion } from "../hooks/useAiOpinion";
 import type { ScanReport } from "../../shared/types";
 
@@ -25,11 +27,31 @@ export default function HistoryPage() {
   const [items, setItems] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAuth, setShowAuth] = useState(false);
+  const [isDrivePickerOpen, setIsDrivePickerOpen] = useState(false);
   const [selectedReport, setSelectedReport] = useState<ScanReport | null>(null);
   const [loadingReport, setLoadingReport] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
   const reportRef = useRef<HTMLElement | null>(null);
+  const importFileInputRef = useRef<HTMLInputElement>(null);
   const { llmBusy, loadLlmOpinion } = useAiOpinion(setSelectedReport);
+
+  const handleImportLocalFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const report = parseNezbigReport(text);
+      if (report) {
+        setSelectedReport(report);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } else {
+        setReportError(lang === "uk" ? "Файл не є дійсним звітом Незбіг." : "File is not a valid Nezbig report.");
+      }
+    } catch {
+      setReportError(lang === "uk" ? "Помилка при читанні файлу звіту." : "Error reading report file.");
+    }
+    e.target.value = "";
+  };
 
   const handleRetryOpinion = useCallback(() => {
     if (!selectedReport) return;
@@ -250,8 +272,37 @@ export default function HistoryPage() {
               : (lang === "uk" ? "Зберігається локально у вашому браузері" : "Saved locally in your browser storage")}
           </p>
         </div>
-        <div className="flex items-center gap-4">
-          <span className="text-label-sm text-on-surface-variant hidden sm:inline">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <button
+            type="button"
+            onClick={() => setIsDrivePickerOpen(true)}
+            className="px-3 py-1.5 rounded-xl border border-[#4285F4]/30 hover:border-[#4285F4] bg-[#4285F4]/10 hover:bg-[#4285F4]/20 text-xs font-semibold text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+            title={lang === "uk" ? "Відкрити звіт з Google Диску" : "Open report from Google Drive"}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" className="text-[#4285F4] shrink-0">
+              <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4 0-2.05 1.53-3.76 3.56-3.97l1.07-.11.5-.95C8.08 7.14 9.94 6 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5 1.53.11c1.56.1 2.78 1.41 2.78 2.96 0 1.65-1.35 3-3 3z"/>
+            </svg>
+            <span>Google Диск</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => importFileInputRef.current?.click()}
+            className="px-3 py-1.5 rounded-xl border border-white/10 hover:border-emerald-glow/40 bg-surface-container/60 hover:bg-surface-bright text-xs font-semibold text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+            title={lang === "uk" ? "Відкрити локальний файл .nezbig" : "Open local .nezbig file"}
+          >
+            <span className="material-symbols-outlined text-sm text-emerald-400">upload_file</span>
+            <span>{lang === "uk" ? "Імпорт .nezbig" : "Import .nezbig"}</span>
+          </button>
+          <input
+            ref={importFileInputRef}
+            type="file"
+            accept=".nezbig,.json"
+            className="hidden"
+            onChange={handleImportLocalFile}
+          />
+
+          <span className="text-label-sm text-on-surface-variant hidden sm:inline ml-1">
             {items.length} {lang === "uk" ? (items.length === 1 ? "перевірка" : items.length < 5 ? "перевірки" : "перевірок") : (items.length === 1 ? "scan" : "scans")}
           </span>
           {items.length > 0 && (
@@ -389,6 +440,15 @@ export default function HistoryPage() {
           })}
         </div>
       )}
+
+      <GoogleDrivePickerModal
+        isOpen={isDrivePickerOpen}
+        onClose={() => setIsDrivePickerOpen(false)}
+        onSelectReport={(report) => {
+          setSelectedReport(report);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+      />
     </div>
   );
 }

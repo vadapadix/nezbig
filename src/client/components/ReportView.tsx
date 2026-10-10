@@ -16,9 +16,10 @@ interface ReportViewProps {
   reportRef: React.RefObject<HTMLElement | null>;
   onRetryOpinion?: () => void;
   onBackToEditor?: () => void;
+  onMessage?: (msg: string, type?: "success" | "error" | "info") => void;
 }
 
-export function ReportView({ report, llmBusy, reportRef, onRetryOpinion, onBackToEditor }: ReportViewProps) {
+export function ReportView({ report, llmBusy, reportRef, onRetryOpinion, onBackToEditor, onMessage }: ReportViewProps) {
   const { lang, t } = useLanguage();
   const [copiedLink, setCopiedLink] = useState(false);
   const [activeTab, setActiveTab] = useState<"sources" | "ai" | "technical">(
@@ -115,7 +116,7 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion, onBackT
               )}
               <span>{copiedLink ? (lang === "uk" ? "Скопійовано!" : "Copied!") : (lang === "uk" ? "Поділитися" : "Share")}</span>
             </button>
-            <ExportToolbar report={report} />
+            <ExportToolbar report={report} onMessage={onMessage} />
           </div>
         </div>
 

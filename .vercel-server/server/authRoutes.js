@@ -104,6 +104,14 @@ router.get("/history", async (req, res) => {
         res.status(500).json({ error: "Помилка при завантаженні історії." });
     }
 });
+// ─── Google OAuth: Config ─────────────────────────────────
+router.get("/google/config", (_req, res) => {
+    const clientId = process.env.GOOGLE_CLIENT_ID || "";
+    res.json({
+        clientId,
+        configured: Boolean(clientId),
+    });
+});
 // ─── Google OAuth: Get URL ────────────────────────────────
 router.get("/google/url", (req, res) => {
     const clientId = process.env.GOOGLE_CLIENT_ID;

@@ -133,6 +133,15 @@ router.get("/history", async (req: Request, res: Response) => {
   }
 });
 
+// ─── Google OAuth: Config ─────────────────────────────────
+router.get("/google/config", (_req: Request, res: Response) => {
+  const clientId = process.env.GOOGLE_CLIENT_ID || "";
+  res.json({
+    clientId,
+    configured: Boolean(clientId),
+  });
+});
+
 // ─── Google OAuth: Get URL ────────────────────────────────
 router.get("/google/url", (req: Request, res: Response) => {
   const clientId = process.env.GOOGLE_CLIENT_ID;
