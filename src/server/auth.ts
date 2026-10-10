@@ -307,9 +307,10 @@ export function verifyToken(token: string): AuthPayload | null {
 // ---------- Cookie helpers ----------
 
 export function setAuthCookie(res: Response, token: string): void {
+  const isHttps = process.env.NODE_ENV === "production" && process.env.VERCEL === "1";
   res.cookie(COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: isHttps,
     sameSite: "lax",
     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     path: "/",
@@ -323,16 +324,29 @@ export function clearAuthCookie(res: Response): void {
 // ---------- Middleware ----------
 
 export function authMiddleware(req: Request, _res: Response, next: NextFunction): void {
-  let token = req.cookies?.[COOKIE_NAME];
-  if (!token && req.headers.authorization?.startsWith("Bearer ")) {
-    token = req.headers.authorization.slice(7).trim();
-  }
-  if (token) {
-    const payload = verifyToken(token);
-    if (payload) {
-      req.user = payload;
+  // 1. Try Bearer header first (most specific from explicit client API call)
+  const authHeader = req.headers.authorization;
+  if (authHeader?.startsWith("Bearer ")) {
+    const bearerToken = authHeader.slice(7).trim();
+    if (bearerToken) {
+      const payload = verifyToken(bearerToken);
+      if (payload) {
+        req.user = payload;
+        return next();
+      }
     }
   }
+
+  // 2. Try cookie (browser navigation or requests with cookies)
+  const cookieToken = req.cookies?.[COOKIE_NAME];
+  if (cookieToken) {
+    const payload = verifyToken(cookieToken);
+    if (payload) {
+      req.user = payload;
+      return next();
+    }
+  }
+
   next();
 }
 

@@ -33,16 +33,17 @@ def add_conclusions(doc):
         "Рабіна-Карпа та оптимізоване розріджене динамічне програмування (Sparse DP) для знаходження найдовшого нерозривного "
         "фрагмента (Longest Common Run) зі складністю O(N + K).",
          
-        "3. Спроєктовано та реалізовано трьохканальний детермінований стилометричний AI-ансамбль, що поєднує статистичний канал "
+        "3. Спроєктовано та реалізовано триканальний детермінований стилометричний AI-ансамбль, що поєднує статистичний канал "
         "(ковзне лексичне багатство MATTR вікном 50 токенів, коефіцієнт варіації довжини речень Burstiness CV, повтори 4-грам), "
-        "патерновий канал (лінгвістичні кліше LLM, hedging, безособові формули) та структурний канал (синтаксична симетрія переліків). "
-        "Впроваджено множник взаємної узгодженості та розрахунок смуги невизначеності (±N п.п.), що унеможливлює безпідставні "
-        "звинувачення авторів на основі окремих випадкових слів.",
+        "патерновий канал (лінгвістичні маркери LLM, діалектичний хеджинг, безособові формули) та структурний канал (синтаксична симетрія, "
+        "тричленний паралелізм tricolon, фільтрація тривіальних вступів). "
+        "Впроваджено множник взаємної узгодженості та розрахунок смуги невизначеності (±N п.п.), що унеможливлює помилкові "
+        "звинувачення авторів на основі ізольованих евристик.",
          
         "4. Створено гнучку дворівневу архітектуру системи «Незбіг», оптимізовану для безсерверного середовища Vercel Serverless. "
         "Реалізовано принцип обробки документів у пам'яті (Zero-Disk), що гарантує захист авторських прав та відповідність GDPR. "
-        "Інтегровано механізм диспетчеризації запитів до відкритих вебіндексів (DuckDuckGo, Google Search API, Semantic Scholar, OpenAlex) "
-        "із захистом від збоїв за патерном Circuit Breaker.",
+        "Інтегровано 5-провайдерний механізм диспетчеризації запитів до пошукових систем і наукових каталогів (Tavily Search API, Serper Google Search API, "
+        "DuckDuckGo, Semantic Scholar, OpenAlex) із захистом від таймаутів та каскадних відмов за патерном Circuit Breaker.",
          
         "5. Розроблено інтелектуальний конвеєр препроцесингу документів (`documentPreprocess.ts`, `proseFilter.ts`), який "
         "автоматично відсікає лістинги вихідного коду, службову титульну частину та стандартизовані бібліографічні списки, "
@@ -54,7 +55,8 @@ def add_conclusions(doc):
          
         "7. Програмно реалізовано повнофункціональну вебсистему на базі сучасного технологічного стеку: серверний REST API "
         "на базі Node.js 24 та Express 5.2, клієнтський односторінковий застосунок на базі React 19, TypeScript та TailwindCSS, "
-        "а також детермінований стилістичний редактор Text Humanizer з трьома режимами адаптації (Academic, Natural, Concise).",
+        "а також детермінований стилістичний редактор Text Humanizer з трьома режимами адаптації (академічний, природний, лаконічний) "
+        "із повним збереженням стилів та розмітки вихідних файлів Microsoft Word (OOXML).",
          
         "8. Проведено всебічні експериментальні дослідження та тестування системи. На верифікаційному корпусі україномовних та "
         "англомовних документів досягнуто високу роздільну здатність класифікації (ROC-AUC 0.942, Macro-F1 0.91) при мінімальному "
@@ -102,6 +104,8 @@ def add_references(doc):
         "Sadasivan V. S., Kumar A., Balasubramanian S., et al. Can AI-generated text be reliably detected? arXiv preprint arXiv:2303.11156. 2023. 18 p. DOI: https://doi.org/10.48550/arXiv.2303.11156.",
         "OpenAlex Documentation: A fully open catalog of the global research system / OurResearch. 2026. URL: https://docs.openalex.org/ (дата звернення: 10.04.2026).",
         "Semantic Scholar Academic Graph API / Allen Institute for AI. 2026. URL: https://www.semanticscholar.org/product/api (дата звернення: 10.04.2026).",
+        "Tavily Search API: The Search Engine Built for AI Agents and LLMs. 2026. URL: https://docs.tavily.com/ (дата звернення: 12.04.2026).",
+        "Serper Google Search API Specification and Performance Guidelines / Serper Dev Team. 2026. URL: https://serper.dev/ (дата звернення: 12.04.2026).",
         "DuckDuckGo HTML Search Interface Specification and Scraping Guidelines. 2025. URL: https://duckduckgo.com/ (дата звернення: 12.04.2026).",
         "ECMA International. Standard ECMA-376: Office Open XML File Formats (5th edition). Geneva: ECMA, 2021. 5012 p. URL: https://www.ecma-international.org/publications-and-standards/standards/ecma-376/.",
         "Microsoft Corporation. WordprocessingML Reference and Schema Guide: Open Specifications. Redmond, WA: Microsoft, 2024. URL: https://learn.microsoft.com/en-us/openspecs/office_standards/ms-docx/.",
@@ -149,11 +153,11 @@ def add_appendices(doc):
     r_ta = p_title_a.add_run("ІЛЮСТРАТИВНІ МАТЕРІАЛИ КОРИСТУВАЦЬКОГО ІНТЕРФЕЙСУ СИСТЕМИ «НЕЗБІГ»")
     set_run_font(r_ta, font_name='Times New Roman', size_pt=15, bold=True)
     
-    sc_home = os.path.abspath("docs/screenshots/01_home_main.png")
-    add_figure(doc, sc_home, "Рис. А.1 — Повнорозмірний вигляд головної панелі системи з темною темою оформлення", width_cm=16.0)
+    sc_home = os.path.abspath("docs/screenshots/01_main_page_ua.png")
+    add_figure(doc, sc_home, "Рис. А.1 — Повнорозмірний вигляд головної робочої панелі системи «Незбіг» з україномовним інтерфейсом", width_cm=16.0)
     
-    sc_hum = os.path.abspath("docs/screenshots/03_humanizer_page.png")
-    add_figure(doc, sc_hum, "Рис. А.2 — Екран академічного редактора стилю Text Humanizer з вибором режимів", width_cm=16.0)
+    sc_hum = os.path.abspath("docs/screenshots/04_humanizer_diff_result.png")
+    add_figure(doc, sc_hum, "Рис. А.2 — Екран результатів роботи модуля адаптації тексту Text Humanizer зі зниженням ризику детекції та поблочним зіставленням", width_cm=16.0)
 
     # Appendix B
     doc.add_page_break()

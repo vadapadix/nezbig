@@ -6,6 +6,7 @@ import { useDragDrop } from "../hooks/useDragDrop";
 import { useDraft } from "../hooks/useDraft";
 import { useFaviconProgress } from "../hooks/useFaviconProgress";
 import { useDocumentEditor } from "../hooks/useDocumentEditor";
+import { useAuth } from "../hooks/useAuth";
 import { useLanguage } from "../context/LanguageContext";
 import { recommendSettings, estimateScanSeconds, formatDuration, defaultSettings } from "../utils/scanSettings";
 import { htmlFromPlainText } from "../richText";
@@ -20,6 +21,7 @@ const ReportView = lazy(() => import("../components/ReportView").then(m => ({ de
 
 export default function Home({ showToast }: { showToast: (msg: string, type?: "success" | "error" | "info") => void }) {
   const { t, lang } = useLanguage();
+  const { isLoggedIn, syncHistory } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   const [settings, setSettings] = useState(defaultSettings);
@@ -95,13 +97,16 @@ export default function Home({ showToast }: { showToast: (msg: string, type?: "s
       });
       localStorage.setItem("nezbig_local_history", JSON.stringify(filtered.slice(0, 50)));
       window.dispatchEvent(new Event("nezbig_history_updated"));
+      if (isLoggedIn) {
+        void syncHistory();
+      }
     } catch {
       // ignore
     }
     window.requestAnimationFrame(() => {
       reportRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
-  }, [report]);
+  }, [report, isLoggedIn, syncHistory]);
 
   function requestAiOpinion(target: ScanReport, input: { text: string; file: File | null }) {
     loadLlmOpinion(target, input.text, input.file).catch(() => {

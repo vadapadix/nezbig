@@ -53,6 +53,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refresh = useCallback(async () => {
     try {
+      const token = getStoredToken();
+      if (!token) {
+        setUser(null);
+        localStorage.removeItem("nezbig_auth_user");
+        setLoading(false);
+        return;
+      }
+
       const headers = getAuthHeaders();
       const res = await fetch("/api/auth/me", {
         headers,
@@ -63,11 +71,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(data.user);
         localStorage.setItem("nezbig_auth_user", JSON.stringify(data.user));
       } else if (res.status === 401 || data.user === null) {
-        // Only clear if confirmed not authenticated
-        if (!getStoredToken()) {
-          setUser(null);
-          localStorage.removeItem("nezbig_auth_user");
-        }
+        // Token is confirmed invalid or expired on server
+        setUser(null);
+        localStorage.removeItem("nezbig_auth_token");
+        localStorage.removeItem("nezbig_auth_user");
       }
     } catch {
       // Keep cached user on offline/temporary network blip
@@ -79,10 +86,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const syncHistory = useCallback(async () => {
     try {
       const raw = localStorage.getItem("nezbig_local_history");
-      const localItems = raw ? JSON.parse(raw) : [];
+      const localItems: any[] = raw ? JSON.parse(raw) : [];
       const authToken = localStorage.getItem("nezbig_auth_token");
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (authToken) headers["Authorization"] = `Bearer ${authToken}`;
+      if (!authToken) {
+        // Not authenticated: do not sync, preserve local history intact
+        return;
+      }
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`
+      };
 
       if (Array.isArray(localItems) && localItems.length > 0) {
         const res = await fetch("/api/history/sync", {
@@ -107,19 +120,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return;
           }
         }
+        // If sync failed (401, 500, network error): NEVER touch local items!
+        return;
       }
 
-      // If localItems was empty, fetch from server to populate local cache for this account
+      // ONLY if localItems is completely empty, fetch from account to populate local cache
       const fetchRes = await fetch("/api/history", { headers, credentials: "include" });
       if (fetchRes.ok) {
         const serverItems = await fetchRes.json();
-        if (Array.isArray(serverItems)) {
+        if (Array.isArray(serverItems) && serverItems.length > 0) {
           localStorage.setItem("nezbig_local_history", JSON.stringify(serverItems));
           window.dispatchEvent(new Event("nezbig_history_updated"));
         }
       }
     } catch {
-      // ignore
+      // Never wipe or damage local history on network error
     }
   }, []);
 
@@ -146,7 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void refresh().then(() => {
       const token = localStorage.getItem("nezbig_auth_token");
-      if (token || user) void syncHistory();
+      if (token) void syncHistory();
     });
   }, [refresh, syncHistory]);
 

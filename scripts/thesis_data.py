@@ -125,9 +125,9 @@ def add_assignment_sheet(doc):
     items = [
         "1. Тема роботи: «Програмна система інтелектуального аналізу текстових документів для виявлення запозичень та штучно згенерованого контенту» («Незбіг»). Керівник роботи: викладач вищої категорії Сливка Світлана Володимирівна. Затверджена наказом по коледжу від «15» січня 2026 р. № 12-с.",
         "2. Термін здачі студентом закінченої роботи: «20» травня 2026 р.",
-        "3. Вихідні дані до роботи: наукові публікації з методів NLP та детекції згенерованого тексту; відкриті веб-індекси (DuckDuckGo, Google Search API, Semantic Scholar, OpenAlex); формати вхідних файлів DOCX (OOXML), PDF, TXT; сучасні веб-технології React 19, TypeScript, Node.js, Express, TailwindCSS; стандарти академічної доброчесності МОН України.",
+        "3. Вихідні дані до роботи: наукові публікації з методів NLP та детекції згенерованого тексту; пошукові API та відкриті каталоги (Tavily Search API, Serper Google Search API, DuckDuckGo, Semantic Scholar, OpenAlex); формати вхідних файлів DOCX (OOXML), PDF, TXT; сучасні веб-технології React 19, TypeScript, Node.js 24, Express 5.2, TailwindCSS; стандарти академічної доброчесності МОН України.",
         "4. Зміст розрахунково-пояснювальної записки (перелік питань, які підлягають розробці): Вступ; Розділ 1. Теоретичний аналіз предметної області та сучасних методів аналізу текстів; Розділ 2. Проєктування архітектури та алгоритмічного забезпечення системи «Незбіг»; Розділ 3. Програмна реалізація системи; Розділ 4. Експериментальні дослідження та оцінка ефективності системи; Загальні висновки; Список використаних джерел; Додатки.",
-        "5. Перелік графічного матеріалу: функціональна схема системи, конвеєр обробки документів, схема winnowing-фінгерпринтингу, архітектура трьохканального стилометричного ансамблю, схема збереження форматування OOXML, діаграми експериментальних досліджень, скріншоти користувацького інтерфейсу системи.",
+        "5. Перелік графічного матеріалу: функціональна схема системи, конвеєр обробки документів, схема winnowing-фінгерпринтингу, архітектура триканального стилометричного ансамблю, схема збереження форматування OOXML, діаграми експериментальних досліджень, скріншоти користувацького інтерфейсу системи.",
         "6. Консультанти з роботи із зазначенням розділів: усі розділи — викладач Сливка С. В.",
         "7. Дата видачі завдання: «16» січня 2026 р."
     ]
@@ -154,7 +154,7 @@ def add_assignment_sheet(doc):
         ["1", "Аналіз предметної області, літературних джерел та аналогів", "16.01 – 05.02.2026", "Виконано"],
         ["2", "Формулювання технічних вимог та постановка завдання", "06.02 – 15.02.2026", "Виконано"],
         ["3", "Розробка математичних моделей n-грамного скорингу та winnowing", "16.02 – 28.02.2026", "Виконано"],
-        ["4", "Проєктування архітектури трьохканального стилометричного ансамблю", "01.03 – 12.03.2026", "Виконано"],
+        ["4", "Проєктування архітектури триканального стилометричного ансамблю", "01.03 – 12.03.2026", "Виконано"],
         ["5", "Проєктування серверного API та механізмів OOXML round-trip", "13.03 – 25.03.2026", "Виконано"],
         ["6", "Програмна реалізація модулів бекенду та інтеграції провайдерів", "26.03 – 10.04.2026", "Виконано"],
         ["7", "Розробка клієнтського інтерфейсу на React 19 та візуалізації", "11.04 – 22.04.2026", "Виконано"],
@@ -237,7 +237,7 @@ def add_abstracts(doc):
     p_ua1.paragraph_format.line_spacing = 1.5
     p_ua1.paragraph_format.space_after = Pt(4)
     p_ua1.paragraph_format.first_line_indent = Cm(1.25)
-    r_ua1 = p_ua1.add_run("Дипломна робота присвячена проєктуванню, розробці та дослідженню високопродуктивної клієнт-серверної системи автоматизованого аналізу текстових документів з метою виявлення неправомірних текстових запозичень (плагіату) та контенту, згенерованого великими мовними моделями (LLM). Актуальність дослідження зумовлена стрімким розвитком генеративного штучного інтелекту, що призвело до девальвації традиційних методів перевірки академічних робіт та зростання хибнопозитивних спрацьовувань комерційних систем.")
+    r_ua1 = p_ua1.add_run("Дипломна робота присвячена проєктуванню, розробці та експериментальному дослідженню клієнт-серверної системи інтелектуального аналізу текстових документів для виявлення запозичень та машинно згенерованого контенту «Незбіг». Масове використання великих мовних моделей (LLM) унеможливило детекцію запозичень виключно традиційними методами через семантичну варіативність синтезованого тексту. Водночас комерційні AI-детектори функціонують як непрозорі сервіси, демонструють надмірний рівень хибнопозитивних оцінок (FPR) на роботах неносіїв мови та мають суттєві обмеження щодо підтримки українськомовного наукового дискурсу.")
     set_run_font(r_ua1, font_name='Times New Roman', size_pt=14, bold=False)
     
     p_ua2 = doc.add_paragraph()
@@ -245,7 +245,7 @@ def add_abstracts(doc):
     p_ua2.paragraph_format.line_spacing = 1.5
     p_ua2.paragraph_format.space_after = Pt(4)
     p_ua2.paragraph_format.first_line_indent = Cm(1.25)
-    r_ua2 = p_ua2.add_run("У роботі розроблено багаторівневий конвеєр аналізу тексту, що включає препроцесор фільтрації вихідного коду, цитат і бібліографії, алгоритм перекривного фрагментування (sliding overlap chunking) та багатопровайдерний збір джерел через відкриті вебіндекси (DuckDuckGo, Google Search API, Semantic Scholar, OpenAlex). Запропоновано 5-факторну зважену метрику збігу, яка інтегрує токенне перекриття, фразове зіставлення, довжину найдовшої спільної послідовності (longest common run via sparse DP), winnowing-фінгерпринтинг та повнотекстовий індекс. Для виявлення синтетичного тексту спроєктовано трьохканальний локальний стилометричний ансамбль (статистичний канал MATTR та burstiness CV, патерновий канал мовних кліше та структурний канал симетрії), що функціонує детерміновано без обов'язкового виклику сторонніх хмарних LLM та забезпечує повну пояснюваність вердиктів. Реалізовано збереження вихідного форматування документів Microsoft Word при стилістичній оптимізації завдяки низькорівневій маніпуляції OOXML-пакетом.")
+    r_ua2 = p_ua2.add_run("У роботі розроблено повнофункціональний конвеєр обробки текстів: препроцесор евристичної фільтрації вихідного коду, цитат і бібліографії, алгоритм перекривного фрагментування (sliding overlap chunking) з оверлапом 18% та 5-провайдерний збір джерел через вебіндекси (Tavily Search API, Serper Google Search API, DuckDuckGo, Semantic Scholar, OpenAlex) із захистом за патерном Circuit Breaker. Запропоновано 5-факторну зважену метрику текстового збігу, яка поєднує токенний containment, фразові збіги, найдовший нерозривний фрагмент (longest common run через розріджене динамічне програмування зі складністю O(N+K)), winnowing-фінгерпринтинг та пошуковий ранжир. Для ідентифікації згенерованого контенту спроєктовано триканальний детермінований стилометричний ансамбль (статистичний канал MATTR-500 та Burstiness CV, патерновий канал мовних маркерів і діалектичного хеджингу, структурний канал симетрії та тричленних переліків tricolon) із розрахунком смуди невизначеності й штрафом узгодженості. Реалізовано детермінований редактор Text Humanizer із трьома режимами адаптації (академічний, природний, лаконічний) та 100% збереженням вихідних стилів і таблиць Microsoft Word завдяки низькорівневій модифікації пакетів Office Open XML (OOXML).")
     set_run_font(r_ua2, font_name='Times New Roman', size_pt=14, bold=False)
     
     p_ua3 = doc.add_paragraph()
@@ -253,7 +253,7 @@ def add_abstracts(doc):
     p_ua3.paragraph_format.line_spacing = 1.5
     p_ua3.paragraph_format.space_after = Pt(4)
     p_ua3.paragraph_format.first_line_indent = Cm(1.25)
-    r_ua3 = p_ua3.add_run("Практична реалізація системи базується на React 19, TypeScript, Node.js та Express 5. Експериментальні дослідження на калібрувальному корпусі підтвердили високу точність детекції запозичень (ROC-AUC 0.94) та стійкість до парафраз-атак.")
+    r_ua3 = p_ua3.add_run("Програмну реалізацію виконано на стеку Node.js 24, Express 5.2, React 19, TypeScript та TailwindCSS. Експериментальні випробування на 110 калібрувальних документах підтвердили якість класифікації (ROC-AUC 0.942, Macro-F1 0.91, FPR 3.3%) та стійкість winnowing-фінгерпринтингу до деформаційних атак (точність 94.8% проти 34.1% у шинглування).")
     set_run_font(r_ua3, font_name='Times New Roman', size_pt=14, bold=False)
     
     p_kw = doc.add_paragraph()
@@ -264,7 +264,7 @@ def add_abstracts(doc):
     p_kw.paragraph_format.first_line_indent = Cm(1.25)
     r_kw_lbl = p_kw.add_run("Ключові слова: ")
     set_run_font(r_kw_lbl, font_name='Times New Roman', size_pt=14, bold=True)
-    r_kw = p_kw.add_run("виявлення плагіату, генеративний штучний інтелект, великі мовні моделі, winnowing-фінгерпринтинг, стилометрія, MATTR, burstiness, OOXML round-trip, React 19, TypeScript, REST API, пояснюваність (explainable AI).")
+    r_kw = p_kw.add_run("виявлення плагіату, генеративний штучний інтелект, великі мовні моделі, winnowing-фінгерпринтинг, стилометрія, MATTR, burstiness, тричленний паралелізм, діалектичний хеджинг, Tavily API, Serper API, Circuit Breaker, OOXML Word preservation, Text Humanizer, React 19, TypeScript, REST API, пояснюваність (explainable AI).")
     set_run_font(r_kw, font_name='Times New Roman', size_pt=14, bold=False)
     
     # English Abstract
@@ -290,7 +290,7 @@ def add_abstracts(doc):
     p_en1.paragraph_format.line_spacing = 1.5
     p_en1.paragraph_format.space_after = Pt(4)
     p_en1.paragraph_format.first_line_indent = Cm(1.25)
-    r_en1 = p_en1.add_run("The thesis is dedicated to the design, engineering, and empirical evaluation of a high-performance client-server web system for automated document analysis aimed at identifying unauthorized text borrowings (plagiarism) and synthetic content generated by large language models (LLMs). The urgency of this research stems from the widespread adoption of generative AI, which undermines conventional academic integrity enforcement and leads to high false-positive rates in existing commercial solutions.")
+    r_en1 = p_en1.add_run("The thesis focuses on the engineering design, implementation, and empirical evaluation of a high-performance client-server web system for intelligent document analysis aimed at detecting unauthorized borrowings and machine-generated content (\"Nezbig\"). The proliferation of large language models (LLMs) has rendered traditional string matching insufficient due to semantic paraphrasing. Meanwhile, existing commercial AI detectors operate as proprietary black-boxes, exhibit high false-positive rates on non-native writing, and lack robust support for Ukrainian academic prose.")
     set_run_font(r_en1, font_name='Times New Roman', size_pt=14, bold=False)
     
     p_en2 = doc.add_paragraph()
@@ -298,7 +298,7 @@ def add_abstracts(doc):
     p_en2.paragraph_format.line_spacing = 1.5
     p_en2.paragraph_format.space_after = Pt(4)
     p_en2.paragraph_format.first_line_indent = Cm(1.25)
-    r_en2 = p_en2.add_run("A multi-stage document processing pipeline has been developed, incorporating specialized preprocessors for filtering source code, direct quotes, and bibliography sections, sliding overlap chunking with 18% inter-window redundancy, and multi-provider candidate harvesting via open web indices (DuckDuckGo, Google Search API, Semantic Scholar, OpenAlex). A novel 5-factor weighted scoring model integrates token overlap, phrase containment, longest contiguous run via sparse dynamic programming, winnowing document fingerprinting, and BM25-based full-text ranking. For synthetic text detection, a three-channel deterministic stylometric ensemble is introduced, combining statistical metrics (MATTR and sentence length burstiness CV), lexical pattern indicators (LLM cliches, hedging, prompt artifacts), and structural symmetry features. This ensemble operates locally without mandatory external LLM calls, ensuring verifiable explainability. Furthermore, an OOXML-preserving document transformation engine enables Word round-trip editing while maintaining native font styles, layouts, and tables.")
+    r_en2 = p_en2.add_run("The study develops a comprehensive document processing pipeline comprising heuristic pre-filtering of source code, citations, and bibliographies, sliding window chunking with 18% overlap, and 5-provider source harvesting via web indices (Tavily Search API, Serper Google Search API, DuckDuckGo, Semantic Scholar, OpenAlex) governed by a Circuit Breaker finite-state machine. A 5-factor weighted similarity metric integrates token containment, phrase overlap, longest common run via sparse dynamic programming in O(N+K) time, winnowing document fingerprinting, and search ranking. For synthetic text detection, a tri-channel deterministic stylometric ensemble combines statistical metrics (MATTR-500, sentence length burstiness CV), lexical pattern markers (LLM clichés, dialectical hedging), and structural symmetry features (tricolon parallelism) alongside concordance damping and uncertainty bounds. A deterministic Text Humanizer with three adaptation modes (Academic, Natural, Concise) achieves 100% style and table preservation for Microsoft Word documents via low-level Office Open XML (OOXML) manipulation.")
     set_run_font(r_en2, font_name='Times New Roman', size_pt=14, bold=False)
     
     p_en3 = doc.add_paragraph()
@@ -306,7 +306,7 @@ def add_abstracts(doc):
     p_en3.paragraph_format.line_spacing = 1.5
     p_en3.paragraph_format.space_after = Pt(4)
     p_en3.paragraph_format.first_line_indent = Cm(1.25)
-    r_en3 = p_en3.add_run("The system is implemented using React 19, TypeScript, Node.js, and Express 5. Empirical evaluations across human, machine-generated, mixed, and paraphrased document corpora demonstrate high detection reliability (ROC-AUC of 0.94) and robust resilience against adversarial evasion.")
+    r_en3 = p_en3.add_run("The software architecture is implemented using Node.js 24, Express 5.2, React 19, TypeScript, and TailwindCSS. Empirical evaluations on a 110-document benchmark corpus confirm superior detection performance (ROC-AUC 0.942, Macro-F1 0.91, FPR 3.3%) and robust resilience of winnowing fingerprinting against adversarial perturbations (94.8% retention vs. 34.1% for shingling).")
     set_run_font(r_en3, font_name='Times New Roman', size_pt=14, bold=False)
     
     p_en_kw = doc.add_paragraph()
@@ -317,7 +317,7 @@ def add_abstracts(doc):
     p_en_kw.paragraph_format.first_line_indent = Cm(1.25)
     r_en_kw_lbl = p_en_kw.add_run("Keywords: ")
     set_run_font(r_en_kw_lbl, font_name='Times New Roman', size_pt=14, bold=True)
-    r_en_kw = p_en_kw.add_run("plagiarism detection, generative artificial intelligence, large language models, winnowing fingerprinting, stylometry, MATTR, sentence burstiness, OOXML round-trip, React 19, TypeScript, REST API, explainable AI.")
+    r_en_kw = p_en_kw.add_run("plagiarism detection, generative artificial intelligence, large language models, winnowing fingerprinting, stylometry, MATTR, sentence burstiness, tricolon parallelism, dialectical hedging, Tavily API, Serper API, Circuit Breaker, OOXML Word preservation, Text Humanizer, React 19, TypeScript, REST API, explainable AI.")
     set_run_font(r_en_kw, font_name='Times New Roman', size_pt=14, bold=False)
 
 def add_abbreviations(doc):
@@ -407,7 +407,7 @@ def add_table_of_contents(doc):
         ("  2.3. Алгоритм перекривного фрагментування та формування пошукових запитів", "42", False),
         ("  2.4. Багатопровайдерна інтеграція пошуку, черга запитів та Circuit Breaker", "45", False),
         ("  2.5. Математична модель 5-факторного зваженого скорингу текстових збігів", "49", False),
-        ("  2.6. Трьохканальний локальний ансамбль AI-аналізу та метрика надійності", "52", False),
+        ("  2.6. Триканальний детермінований ансамбль AI-аналізу та метрика надійності", "52", False),
         ("  2.7. Архітектура збереження форматування Microsoft Word OOXML", "56", False),
         ("  2.8. Асинхронна інтеграція зовнішніх мовних моделей (LLM Opinion Fallback)", "59", False),
         ("  2.9. Висновки до розділу 2", "62", False),
