@@ -1,7 +1,6 @@
 import { useState } from "react";
 import type { ScanReport } from "../../shared/types";
 import { downloadReportPdf, downloadReportPng } from "../utils/reportExport";
-import { downloadNezbigFile } from "../utils/nezbigFile";
 import { saveReportToGoogleDrive } from "../utils/googleDrive";
 import { useLanguage } from "../context/LanguageContext";
 
@@ -12,8 +11,8 @@ interface ExportToolbarProps {
 
 export function ExportToolbar({ report, onMessage }: ExportToolbarProps) {
   const { lang } = useLanguage();
-  const [exportingType, setExportingType] = useState<"pdf" | "png" | "json" | "nezbig" | "drive" | null>(null);
-  const [driveSavedUrl, setDriveSavedUrl] = useState<string | null>(null);
+  const [exportingType, setExportingType] = useState<"pdf" | "png" | "json" | "drive" | null>(null);
+  const [driveSaved, setDriveSaved] = useState(false);
 
   const downloadIcon = (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
@@ -51,21 +50,6 @@ export function ExportToolbar({ report, onMessage }: ExportToolbarProps) {
     }, 20);
   };
 
-  const handleNezbigClick = () => {
-    setExportingType("nezbig");
-    try {
-      downloadNezbigFile(report);
-      onMessage?.(
-        lang === "uk"
-          ? "Звіт збережено у форматі .nezbig. Ви можете відкрити його в застосунку в будь-який момент!"
-          : "Report saved in .nezbig format. You can reopen it in the app anytime!",
-        "success"
-      );
-    } finally {
-      setExportingType(null);
-    }
-  };
-
   const handleJsonClick = () => {
     setExportingType("json");
     try {
@@ -84,16 +68,17 @@ export function ExportToolbar({ report, onMessage }: ExportToolbarProps) {
 
   const handleDriveClick = async () => {
     setExportingType("drive");
-    setDriveSavedUrl(null);
+    setDriveSaved(false);
     try {
-      const result = await saveReportToGoogleDrive(report);
-      setDriveSavedUrl(result.webViewLink || null);
+      await saveReportToGoogleDrive(report);
+      setDriveSaved(true);
       onMessage?.(
         lang === "uk"
-          ? `Звіт успішно збережено на Google Диск у папку «Незбіг»!`
-          : `Report successfully saved to Google Drive in folder 'Незбіг'!`,
+          ? "Звіт збережено на Google Диск"
+          : "Report saved to Google Drive",
         "success"
       );
+      setTimeout(() => setDriveSaved(false), 3000);
     } catch (error) {
       onMessage?.(
         error instanceof Error
@@ -107,55 +92,33 @@ export function ExportToolbar({ report, onMessage }: ExportToolbarProps) {
   };
 
   const btnClass = "px-3 py-2 rounded-xl border border-white/10 hover:border-emerald-glow/40 bg-surface-container/60 hover:bg-surface-bright text-xs font-semibold text-white/90 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed";
-  const driveBtnClass = "px-3 py-2 rounded-xl border border-[#4285F4]/30 hover:border-[#4285F4] bg-[#4285F4]/10 hover:bg-[#4285F4]/20 text-xs font-semibold text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed";
 
   return (
     <div className="flex flex-wrap items-center gap-2">
       {/* Save to Google Drive */}
       <button
-        className={driveBtnClass}
+        className={btnClass}
         type="button"
         disabled={exportingType !== null}
         onClick={handleDriveClick}
-        title={lang === "uk" ? "Зберегти звіт у Google Диск (.nezbig з можливістю відкриття)" : "Save report to Google Drive (.nezbig readable by Nezbig)"}
+        title={lang === "uk" ? "Зберегти копію звіту на Google Диск" : "Save report copy to Google Drive"}
       >
         {exportingType === "drive" ? (
           <span className="material-symbols-outlined text-sm animate-spin text-[#4285F4]">progress_activity</span>
+        ) : driveSaved ? (
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-glow shrink-0">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
         ) : (
           googleDriveIcon
         )}
         <span>
           {exportingType === "drive"
             ? (lang === "uk" ? "Збереження…" : "Saving…")
-            : driveSavedUrl
-              ? (lang === "uk" ? "Збережено на Диск!" : "Saved to Drive!")
+            : driveSaved
+              ? (lang === "uk" ? "Збережено!" : "Saved!")
               : "Google Диск"}
         </span>
-      </button>
-
-      {driveSavedUrl && (
-        <a
-          href={driveSavedUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="px-2.5 py-2 rounded-xl bg-surface-container/80 hover:bg-surface-bright border border-white/10 hover:border-[#4285F4] text-xs font-medium text-[#4285F4] transition-all flex items-center gap-1"
-          title={lang === "uk" ? "Переглянути файл на Google Диску" : "View file on Google Drive"}
-        >
-          <span className="material-symbols-outlined text-sm">open_in_new</span>
-          <span>{lang === "uk" ? "Відкрити на Диску" : "View"}</span>
-        </a>
-      )}
-
-      {/* Save .nezbig file */}
-      <button
-        className={btnClass}
-        type="button"
-        disabled={exportingType !== null}
-        onClick={handleNezbigClick}
-        title={lang === "uk" ? "Завантажити файл звіту .nezbig (для повторного відкриття)" : "Download .nezbig report file (to reopen in Nezbig)"}
-      >
-        <span className="material-symbols-outlined text-sm text-emerald-400">save</span>
-        <span className="text-emerald-300 font-mono">.nezbig</span>
       </button>
 
       {/* PDF */}

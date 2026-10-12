@@ -82,12 +82,39 @@ export async function loadGoogleGsiScript(): Promise<void> {
   });
 }
 
+const TOKEN_KEY = "nezbig_gdrive_token";
+const EXPIRES_KEY = "nezbig_gdrive_expires_at";
+
+export function getSavedDriveAccessToken(): string | null {
+  try {
+    const token = localStorage.getItem(TOKEN_KEY);
+    const expiresAt = Number(localStorage.getItem(EXPIRES_KEY) || "0");
+    if (token && Date.now() < expiresAt - 60000) {
+      return token;
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
+export function saveDriveAccessToken(token: string, expiresInSeconds = 3500): void {
+  try {
+    localStorage.setItem(TOKEN_KEY, token);
+    localStorage.setItem(EXPIRES_KEY, String(Date.now() + expiresInSeconds * 1000));
+  } catch {
+    // ignore
+  }
+}
+
 /**
  * Requests an OAuth access token with drive.file scope using Google Identity Services.
+ * Reuses saved token from localStorage if valid. Uses prompt: "" to reuse granted consent silently.
  */
 export async function requestDriveAccessToken(): Promise<string> {
-  if (cachedAccessToken && Date.now() < tokenExpiresAt - 60000) {
-    return cachedAccessToken;
+  const existing = getSavedDriveAccessToken();
+  if (existing) {
+    return existing;
   }
 
   const clientId = await getGoogleClientId();
@@ -111,8 +138,7 @@ export async function requestDriveAccessToken(): Promise<string> {
             reject(new Error("Не вдалося отримати токен доступу до Google Диску"));
             return;
           }
-          cachedAccessToken = response.access_token;
-          tokenExpiresAt = Date.now() + 3500 * 1000;
+          saveDriveAccessToken(response.access_token, 3500);
           resolve(response.access_token);
         },
         error_callback: (err) => {
@@ -120,7 +146,8 @@ export async function requestDriveAccessToken(): Promise<string> {
         },
       });
 
-      tokenClient.requestAccessToken({ prompt: cachedAccessToken ? "" : "consent" });
+      // prompt: "" requests access without forcing the consent screen again if already granted
+      tokenClient.requestAccessToken({ prompt: "" });
     } catch (error) {
       reject(error instanceof Error ? error : new Error("Не вдалося ініціалізувати Google авторизацію"));
     }

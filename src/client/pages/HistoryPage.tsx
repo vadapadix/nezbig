@@ -276,7 +276,7 @@ export default function HistoryPage() {
           <button
             type="button"
             onClick={() => setIsDrivePickerOpen(true)}
-            className="px-3 py-1.5 rounded-xl border border-[#4285F4]/30 hover:border-[#4285F4] bg-[#4285F4]/10 hover:bg-[#4285F4]/20 text-xs font-semibold text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+            className="px-3 py-1.5 rounded-xl border border-white/10 hover:border-[#4285F4]/50 bg-surface-container/60 hover:bg-surface-bright text-xs font-semibold text-white/90 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
             title={lang === "uk" ? "Відкрити звіт з Google Диску" : "Open report from Google Drive"}
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" className="text-[#4285F4] shrink-0">
@@ -288,11 +288,11 @@ export default function HistoryPage() {
           <button
             type="button"
             onClick={() => importFileInputRef.current?.click()}
-            className="px-3 py-1.5 rounded-xl border border-white/10 hover:border-emerald-glow/40 bg-surface-container/60 hover:bg-surface-bright text-xs font-semibold text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
-            title={lang === "uk" ? "Відкрити локальний файл .nezbig" : "Open local .nezbig file"}
+            className="px-3 py-1.5 rounded-xl border border-white/10 hover:border-emerald-glow/40 bg-surface-container/60 hover:bg-surface-bright text-xs font-semibold text-white/90 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+            title={lang === "uk" ? "Відкрити збережений файл звіту" : "Open saved report file"}
           >
-            <span className="material-symbols-outlined text-sm text-emerald-400">upload_file</span>
-            <span>{lang === "uk" ? "Імпорт .nezbig" : "Import .nezbig"}</span>
+            <span className="material-symbols-outlined text-sm text-emerald-400">file_open</span>
+            <span>{lang === "uk" ? "Імпортувати звіт" : "Import Report"}</span>
           </button>
           <input
             ref={importFileInputRef}

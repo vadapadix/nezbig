@@ -78,9 +78,6 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion, onBackT
                   <span>{lang === "uk" ? "Повернутись до редактора" : "Back to Editor"}</span>
                 </button>
               )}
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-glow border border-emerald-500/30">
-                {lang === "uk" ? "Офіційний звіт Незбіг" : "Official Nezbig Report"}
-              </span>
               <time className="text-xs text-slate-400 font-mono" dateTime={report.checkedAt}>
                 {new Intl.DateTimeFormat(lang === "uk" ? "uk-UA" : "en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(report.checkedAt))}
               </time>

@@ -157,28 +157,15 @@ export function GoogleDrivePickerModal({ isOpen, onClose, onSelectReport }: Goog
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="text-xs font-semibold text-white truncate" title={file.name}>
-                          {file.name}
+                          {file.name.replace(/^nezbig-report-/, "").replace(/\.nezbig$/i, "")}
                         </div>
                         <div className="text-[11px] text-on-surface-variant flex items-center gap-2 mt-0.5">
                           {file.modifiedTime && <span>{formatDate(file.modifiedTime)}</span>}
-                          <span>•</span>
-                          <span className="text-emerald-400/90 font-mono">.nezbig</span>
                         </div>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
-                      {file.webViewLink && (
-                        <a
-                          href={file.webViewLink}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="p-2 text-on-surface-variant hover:text-white hover:bg-white/5 rounded-lg transition-colors text-xs"
-                          title={lang === "uk" ? "Відкрити на Google Диску" : "View on Drive"}
-                        >
-                          <span className="material-symbols-outlined text-base">open_in_new</span>
-                        </a>
-                      )}
                       <button
                         type="button"
                         onClick={() => void handleOpenReport(file)}
