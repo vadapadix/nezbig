@@ -1,4 +1,4 @@
-import { normalizeWhitespace } from "./chunking.js";
+import { prepareAiAnalysisText } from "./aiTextPreprocess.js";
 import type { AiSignal } from "../shared/types.js";
 
 export type LocalAiResult = {
@@ -15,6 +15,8 @@ export type AuthorshipSignals = {
 
 export const MAX_ANALYSIS_CHARS = 6000;
 
+export const AUTHORSHIP_NEUTRALITY_PROMPT = "The presence or absence of citations, URLs, bibliography, tables, figures, or domain terminology is neutral for authorship. AI can generate citations and humans can write without sources. Never raise or lower the authorship score because these are present or missing. Evaluate only the supplied prose and concrete linguistic evidence. The local score is an uncalibrated heuristic, not ground truth. Do not claim that any stylistic feature proves human or AI authorship; state uncertainty and limitations.";
+
 const HEAD_CHARS = 2800;
 const TAIL_CHARS = 1400;
 const MAX_SUSPICIOUS_EXCERPTS = 3;
@@ -22,7 +24,7 @@ const MAX_SUSPICIOUS_EXCERPTS = 3;
 export const JSON_SHAPE_PROMPT = `Return JSON with this exact shape:
 {
   "probability": 0-100,
-  "verdict": "короткий чіткий висновок українською мовою (1-2 речення: чи це природний авторський текст, чи присутні ознаки ШІ і які саме фактори це підтверджують)",
+  "verdict": "обережний висновок українською мовою (1-2 речення: які мовні ознаки виявлено та чому вони не доводять авторство; наявність або відсутність джерел не є доказом)",
   "signals": [
     { "label": "коротка назва сигналу", "score": 0-100, "detail": "одне речення з поясненням сигналу", "evidence": ["коротка цитата або приклад"] }
   ]
@@ -60,7 +62,7 @@ export function withTimeout(ms: number): AbortSignal {
 }
 
 export function buildAnalysisSample(text: string, suspiciousExcerpts: string[] = []): string {
-  const normalized = normalizeWhitespace(text);
+  const normalized = prepareAiAnalysisText(text).text;
   if (normalized.length <= MAX_ANALYSIS_CHARS) return normalized;
 
   const head = normalized.slice(0, HEAD_CHARS);
@@ -69,7 +71,7 @@ export function buildAnalysisSample(text: string, suspiciousExcerpts: string[] =
   const perExcerpt = Math.floor(excerptBudget / MAX_SUSPICIOUS_EXCERPTS);
   const picked = suspiciousExcerpts
     .slice(0, MAX_SUSPICIOUS_EXCERPTS)
-    .map((excerpt, index) => `[${index + 1}] ${normalizeWhitespace(excerpt).slice(0, perExcerpt)}`);
+    .map((excerpt, index) => `[${index + 1}] ${prepareAiAnalysisText(excerpt).text.slice(0, perExcerpt)}`);
 
   return [
     "=== ПОЧАТОК ДОКУМЕНТА ===",

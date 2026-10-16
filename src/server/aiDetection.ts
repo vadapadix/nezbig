@@ -144,15 +144,6 @@ function isSectionHeading(sentence: string): boolean {
   );
 }
 
-function isBibliographicText(text: string): boolean {
-  const bibIndicators = countRegexMatches(
-    text,
-    /\b(?:doi|doi\.org|isbn|issn|proceedings|conference|journal|vol\.|volume|issue|pp?\.\s*\d+|pages?\s*\d+|in\s+press|et\s+al\.|url:|arxiv|springer|ieee|elsevier|acm)\b|https?:\/\/\S+|\b\d{4}\b.*(?:p\.|pp\.|c\.|ст\.)\s*\d+/giu
-  );
-  const numberedEntries = countRegexMatches(text, /(?:^|\s)\d{1,3}[\.\)]\s+[A-ZА-ЯІЇЄҐ]/gu);
-  return bibIndicators.length >= 3 || (numberedEntries.length >= 2 && bibIndicators.length >= 1);
-}
-
 function sentenceStartRepetition(sentences: string[]): { score: number; evidence: string[] } {
   const proseSentences = sentences.filter((s) => !/^\s*(?:\d+[\.\)]|[\-–—•*])\s+/iu.test(s));
   const starts = proseSentences.map((sentence) => tokenize(sentence, true).slice(0, 3).join(" ")).filter((start) => start.length > 4);
@@ -215,19 +206,12 @@ function impersonalAcademicVoice(text: string, wordCount: number): { score: numb
 }
 
 function safeguardScore(normalized: string, wordCount: number, placeholderText: boolean, academicStructure: boolean): { score: number; evidence: string[] } {
-  const isBib = isBibliographicText(normalized);
-  const citations = countRegexMatches(
-    normalized,
-    /\[[0-9]{1,3}\]|\([A-ZА-ЯІЇЄҐ][\p{L}'-]+,\s*20[0-9]{2}\)|https?:\/\/\S+|doi:\s*\S+|дсту\s+[0-9]+|режим\s+доступу:|с\.\s*[0-9]+-[0-9]+|т\.\s*[0-9]+|№\s*[0-9]+/giu
-  );
   const figuresAndTables = countRegexMatches(normalized, /(?:рис\.|рисунок|табл\.|таблиця|схема|формула)\s*(?:[0-9]+|\([0-9]+\))/giu);
   const numbers = countRegexMatches(normalized, /\b\d+(?:[.,]\d+)?\s*(?:%|грн|uah|usd|eur|км|м|см|мм|року|р\.|рік|years?|с|хв|год)\b/giu);
   const firstPerson = countRegexMatches(normalized, /(?<![\p{L}\p{N}_])(?:я|мені|мою|моє|ми|наш|наша|нашому|наших|i|my|we|our)(?![\p{L}\p{N}_])/giu);
   const quotes = countRegexMatches(normalized, /["“„«][^"”»]{12,}["”»]/gu);
 
   const evidence = [
-    isBib ? "бібліографічний блок або список джерел" : "",
-    citations.length ? `${citations.length} посилань або бібліографічних маркерів` : "",
     figuresAndTables.length ? `${figuresAndTables.length} посилань на таблиці/рисунки` : "",
     numbers.length >= 3 ? `${numbers.length} числових/фактичних маркерів` : "",
     firstPerson.length >= 2 ? `${firstPerson.length} маркерів авторської позиції` : "",
@@ -238,9 +222,7 @@ function safeguardScore(normalized: string, wordCount: number, placeholderText: 
   ].filter(Boolean);
 
   const score = clampScore(
-    (isBib ? 60 : 0) +
-      citations.length * 14 +
-      figuresAndTables.length * 10 +
+    figuresAndTables.length * 10 +
       Math.min(22, numbers.length * 2.5) +
       Math.min(18, firstPerson.length * 3.5) +
       quotes.length * 10 +
@@ -490,10 +472,7 @@ function analyzeSinglePass(text: string): { probability: number; signals: AiSign
   rawProbability += Math.max(0, evidenceSignals.length - 1) * 4;
   rawProbability += Math.max(0, weakEvidenceSignals.length - 3) * 1.5;
 
-  const isBib = isBibliographicText(normalized);
-  if (isBib) {
-    rawProbability = Math.min(rawProbability * 0.2, 8);
-  }
+
 
   const promptLeak = signalDrafts.find((signal) => signal.label === "Prompt-leak та ШІ-відмови")?.score ?? 0;
   const strongAverage = evidenceSignals
@@ -503,14 +482,10 @@ function analyzeSinglePass(text: string): { probability: number; signals: AiSign
     .reduce((sum, score, _index, scores) => sum + score / Math.max(1, scores.length), 0);
   const evidenceFloor =
     promptLeak >= 40 ? 45 : evidenceSignals.length >= 3 ? Math.max(22, strongAverage * 0.5) : weakEvidenceSignals.length >= 5 ? 8 : weakEvidenceSignals.length >= 2 ? 3 : 0;
-  const adjustedCorroboratedFloor = isBib ? 0 : corroboratedFloor;
-  const adjustedEvidenceFloor = isBib ? 0 : evidenceFloor;
   const probability = clampScore(
     placeholderText
       ? Math.min(10, weightedRaw)
-      : isBib
-        ? Math.min(10, rawProbability)
-        : Math.max(rawProbability, adjustedCorroboratedFloor, adjustedEvidenceFloor)
+      : Math.max(rawProbability, corroboratedFloor, evidenceFloor)
   );
 
   const signals: AiSignal[] = signalDrafts
@@ -612,9 +587,6 @@ function suspiciousSegments(windows: AnalysisWindow[], results: Array<{ probabil
   return results
     .map((result, index): AiSuspiciousSegment | null => {
       const window = windows[index];
-      if (isBibliographicText(window.text)) {
-        return null;
-      }
       const evidence = result.signals
         .filter((signal) => signal.category !== "safeguard" && signal.score >= 12)
         .slice(0, 4)

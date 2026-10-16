@@ -1,3 +1,4 @@
+import { AUTHORSHIP_NEUTRALITY_PROMPT } from "./llmShared.js";
 import type { LlmOpinion } from "../shared/types.js";
 import {
   buildAnalysisSample,
@@ -56,8 +57,7 @@ function buildMessages(text: string, localAi: LocalAiResult): OpenRouterMessage[
   return [
     {
       role: "system",
-      content:
-        "You are an expert academic authorship and AI-stylometry analyst evaluating Ukrainian and English text based on empirical detection research (2024–2026). Return only valid JSON matching the requested schema. Treat AI detection as strictly probabilistic. Ground your evaluation in proven linguistic markers: sentence burstiness (CV of sentence length, uniform pacing vs dynamic rhythm), discourse connector over-reliance ('важливо зазначити', 'відіграє ключову роль', 'наріжний камінь', 'furthermore', 'testament to'), triadic rule-of-three structures ('X, Y та Z'), dialectical hedging ('з одного боку ... проте з іншого'), and lexical tail richness (Hapax Legomena). Crucially protect genuine student writing from false positives: formal citations [1], academic tables/figures, and domain terminology are expected in human research and must not be penalized."
+      content: `Assess Ukrainian and English prose for possible AI-like writing patterns. Return only valid JSON matching the requested schema. Discuss concrete rhythm, repetition, transitions and lexical patterns, without treating any single feature as a reliable detector. ${AUTHORSHIP_NEUTRALITY_PROMPT}`
     },
     {
       role: "user",
@@ -66,7 +66,7 @@ function buildMessages(text: string, localAi: LocalAiResult): OpenRouterMessage[
 ${JSON_SHAPE_PROMPT}
 
 Local heuristic probability: ${localAi.probability}%
-Local heuristic signals: ${JSON.stringify(localAi.signals.slice(0, 8))}
+Local heuristic signals: ${JSON.stringify(localAi.signals.filter(signal => signal.category !== "safeguard").slice(0, 8))}
 
 Text sample:
 ${sample}`

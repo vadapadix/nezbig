@@ -145,7 +145,7 @@ describe("detectAiSignals", () => {
     expect(result.signals.some((signal) => signal.evidence && signal.evidence.length > 0)).toBe(true);
   });
 
-  it("discounts citation-heavy academic prose", () => {
+  it("keeps specific academic prose low without treating citations as authorship evidence", () => {
     const result = detectAiSignals(
       "У дослідженні Іваненка (2021) описано 42 випадки використання відкритих даних у громадах. За даними Державної служби статистики, у 2022 році частка електронних звернень становила 31%. У цій роботі я порівнюю ці результати з даними опитування 2023 року [1]."
     );
@@ -415,6 +415,7 @@ describe("detectAiSignals", () => {
     ).join("\n");
 
     const result = detectAiSignals(bibText);
+    expect(result.verdict).toBe("insufficient");
     expect(result.suspiciousSegments.length).toBe(0);
     expect(result.probability).toBeLessThanOrEqual(15);
   });

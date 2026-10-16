@@ -8,7 +8,24 @@ type PreparedAiText = {
   exclusions: AiContentExclusions;
 };
 
+// Citation metadata is neutral: adding a link must not change the style score.
+export function stripInlineCitationMetadata(text: string): string {
+  return text
+    .replace(/https?:\/\/[^\s<>"«»]+/giu, " ")
+    .replace(/\bdoi:\s*\S+/giu, " ")
+    .replace(/\[\s*\d{1,3}(?:\s*[-–,;]\s*\d{1,3})*\s*\]/gu, " ")
+    .replace(/\([\p{L}'’-]+(?:\s+et\s+al\.?)?,\s*(?:19|20)\d{2}[a-z]?(?:,\s*p{1,2}\.\s*\d+(?:[-–]\d+)?)?\)/giu, " ");
+}
+
 function stripReferenceTail(text: string): { text: string; removedWords: number } {
+  // A standalone reference list has no prose to assess. Require structured
+  // entries on separate lines; a few URLs inside prose are never sufficient.
+  const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  if (lines.length >= 2 && lines.every(line =>
+    /^\d{1,3}[.)]\s+[\p{L}]/u.test(line) &&
+    /\b(?:19|20)\d{2}\b/u.test(line) &&
+    /\bdoi\b|\bisbn\b|\bpp?\.\s*\d|с\.\s*\d/iu.test(line)
+  )) return { text: "", removedWords: countWords(text) };
   const minPos = Math.floor(text.length * 0.35);
   for (const pattern of BIBLIOGRAPHY_PATTERNS) {
     const slice = text.slice(minPos);
@@ -42,7 +59,7 @@ export function prepareAiAnalysisText(rawText: string): PreparedAiText {
   const withoutReferences = stripReferenceTail(rawText);
   const withoutQuotes = stripLongQuotations(withoutReferences.text);
   const prose = filterProseText(withoutQuotes.text);
-  const text = normalizeWhitespace(prose.text);
+  const text = normalizeWhitespace(stripInlineCitationMetadata(prose.text));
 
   return {
     text,

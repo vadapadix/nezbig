@@ -65,6 +65,8 @@ describe("analyzeWithNvidiaNim", () => {
     const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
     expect(body.model).toBe("model-primary");
     expect(body.messages.at(-1).content).toContain("Local heuristic probability: 30");
+    expect(body.messages[0].content).toContain("presence or absence of citations");
+    expect(body.messages[0].content).toContain("Never raise or lower");
   });
 
   it("falls back to the next model after an HTTP failure and records the note", async () => {

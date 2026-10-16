@@ -58,6 +58,7 @@ describe("analyzeWithOpenRouter", () => {
     expect(result).toMatchObject({ aiProvider: "openrouter", aiModel: "model-a", aiProbability: 44 });
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)).response_format).toEqual({ type: "json_object" });
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)).messages[0].content).toContain("Never raise or lower");
   });
 
   it("retries without json mode when json mode is rejected", async () => {
