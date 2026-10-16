@@ -1,91 +1,41 @@
+import { useId } from "react";
 import type { ScanReport } from "../../shared/types";
 import { SignalCard } from "./SignalCard";
 import { useLanguage } from "../context/LanguageContext";
-import { reliabilityLabel, languageLabel, formatNumber, isDuplicateOpinionSignal, formatAiOpinionVerdict } from "../utils/reportLabels";
+import { reliabilityLabel, languageLabel, formatNumber, aiVerdictLabel } from "../utils/reportLabels";
 import { translateReliabilityReason } from "../utils/reportI18n";
 import { stripHtml } from "../utils/sanitizeHtml";
 
-interface AiAnalysisPanelProps {
-  report: ScanReport;
-  llmBusy: boolean;
-  primarySignals: ScanReport["aiSignals"];
-  onRetryOpinion?: () => void;
-}
-
-export function AiAnalysisPanel({ report, llmBusy, primarySignals, onRetryOpinion }: AiAnalysisPanelProps) {
-  const { lang, t } = useLanguage();
-
+export function AiAnalysisPanel({ report }: { report: ScanReport }) {
+  const { lang } = useLanguage();
+  const titleId = useId();
   return (
-    <section aria-labelledby="ai-title">
-      <h3 id="ai-title">{lang === "uk" ? "Розширений AI-аналіз" : "Comprehensive AI Detection"}</h3>
-      <p className="model-badge">
-        {llmBusy
-          ? (lang === "uk" ? "AI-думка: очікування відповіді…" : "AI Opinion: querying model…")
-          : (lang === "uk" ? "Локальний AI-відсоток незалежний від LLM" : "Multi-factor NLP stylometry independent of LLM")}
-      </p>
-      <div className={`reliability-line reliability-${report.aiReliability.level}`}>
-        <strong>
-          {lang === "uk" ? "Надійність оцінки:" : "Confidence Score:"} {reliabilityLabel(report.aiReliability.level, lang)} ({report.aiReliability.score}/100)
-        </strong>
-        <span>
-          {report.aiReliability.segmentCount} {lang === "uk" ? "сегм. · розкид" : "segm. · variance"} {report.aiReliability.segmentSpread} {lang === "uk" ? "п.п." : "pts"}
-        </span>
-        <p>{translateReliabilityReason(report.aiReliability.reason, lang)}</p>
-      </div>
-      <div className="ai-context-strip" aria-label={lang === "uk" ? "Контекст локального AI-аналізу" : "Local AI context"}>
-        <span>
-          <strong>{lang === "uk" ? "Мова" : "Language"}</strong>
-          {languageLabel(report.aiLanguage.code, lang)} · {report.aiLanguage.supportedPercent}% {lang === "uk" ? "покриття" : "coverage"}
-        </span>
-        <span>
-          <strong>{lang === "uk" ? "Проаналізовано" : "Analyzed"}</strong>
-          {formatNumber(report.aiExclusions.analyzedWords, lang)} {t("wordsCount")}
-        </span>
-        {report.aiExclusions.codeWords > 0 ? (
-          <span>
-            <strong>{lang === "uk" ? "Код вилучено" : "Code excluded"}</strong>
-            {formatNumber(report.aiExclusions.codeWords, lang)} {t("wordsCount")}
-          </span>
-        ) : null}
-        {report.aiExclusions.quotedWords + report.aiExclusions.referenceWords > 0 ? (
-          <span>
-            <strong>{lang === "uk" ? "Цитати й джерела" : "Quotes & Citations"}</strong>
-            {formatNumber(report.aiExclusions.quotedWords + report.aiExclusions.referenceWords, lang)} {t("wordsCount")}
-          </span>
-        ) : null}
-      </div>
-      {report.aiNote ? <p className="provider-note">{stripHtml(report.aiNote)}</p> : null}
-      {report.aiOpinionError && !llmBusy ? (
-        <p className="provider-note" role="status">
-          {stripHtml(report.aiOpinionError)}{" "}
-          {onRetryOpinion ? (
-            <button type="button" className="retry-opinion-button cursor-pointer" onClick={onRetryOpinion}>
-              {lang === "uk" ? "Повторити AI-думку" : "Retry AI Opinion"}
-            </button>
-          ) : null}
-        </p>
-      ) : null}
-      {report.aiOpinionProbability !== undefined ? (
-        <div className="opinion-panel">
-          <strong>{lang === "uk" ? "AI-думка:" : "AI Opinion:"} {report.aiOpinionProbability}%</strong>
-          <p>{formatAiOpinionVerdict(report, lang)}</p>
+    <section className="results-ai-explanation" aria-labelledby={titleId}>
+      <header className="results-section-heading">
+        <div><p className="results-eyebrow">{lang === "uk" ? "Що вплинуло на оцінку" : "What informed the assessment"}</p>
+          <h2 id={titleId}>{lang === "uk" ? "Розширений ШІ-аналіз" : "Detailed AI analysis"}</h2>
+          <p className="results-caption">{aiVerdictLabel(report.aiVerdict, lang)}</p>
         </div>
-      ) : null}
-      <p className="section-note">
-        {lang === "uk"
-          ? "Локальний ансамбль перевіряє авторський текст повністю й окремими сегментами. Відсоток є евристичним індикатором ризику, а не каліброваною ймовірністю чи доказом авторства."
-          : "The NLP ensemble analyzes the entire submission as well as individual segments. The percentage represents an empirical stylometric risk indicator rather than definitive proof of authorship."}
-      </p>
-      <div className="signal-list">
-        {primarySignals.map((signal) => (
-          <SignalCard signal={signal} key={signal.label} />
-        ))}
-        {report.aiOpinionSignals
-          ?.filter((signal) => !isDuplicateOpinionSignal(signal, report.aiSignals))
-          .map((signal) => (
-            <SignalCard signal={signal} className="opinion-signal" key={`opinion-${signal.label}`} />
-          ))}
+      </header>
+      <div className="results-ai-context">
+        <section>
+          <h3>{lang === "uk" ? "Наскільки надійна оцінка" : "How reliable is the assessment?"}</h3>
+          <p className="results-reliability">{reliabilityLabel(report.aiReliability.level, lang)} · {report.aiReliability.score}/100</p>
+          <p className="results-caption">{translateReliabilityReason(report.aiReliability.reason, lang)}</p>
+        </section>
+        <section>
+          <h3>{lang === "uk" ? "Який текст перевірено" : "What was analyzed?"}</h3>
+          <dl className="results-facts">
+            <div><dt>{lang === "uk" ? "Мова" : "Language"}</dt><dd>{languageLabel(report.aiLanguage.code, lang)}</dd></div>
+            <div><dt>{lang === "uk" ? "Слів для аналізу" : "Words analyzed"}</dt><dd>{formatNumber(report.aiExclusions.analyzedWords, lang)}</dd></div>
+            <div><dt>{lang === "uk" ? "Окремих фрагментів" : "Individual segments"}</dt><dd>{report.aiReliability.segmentCount}</dd></div>
+            <div><dt>{lang === "uk" ? "Цитати, джерела й код виключено" : "Quoted, reference and code words excluded"}</dt><dd>{formatNumber(report.aiExclusions.quotedWords + report.aiExclusions.referenceWords + report.aiExclusions.codeWords, lang)}</dd></div>
+          </dl>
+        </section>
       </div>
+      <p className="results-notice">{lang === "uk" ? "Ознаки нижче пояснюють стиль тексту. Високий бал окремої ознаки не означає, що текст написав ШІ. Академічний стиль, короткий обсяг і мова можуть впливати на результат." : "These signals describe writing style. A high individual score does not establish AI authorship. Academic style, short texts and language can affect the result."}</p>
+      {report.aiNote && <p className="results-caption">{stripHtml(report.aiNote)}</p>}
+      {report.aiSignals.length ? <div className="results-signal-list">{report.aiSignals.map((signal, index) => <SignalCard key={`${signal.label}-${index}`} signal={signal} />)}</div> : <p className="results-caption">{lang === "uk" ? "Для цього звіту деталізація ознак недоступна." : "Signal details are unavailable for this report."}</p>}
     </section>
   );
 }

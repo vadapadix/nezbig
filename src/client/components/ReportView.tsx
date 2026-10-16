@@ -9,7 +9,7 @@ import { ProviderDiagnostics } from "./ProviderDiagnostics";
 import { SignalCard } from "./SignalCard";
 import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../hooks/useAuth";
-import { formatNumber, aiVerdictLabel, reliabilityLabel, formatAiOpinionVerdict } from "../utils/reportLabels";
+import { formatNumber, formatAiOpinionVerdict } from "../utils/reportLabels";
 import { translateScanNote } from "../utils/reportI18n";
 import "./report.css";
 
@@ -46,9 +46,7 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion, onBackT
   const percent = coverageAvailable ? new Intl.NumberFormat(lang === "uk" ? "uk-UA" : "en-US", { maximumFractionDigits: 1 }).format(report.matchedTextPercent!) : "—";
   const sourceCount = new Set(confirmed.map(match => match.url.replace(/#.*$/, "").replace(/\/$/, ""))).size;
   const aiUnavailable = report.aiVerdict === "insufficient";
-  const aiElevated = !aiUnavailable && (report.aiVerdict === "high" || report.aiVerdict === "elevated");
   const notes = (report.scanNotes ?? []).filter(note => note && !/^Вебіндекси:|^Web indexes:|^Перевірка сторінок:|^Page verification:/i.test(note));
-  const split = Math.max(1, Math.ceil(report.aiSignals.length / 2));
   const tabs: Array<{ key: ReportTab; label: string; meta?: string }> = [
     { key: "sources", label: lang === "uk" ? "Джерела та збіги" : "Sources & matches", meta: formatNumber(report.matches.length, lang) },
     { key: "ai", label: lang === "uk" ? "Аналіз ШІ" : "AI analysis" },
@@ -94,22 +92,33 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion, onBackT
 
       <div className="results-overview" aria-label={lang === "uk" ? "Короткий огляд результату" : "Result overview"}>
         <div className="results-coverage">
-          <p className="results-eyebrow">{lang === "uk" ? "Підтверджені дослівні збіги" : "Verified verbatim matches"}</p>
-          <div className="results-percentage">{percent}{coverageAvailable && <span>%</span>}</div>
-          <p className="results-coverage-caption">{coverageAvailable ? (lang === "uk" ? `${formatNumber(report.matchedWords ?? 0, lang)} із ${formatNumber(report.wordCount, lang)} проаналізованих слів` : `${formatNumber(report.matchedWords ?? 0, lang)} of ${formatNumber(report.wordCount, lang)} analyzed words`) : searchUnavailable ? (lang === "uk" ? "Вебпошук не завершено" : "Web search did not complete") : (lang === "uk" ? "Для цього звіту покриття не обчислено" : "Coverage is unavailable for this report")}</p>
-          <p className="results-caption">{lang === "uk" ? "Частка знайдених дослівних збігів у тексті. Перетини враховано один раз; перефразування та невідомі джерела сюди не входять." : "The share of text with discovered verbatim matches. Overlaps count once; paraphrases and undiscovered sources are not included."}</p>
+          <p className="results-eyebrow">{lang === "uk" ? "ШІ-аналіз" : "AI analysis"}</p>
+          <div className="results-percentage">{aiUnavailable ? "—" : report.aiProbability}{!aiUnavailable && <span>%</span>}</div>
+          <p className="results-caption">{lang === "uk" ? "Індикатор ознак ШІ у стилі тексту. Це не доказ авторства; пояснення оцінки наведені нижче." : "Indicator of AI-like writing patterns. This is not proof of authorship; see the explanation below."}</p>
+          <section className="results-section" aria-labelledby={`${tabId}-opinion`} aria-busy={llmBusy}>
+            <div className="results-section-heading"><div><p className="results-eyebrow">{lang === "uk" ? "Додаткова оцінка" : "Additional assessment"}</p><h2 id={`${tabId}-opinion`}>{lang === "uk" ? "ШІ-думка" : "AI opinion"}</h2></div>{report.aiOpinionProbability !== undefined && <span className="results-indicator">{report.aiOpinionProbability}%</span>}</div>
+            <div role="status" aria-live="polite">{llmBusy ? <p className="results-pending"><span aria-hidden="true" className="results-spinner" />{lang === "uk" ? "Модель аналізує текст… Основний звіт уже доступний." : "The model is analyzing the text… Your main report is already available."}</p> : report.aiOpinionProbability !== undefined ? <p className="results-opinion">{formatAiOpinionVerdict(report, lang)}</p> : <p className="results-caption">{report.aiOpinionError || (lang === "uk" ? "Відповідь моделі поки недоступна. Локальний аналіз і перевірка джерел працюють окремо." : "The model response is unavailable. Local analysis and source verification work separately.")}</p>}</div>
+            {report.aiOpinionSignals?.length ? <div className="results-signal-list">{report.aiOpinionSignals.map((signal, index) => <SignalCard key={`${signal.label}-${index}`} signal={signal} />)}</div> : null}
+            {onRetryOpinion && <button className="results-button" type="button" disabled={llmBusy} onClick={onRetryOpinion}>{llmBusy ? (lang === "uk" ? "Очікування відповіді…" : "Waiting for response…") : report.aiOpinionProbability !== undefined ? (lang === "uk" ? "Оновити AI-думку" : "Refresh AI opinion") : (lang === "uk" ? "Повторити запит до моделі" : "Retry model request")}</button>}
+          </section>
         </div>
         <div className="results-reading">
-          <h2>{searchUnavailable ? (lang === "uk" ? "Пошук потребує повторної перевірки" : "Search needs another attempt") : confirmed.length ? (lang === "uk" ? "Перегляньте збіги в контексті" : "Review matches in context") : leads ? (lang === "uk" ? "Джерела ще потребують підтвердження" : "Sources still need verification") : (lang === "uk" ? "Підтверджених джерел не знайдено" : "No verified sources found")}</h2>
+          <p className="results-eyebrow">{lang === "uk" ? "Плагіат · знайдені збіги" : "Plagiarism · discovered matches"}</p>
+          <div className="results-percentage results-plagiarism-percentage">{percent}{coverageAvailable && <span>%</span>}</div>
+          <p className="results-coverage-caption">{coverageAvailable ? (lang === "uk" ? `${formatNumber(report.matchedWords ?? 0, lang)} із ${formatNumber(report.wordCount, lang)} слів збігаються з джерелами` : `${formatNumber(report.matchedWords ?? 0, lang)} of ${formatNumber(report.wordCount, lang)} words match sources`) : searchUnavailable ? (lang === "uk" ? "Вебпошук не завершено" : "Web search did not complete") : (lang === "uk" ? "Для цього звіту покриття не обчислено" : "Coverage is unavailable for this report")}</p>
+          <p className="results-caption">{lang === "uk" ? "Частка підтверджених дослівних збігів, включно з цитатами. Перефразування та невідомі джерела сюди не входять. Наявність плагіату визначають після перевірки контексту й посилань." : "Verified verbatim coverage, including quotations. Paraphrases and undiscovered sources are excluded. Plagiarism requires reviewing context and citations."}</p>
+          <h2 className="results-context-heading">{searchUnavailable ? (lang === "uk" ? "Пошук потребує повторної перевірки" : "Search needs another attempt") : confirmed.length ? (lang === "uk" ? "Перегляньте збіги в контексті" : "Review matches in context") : leads ? (lang === "uk" ? "Джерела ще потребують підтвердження" : "Sources still need verification") : (lang === "uk" ? "Підтверджених джерел не знайдено" : "No verified sources found")}</h2>
           <p className="results-caption">{searchUnavailable ? (lang === "uk" ? "Провайдери не повернули успішних відповідей. Нуль збігів у цьому стані не підтверджує оригінальність." : "No provider returned a successful response. Zero matches in this state does not establish originality.") : confirmed.length ? (lang === "uk" ? "Спільний текст може бути цитатою або запозиченням. Зіставте фрагменти з першоджерелами й перевірте посилання." : "Shared text may be a quotation or borrowing. Compare excerpts with their sources and check citations.") : (lang === "uk" ? "Висновок стосується лише доступних перевірених джерел. Він не є сертифікатом оригінальності." : "This finding concerns only accessible verified sources. It is not a certificate of originality.")}</p>
           <dl className="results-facts">
             <div><dt>{lang === "uk" ? "Підтверджені джерела" : "Verified sources"}</dt><dd>{formatNumber(sourceCount, lang)}</dd></div>
             <div><dt>{lang === "uk" ? "Найсильніший збіг" : "Strongest match"}</dt><dd>{searchUnavailable ? "—" : `${report.plagiarismScore}/100`}</dd></div>
-            <div><dt>{lang === "uk" ? "Локальний індикатор ШІ" : "Local AI indicator"}</dt><dd data-tone={aiElevated ? "warning" : "neutral"}>{aiUnavailable ? (lang === "uk" ? "Недостатньо даних" : "Insufficient data") : `${report.aiProbability}/100`}</dd></div>
+
           </dl>
           {partialSearch && <p className="results-notice">{lang === "uk" ? "Частина пошукових запитів завершилася помилкою. Знайдені збіги доступні нижче; покриття пошуку обмежене." : "Some search requests failed. Discovered matches are shown below; search coverage is limited."}</p>}
         </div>
       </div>
+
+      <AiAnalysisPanel report={report} />
 
       <div className="results-tabs" role="tablist" aria-label={lang === "uk" ? "Розділи звіту" : "Report sections"}>
         {tabs.map((tab, index) => <button key={tab.key} type="button" role="tab" id={`${tabId}-${tab.key}`} aria-selected={activeTab === tab.key} aria-controls={`${tabId}-${tab.key}-panel`} tabIndex={activeTab === tab.key ? 0 : -1} onClick={() => selectTab(tab.key)} onKeyDown={event => handleTabKeys(event, index)}>{tab.label}{tab.meta && <span>{tab.meta}</span>}</button>)}
@@ -118,22 +127,9 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion, onBackT
       {tabs.map(tab => <div key={tab.key} id={`${tabId}-${tab.key}-panel`} role="tabpanel" aria-labelledby={`${tabId}-${tab.key}`} tabIndex={0} className="results-panel" hidden={activeTab !== tab.key}>
         {activeTab === "sources" && tab.key === "sources" && <PlagiarismMatches matches={report.matches} confirmedMatchCount={confirmed.length} leadMatchCount={leads} allSearchProvidersFailed={searchUnavailable} />}
         {activeTab === "ai" && tab.key === "ai" && <div className="results-ai">
-          <section className="results-section" aria-labelledby={`${tabId}-local-ai`}>
-            <div className="results-section-heading"><div><p className="results-eyebrow">{lang === "uk" ? "Стилометрія" : "Stylometry"}</p><h2 id={`${tabId}-local-ai`}>{lang === "uk" ? "Локальний аналіз тексту" : "Local text analysis"}</h2></div><span className="results-indicator">{aiUnavailable ? "—" : `${report.aiProbability}/100`}</span></div>
-            <p className="results-caption">{aiVerdictLabel(report.aiVerdict, lang)} · {lang === "uk" ? "надійність" : "reliability"} {reliabilityLabel(report.aiReliability.level, lang)} ({report.aiReliability.score}/100)</p>
-            <p className="results-notice">{lang === "uk" ? "Це евристичний індикатор, а не ймовірність авторства. Академічний стиль, короткий текст і мовні особливості можуть впливати на оцінку." : "This is a heuristic indicator, not an authorship probability. Academic style, short texts and language characteristics can affect the assessment."}</p>
-          </section>
-          <section className="results-section" aria-labelledby={`${tabId}-opinion`} aria-busy={llmBusy}>
-            <div className="results-section-heading"><div><p className="results-eyebrow">{lang === "uk" ? "Додаткова оцінка" : "Additional assessment"}</p><h2 id={`${tabId}-opinion`}>{lang === "uk" ? "Думка мовної моделі" : "Language model opinion"}</h2></div>{report.aiOpinionProbability !== undefined && <span className="results-indicator">{report.aiOpinionProbability}/100</span>}</div>
-            <div role="status" aria-live="polite">{llmBusy ? <p className="results-pending"><span aria-hidden="true" className="results-spinner" />{lang === "uk" ? "Модель аналізує текст… Основний звіт уже доступний." : "The model is analyzing the text… Your main report is already available."}</p> : report.aiOpinionProbability !== undefined ? <p className="results-opinion">{formatAiOpinionVerdict(report, lang)}</p> : <p className="results-caption">{report.aiOpinionError || (lang === "uk" ? "Відповідь моделі поки недоступна. Локальний аналіз і перевірка джерел працюють окремо." : "The model response is unavailable. Local analysis and source verification work separately.")}</p>}</div>
-            {report.aiOpinionSignals?.length ? <div className="results-signal-list">{report.aiOpinionSignals.map((signal, index) => <SignalCard key={`${signal.label}-${index}`} signal={signal} />)}</div> : null}
-            {onRetryOpinion && <button className="results-button" type="button" disabled={llmBusy} onClick={onRetryOpinion}>{llmBusy ? (lang === "uk" ? "Очікування відповіді…" : "Waiting for response…") : report.aiOpinionProbability !== undefined ? (lang === "uk" ? "Оновити AI-думку" : "Refresh AI opinion") : (lang === "uk" ? "Повторити запит до моделі" : "Retry model request")}</button>}
-          </section>
           {report.aiSuspiciousSegments.length ? <SuspiciousSegments segments={report.aiSuspiciousSegments} /> : <section className="results-section"><h2>{lang === "uk" ? "Підозрілих сегментів не виділено" : "No suspicious segments highlighted"}</h2><p className="results-caption">{lang === "uk" ? "Це не підтверджує людське авторство. Врахуйте надійність оцінки та обмеження аналізу." : "This does not establish human authorship. Consider assessment reliability and analysis limitations."}</p></section>}
         </div>}
         {activeTab === "technical" && tab.key === "technical" && <div className="results-method">
-          <section className="results-section"><h2>{lang === "uk" ? "Як читати показники" : "How to read the measures"}</h2><p className="results-caption">{lang === "uk" ? "Дослівне покриття — частка знайдених однакових слів у всьому проаналізованому тексті. Сила збігів — оцінка найсильнішого підтвердженого джерела. Бал ШІ — окремий стилометричний індикатор. Ці показники не додаються один до одного." : "Verbatim coverage is the share of discovered matching words in all analyzed text. Match strength scores the strongest verified source. The AI score is a separate stylometric indicator. These measures are not added together."}</p><dl className="results-facts"><div><dt>{lang === "uk" ? "Перевірено фрагментів" : "Chunks checked"}</dt><dd>{formatNumber(report.chunksChecked, lang)}</dd></div><div><dt>{lang === "uk" ? "Слів титульної сторінки виключено" : "Title-page words excluded"}</dt><dd>{formatNumber(report.skippedTitleWords ?? 0, lang)}</dd></div><div><dt>{lang === "uk" ? "Слів списку джерел виключено" : "Bibliography words excluded"}</dt><dd>{formatNumber(report.skippedBibliographyWords ?? 0, lang)}</dd></div></dl></section>
-          <details className="results-details"><summary>{lang === "uk" ? "Стилометричні ознаки та надійність" : "Stylometric signals & reliability"}</summary><AiAnalysisPanel report={report} llmBusy={llmBusy} primarySignals={report.aiSignals.slice(0, split)} onRetryOpinion={onRetryOpinion} /><div className="results-signal-list">{report.aiSignals.slice(split).map((signal, index) => <SignalCard signal={signal} key={`${signal.label}-${index}`} />)}</div></details>
           {report.searchDiagnostics && <details className="results-details"><summary>{lang === "uk" ? "Стан пошукових провайдерів" : "Search provider status"}</summary><ProviderDiagnostics diagnostics={report.searchDiagnostics} /></details>}
           {notes.length > 0 && <details className="results-details"><summary>{lang === "uk" ? "Обробка документа" : "Document processing"}</summary><ul className="results-notes">{notes.map((note, index) => <li key={index}>{translateScanNote(note, lang)}</li>)}</ul>{report.fileEvidence && <p className="results-caption">{report.fileEvidence.fileName} · {formatNumber(Math.round(report.fileEvidence.sizeBytes / 1024), lang)} KB · {report.fileEvidence.extractionMethod}</p>}</details>}
           {report.aiOpinionModel && <details className="results-details"><summary>{lang === "uk" ? "Відомості про мовну модель" : "Language model details"}</summary><p className="results-caption">{report.aiOpinionModel}</p>{report.aiOpinionNote && <p className="results-caption">{report.aiOpinionNote}</p>}</details>}

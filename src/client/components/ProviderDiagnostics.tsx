@@ -10,7 +10,10 @@ function providerDiagnosticLabel(provider: NonNullable<ScanReport["searchDiagnos
     return lang === "uk" ? "пропущено" : "skipped";
   }
   if (provider.succeeded === 0) {
-    return lang === "uk" ? "ліміт квоти" : "quota limit";
+    if (provider.errorCode === "quota") return lang === "uk" ? "вичерпано квоту запитів" : "request quota exceeded";
+    if (provider.errorCode === "access") return lang === "uk" ? "перевірте доступ API та налаштування ключа" : "check API access and key settings";
+    if (provider.errorCode === "timeout" || provider.timedOut === provider.attempted) return lang === "uk" ? "час очікування вичерпано" : "request timed out";
+    return lang === "uk" ? "пошук недоступний — спробуйте пізніше" : "search unavailable — retry later";
   }
   const resWord = lang === "uk" ? "рез." : "res.";
   return `${provider.succeeded}/${provider.attempted} · ${provider.results} ${resWord}`;
@@ -33,6 +36,7 @@ export function ProviderDiagnostics({ diagnostics }: { diagnostics: ScanReport["
         existing.failed += p.failed;
         existing.timedOut += p.timedOut;
         existing.results += p.results;
+        existing.errorCode ??= p.errorCode;
       }
     }
   }

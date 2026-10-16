@@ -12,6 +12,13 @@ const searchCache = new DistributedCache("search", 1000 * 60 * 30, 500);
 const pageCache = new DistributedCache("page", 1000 * 60 * 60, 500);
 const providerCircuit = new ProviderCircuitBreaker(3, 45_000);
 const providerScheduler = new ProviderTaskScheduler(4);
+class SearchProviderError extends Error {
+    code;
+    constructor(code) {
+        super(`Search provider: ${code}`);
+        this.code = code;
+    }
+}
 const STOP_WORDS = new Set([
     "та", "і", "й", "в", "у", "на", "до", "з", "із", "зі", "за", "по", "про", "як", "що", "це", "де", "чи",
     "але", "проте", "однак", "тому", "який", "яка", "яке", "які", "яких", "яким", "якого", "якій",
@@ -69,7 +76,7 @@ async function runProviderTask(task) {
             const timedOut = isTimeoutError(error) ? 1 : 0;
             return {
                 candidates: [],
-                diagnostic: { provider: task.provider, attempted: 1, succeeded: 0, failed: 1, timedOut, results: 0 }
+                diagnostic: { provider: task.provider, attempted: 1, succeeded: 0, failed: 1, timedOut, results: 0, errorCode: error instanceof SearchProviderError ? error.code : timedOut ? "timeout" : "unavailable" }
             };
         }
     });
@@ -517,8 +524,13 @@ async function searchGoogleCustom(query, maxResults) {
             Accept: "application/json"
         }
     });
-    if (!response.ok)
-        throw new Error(`Google Search HTTP ${response.status}`);
+    if (!response.ok) {
+        // Never expose Google's raw response: it may contain credential or project details.
+        const payload = await response.json().catch(() => ({}));
+        const reasons = (payload.error?.errors ?? []).map(item => item.reason ?? "");
+        const quota = response.status === 429 || payload.error?.status === "RESOURCE_EXHAUSTED" || reasons.some(reason => /^(dailyLimitExceeded|quotaExceeded|rateLimitExceeded|userRateLimitExceeded)$/i.test(reason));
+        throw new SearchProviderError(quota ? "quota" : response.status === 401 || response.status === 403 || response.status === 400 ? "access" : "unavailable");
+    }
     const payload = (await response.json());
     const results = (payload.items ?? [])
         .filter((item) => item.title && item.link && item.snippet)

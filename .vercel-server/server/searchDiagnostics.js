@@ -25,6 +25,8 @@ export function mergeSearchDiagnostics(...items) {
             current.results += diagnostic.results;
             if (diagnostic.skippedReason)
                 current.skippedReason = diagnostic.skippedReason;
+            if (diagnostic.errorCode)
+                current.errorCode = diagnostic.errorCode;
             providers.set(diagnostic.provider, current);
         }
         pages.attempted += item.pages.attempted;

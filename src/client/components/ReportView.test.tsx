@@ -30,10 +30,18 @@ beforeEach(() => { localStorage.setItem("nezbig_lang", "uk"); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); localStorage.clear(); });
 
 describe("results report", () => {
+  it("keeps AI explanation and model opinion visible without opening a tab or disclosure", () => {
+    show(baseReport({ aiOpinionProbability: 42 }));
+    expect(screen.getByRole("heading", { name: "Розширений ШІ-аналіз" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "ШІ-думка" })).toBeVisible();
+    expect(screen.getByText("42%", { selector: ".results-indicator" })).toBeVisible();
+    expect(screen.getByText("25", { selector: ".results-percentage" })).toHaveTextContent("25%");
+    expect(screen.queryByRole("heading", { name: "Як читати показники" })).not.toBeInTheDocument();
+  });
   it("separates document coverage from strongest-match strength", () => {
     show();
     expect(screen.getByRole("heading", { level: 1, name: "Дослідження.docx" })).toBeInTheDocument();
-    expect(screen.getByText("2", { selector: ".results-percentage" })).toHaveTextContent("2%");
+    expect(screen.getByText("2", { selector: ".results-plagiarism-percentage" })).toHaveTextContent("2%");
     expect(screen.getByText("80/100", { selector: "dd" })).toBeInTheDocument();
     expect(screen.queryByText(/Текст є унікальним/)).not.toBeInTheDocument();
   });
@@ -42,7 +50,7 @@ describe("results report", () => {
     const item = baseReport({ matchedTextPercent: 0, matches: [] });
     item.searchDiagnostics!.providers[0] = { provider: "Test", attempted: 2, succeeded: 0, failed: 2, timedOut: 1, results: 0 };
     show(item);
-    expect(screen.getByText("—", { selector: ".results-percentage" })).toBeInTheDocument();
+    expect(screen.getByText("—", { selector: ".results-plagiarism-percentage" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Джерела не вдалося перевірити" })).toBeInTheDocument();
     expect(screen.queryByText("0%")).not.toBeInTheDocument();
   });

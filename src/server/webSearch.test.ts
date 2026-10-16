@@ -20,6 +20,23 @@ afterEach(() => {
 });
 
 describe("web search diagnostics", () => {
+  it.each([
+    ["dailyLimitExceeded", "quota"],
+    ["accessNotConfigured", "access"]
+  ])("distinguishes Google %s from other failures", async (reason, expected) => {
+    vi.stubEnv("GOOGLE_SEARCH_API_KEY", "test-key");
+    vi.stubEnv("GOOGLE_SEARCH_ENGINE_ID", "test-engine");
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(typeof input === "string" || input instanceof URL ? input : input.url);
+      return url.hostname === "www.googleapis.com"
+        ? new Response(JSON.stringify({ error: { errors: [{ reason }] } }), { status: 403 })
+        : new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
+    }));
+    try {
+      const result = await searchWebCandidatesDetailed(`Unique Google diagnostic ${crypto.randomUUID()} text for a search`, 5, false, { queryLimit: 1, hydrateLimit: 0 });
+      expect(result.diagnostics.providers.find(provider => provider.provider === "Google")).toMatchObject({ errorCode: expected, failed: 1 });
+    } finally { vi.unstubAllEnvs(); }
+  });
   it("caches unavailable pages and reports a negative-cache hit", async () => {
     const url = `https://unavailable-${crypto.randomUUID()}.example/page`;
     const fetchMock = vi.fn().mockResolvedValue(new Response("down", { status: 503 }));

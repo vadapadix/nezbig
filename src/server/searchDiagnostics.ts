@@ -28,6 +28,7 @@ export function mergeSearchDiagnostics(...items: SearchDiagnostics[]): SearchDia
       current.timedOut += diagnostic.timedOut;
       current.results += diagnostic.results;
       if (diagnostic.skippedReason) current.skippedReason = diagnostic.skippedReason;
+      if (diagnostic.errorCode) current.errorCode = diagnostic.errorCode;
       providers.set(diagnostic.provider, current);
     }
 

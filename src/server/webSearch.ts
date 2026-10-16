@@ -31,6 +31,12 @@ type ProviderTask = {
   run: () => Promise<SearchCandidate[]>;
 };
 
+class SearchProviderError extends Error {
+  constructor(public readonly code: NonNullable<SearchProviderDiagnostic["errorCode"]>) {
+    super(`Search provider: ${code}`);
+  }
+}
+
 type PageReadResult = {
   text?: string;
   attempted: boolean;
@@ -101,7 +107,7 @@ async function runProviderTask(task: ProviderTask): Promise<{ candidates: Search
       const timedOut = isTimeoutError(error) ? 1 : 0;
       return {
         candidates: [],
-        diagnostic: { provider: task.provider, attempted: 1, succeeded: 0, failed: 1, timedOut, results: 0 }
+        diagnostic: { provider: task.provider, attempted: 1, succeeded: 0, failed: 1, timedOut, results: 0, errorCode: error instanceof SearchProviderError ? error.code : timedOut ? "timeout" : "unavailable" }
       };
     }
   });
@@ -608,7 +614,13 @@ async function searchGoogleCustom(query: string, maxResults: number): Promise<Se
     }
   });
 
-  if (!response.ok) throw new Error(`Google Search HTTP ${response.status}`);
+  if (!response.ok) {
+    // Never expose Google's raw response: it may contain credential or project details.
+    const payload = await response.json().catch(() => ({})) as { error?: { errors?: Array<{ reason?: string }>; status?: string } };
+    const reasons = (payload.error?.errors ?? []).map(item => item.reason ?? "");
+    const quota = response.status === 429 || payload.error?.status === "RESOURCE_EXHAUSTED" || reasons.some(reason => /^(dailyLimitExceeded|quotaExceeded|rateLimitExceeded|userRateLimitExceeded)$/i.test(reason));
+    throw new SearchProviderError(quota ? "quota" : response.status === 401 || response.status === 403 || response.status === 400 ? "access" : "unavailable");
+  }
 
   const payload = (await response.json()) as {
     items?: Array<{

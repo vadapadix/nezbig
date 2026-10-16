@@ -66,6 +66,7 @@ export type SearchCandidate = {
 };
 
 export type SearchProviderDiagnostic = {
+  errorCode?: "quota" | "access" | "timeout" | "unavailable";
   provider: string;
   attempted: number;
   succeeded: number;
