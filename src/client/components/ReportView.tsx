@@ -6,11 +6,10 @@ import { AiAnalysisPanel } from "./AiAnalysisPanel";
 import { SuspiciousSegments } from "./SuspiciousSegments";
 import { PlagiarismMatches } from "./PlagiarismMatches";
 import { ProviderDiagnostics } from "./ProviderDiagnostics";
-import { SignalCard } from "./SignalCard";
 import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../hooks/useAuth";
 import { formatNumber, formatAiOpinionVerdict } from "../utils/reportLabels";
-import { translateScanNote } from "../utils/reportI18n";
+import { translateScanNote, translateSignalLabel, translateSignalDetail, translateEvidenceItem } from "../utils/reportI18n";
 import "./report.css";
 
 interface ReportViewProps {
@@ -98,7 +97,6 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion, onBackT
           <section className="results-section" aria-labelledby={`${tabId}-opinion`} aria-busy={llmBusy}>
             <div className="results-section-heading"><div><p className="results-eyebrow">{lang === "uk" ? "Додаткова оцінка" : "Additional assessment"}</p><h2 id={`${tabId}-opinion`}>{lang === "uk" ? "ШІ-думка" : "AI opinion"}</h2></div>{report.aiOpinionProbability !== undefined && <span className="results-indicator">{report.aiOpinionProbability}%</span>}</div>
             <div role="status" aria-live="polite">{llmBusy ? <p className="results-pending"><span aria-hidden="true" className="results-spinner" />{lang === "uk" ? "Модель аналізує текст… Основний звіт уже доступний." : "The model is analyzing the text… Your main report is already available."}</p> : report.aiOpinionProbability !== undefined ? <p className="results-opinion">{formatAiOpinionVerdict(report, lang)}</p> : <p className="results-caption">{report.aiOpinionError || (lang === "uk" ? "Відповідь моделі поки недоступна. Локальний аналіз і перевірка джерел працюють окремо." : "The model response is unavailable. Local analysis and source verification work separately.")}</p>}</div>
-            {report.aiOpinionSignals?.length ? <div className="results-signal-list">{report.aiOpinionSignals.map((signal, index) => <SignalCard key={`${signal.label}-${index}`} signal={signal} />)}</div> : null}
             {onRetryOpinion && <button className="results-button" type="button" disabled={llmBusy} onClick={onRetryOpinion}>{llmBusy ? (lang === "uk" ? "Очікування відповіді…" : "Waiting for response…") : report.aiOpinionProbability !== undefined ? (lang === "uk" ? "Оновити AI-думку" : "Refresh AI opinion") : (lang === "uk" ? "Повторити запит до моделі" : "Retry model request")}</button>}
           </section>
         </div>
@@ -117,6 +115,14 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion, onBackT
           {partialSearch && <p className="results-notice">{lang === "uk" ? "Частина пошукових запитів завершилася помилкою. Знайдені збіги доступні нижче; покриття пошуку обмежене." : "Some search requests failed. Discovered matches are shown below; search coverage is limited."}</p>}
         </div>
       </div>
+
+      {report.aiOpinionSignals?.length ? <section className="opinion-evidence" aria-labelledby={`${tabId}-opinion-evidence`}>
+        <header><p className="results-eyebrow">{lang === "uk" ? "Пояснення ШІ-думки" : "AI opinion explained"}</p><h2 id={`${tabId}-opinion-evidence`}>{lang === "uk" ? "На що звернула увагу модель" : "What the model noticed"}</h2><p className="results-caption">{lang === "uk" ? "Оцінки окремих ознак пояснюють відповідь моделі та не є відсотком ШІ у всьому документі." : "Individual signal scores explain the model response; they are not the AI percentage of the whole document."}</p></header>
+        <div className="opinion-evidence-list">{report.aiOpinionSignals.map((signal, index) => <article className="opinion-evidence-row" key={`${signal.label}-${index}`}>
+          <div className="opinion-evidence-label"><h3>{translateSignalLabel(signal.label, lang)}</h3><span aria-label={lang === "uk" ? `Оцінка ознаки: ${signal.score} зі 100` : `Signal score: ${signal.score} out of 100`}>{signal.score}<small>/100</small></span></div>
+          <div className="opinion-evidence-content"><p>{translateSignalDetail(signal.detail, lang)}</p>{signal.evidence?.length ? <ul aria-label={lang === "uk" ? "Приклади з аналізу" : "Analysis examples"}>{signal.evidence.map((item, itemIndex) => <li key={itemIndex}>{translateEvidenceItem(item, lang)}</li>)}</ul> : null}</div>
+        </article>)}</div>
+      </section> : null}
 
       <AiAnalysisPanel report={report} />
 
