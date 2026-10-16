@@ -20,4 +20,6 @@ Finish status: implementation may be tested in the DOM, but visual finish approv
 
 Screenshot follow-up: move model-opinion evidence out of the narrow overview column into full-width reading rows. Use a label and signal score alongside the explanation, followed by wrapping plain-text examples. No nested cards, gradient gauges or tall evidence tiles. Stack each row on mobile and retain all evidence in the open.
 
+Source-priority follow-up: place source tabs and their default-open evidence panel directly after the overview, ahead of opinion evidence and extended stylometry. Preserve the existing URL tab selection and keep all extended AI explanations visible below the evidence panel.
+
 Validation: 173 unit/integration tests passed across 33 files, including eight new report interaction tests. Production build and TypeScript checks passed; ESLint passed without warnings. Existing browser-test assertions were updated to the new report structure but browser tests were not executed because local browser access was denied. The user explicitly granted local viewing afterward; the browser gate still rejected it because a saved permission/managed setting blocks that origin. No alternate browser tool was used to bypass this restriction.

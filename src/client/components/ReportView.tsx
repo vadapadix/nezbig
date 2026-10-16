@@ -116,16 +116,6 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion, onBackT
         </div>
       </div>
 
-      {report.aiOpinionSignals?.length ? <section className="opinion-evidence" aria-labelledby={`${tabId}-opinion-evidence`}>
-        <header><p className="results-eyebrow">{lang === "uk" ? "Пояснення ШІ-думки" : "AI opinion explained"}</p><h2 id={`${tabId}-opinion-evidence`}>{lang === "uk" ? "На що звернула увагу модель" : "What the model noticed"}</h2><p className="results-caption">{lang === "uk" ? "Оцінки окремих ознак пояснюють відповідь моделі та не є відсотком ШІ у всьому документі." : "Individual signal scores explain the model response; they are not the AI percentage of the whole document."}</p></header>
-        <div className="opinion-evidence-list">{report.aiOpinionSignals.map((signal, index) => <article className="opinion-evidence-row" key={`${signal.label}-${index}`}>
-          <div className="opinion-evidence-label"><h3>{translateSignalLabel(signal.label, lang)}</h3><span aria-label={lang === "uk" ? `Оцінка ознаки: ${signal.score} зі 100` : `Signal score: ${signal.score} out of 100`}>{signal.score}<small>/100</small></span></div>
-          <div className="opinion-evidence-content"><p>{translateSignalDetail(signal.detail, lang)}</p>{signal.evidence?.length ? <ul aria-label={lang === "uk" ? "Приклади з аналізу" : "Analysis examples"}>{signal.evidence.map((item, itemIndex) => <li key={itemIndex}>{translateEvidenceItem(item, lang)}</li>)}</ul> : null}</div>
-        </article>)}</div>
-      </section> : null}
-
-      <AiAnalysisPanel report={report} />
-
       <div className="results-tabs" role="tablist" aria-label={lang === "uk" ? "Розділи звіту" : "Report sections"}>
         {tabs.map((tab, index) => <button key={tab.key} type="button" role="tab" id={`${tabId}-${tab.key}`} aria-selected={activeTab === tab.key} aria-controls={`${tabId}-${tab.key}-panel`} tabIndex={activeTab === tab.key ? 0 : -1} onClick={() => selectTab(tab.key)} onKeyDown={event => handleTabKeys(event, index)}>{tab.label}{tab.meta && <span>{tab.meta}</span>}</button>)}
       </div>
@@ -141,6 +131,16 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion, onBackT
           {report.aiOpinionModel && <details className="results-details"><summary>{lang === "uk" ? "Відомості про мовну модель" : "Language model details"}</summary><p className="results-caption">{report.aiOpinionModel}</p>{report.aiOpinionNote && <p className="results-caption">{report.aiOpinionNote}</p>}</details>}
         </div>}
       </div>)}
+      {report.aiOpinionSignals?.length ? <section className="opinion-evidence" aria-labelledby={`${tabId}-opinion-evidence`}>
+        <header><p className="results-eyebrow">{lang === "uk" ? "Пояснення ШІ-думки" : "AI opinion explained"}</p><h2 id={`${tabId}-opinion-evidence`}>{lang === "uk" ? "На що звернула увагу модель" : "What the model noticed"}</h2><p className="results-caption">{lang === "uk" ? "Оцінки окремих ознак пояснюють відповідь моделі та не є відсотком ШІ у всьому документі." : "Individual signal scores explain the model response; they are not the AI percentage of the whole document."}</p></header>
+        <div className="opinion-evidence-list">{report.aiOpinionSignals.map((signal, index) => <article className="opinion-evidence-row" key={`${signal.label}-${index}`}>
+          <div className="opinion-evidence-label"><h3>{translateSignalLabel(signal.label, lang)}</h3><span aria-label={lang === "uk" ? `Оцінка ознаки: ${signal.score} зі 100` : `Signal score: ${signal.score} out of 100`}>{signal.score}<small>/100</small></span></div>
+          <div className="opinion-evidence-content"><p>{translateSignalDetail(signal.detail, lang)}</p>{signal.evidence?.length ? <ul aria-label={lang === "uk" ? "Приклади з аналізу" : "Analysis examples"}>{signal.evidence.map((item, itemIndex) => <li key={itemIndex}>{translateEvidenceItem(item, lang)}</li>)}</ul> : null}</div>
+        </article>)}</div>
+      </section> : null}
+
+      <AiAnalysisPanel report={report} />
+
       <p className="results-footnote">{lang === "uk" ? "Звіт допомагає перевірити текст і джерела. Остаточний висновок потребує перегляду людиною." : "This report supports reviewing text and sources. A final conclusion requires human review."}</p>
     </section>
   );
