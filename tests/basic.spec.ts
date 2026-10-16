@@ -100,12 +100,12 @@ test('full scan flow with mock API and return to editor', async ({ page }) => {
   const reportSection = page.locator('.report');
   await expect(reportSection).toBeVisible({ timeout: 10000 });
   
-  const plagiarismScore = page.locator('.metrics article:first-child strong');
+  const plagiarismScore = reportSection.locator('.results-facts dd').nth(1);
   await expect(plagiarismScore).toHaveText('45/100');
   await expect(reportSection).toContainText('12.5%');
 
   // Back to editor button
-  const backBtn = page.getByRole('button', { name: /повернутись до редактора|back to editor/i }).first();
+  const backBtn = page.getByRole('button', { name: /до редактора|back to editor/i }).first();
   await expect(backBtn).toBeVisible();
   await backBtn.click();
 
