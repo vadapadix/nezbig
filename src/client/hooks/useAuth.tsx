@@ -1,3 +1,4 @@
+import { clearDriveAccessToken } from "../utils/googleDrive";
 import { localHistoryKey, GUEST_HISTORY_KEY } from "../utils/localHistory";
 import { useState, useEffect, useCallback, useRef, createContext, useContext, type ReactNode } from "react";
 
@@ -195,6 +196,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [syncHistory]);
 
   const logout = useCallback(async () => {
+    clearDriveAccessToken();
     try {
       const headers = getAuthHeaders();
       await fetch("/api/auth/logout", { method: "POST", headers, credentials: "include" });

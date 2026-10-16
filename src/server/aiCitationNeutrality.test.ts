@@ -9,6 +9,11 @@ const passages = [
 ];
 
 describe("citation-neutral authorship analysis", () => {
+  it("returns insufficient data for a bibliography-only document with a heading", () => {
+    const result = detectAiSignals("Список використаних джерел\n1. Author. A research paper. Journal 2024. DOI: 10.1234/test\n2. Writer. Another paper. Journal 2025. DOI: 10.1234/other");
+    expect(result.verdict).toBe("insufficient");
+    expect(result.exclusions.analyzedWords).toBe(0);
+  });
   it.each(passages)("does not change the prose score when links and citation markers are added", passage => {
     const cited = `${passage} [1] [2, 3] https://example.org/first https://example.org/second https://example.org/third`;
     expect(prepareAiAnalysisText(cited).text).toBe(prepareAiAnalysisText(passage).text);

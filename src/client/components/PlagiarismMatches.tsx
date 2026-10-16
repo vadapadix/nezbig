@@ -10,6 +10,7 @@ interface PlagiarismMatchesProps {
   leadMatchCount: number;
   allSearchProvidersFailed: boolean;
   diagnosticsNode?: ReactNode;
+  matchesTotal?: number;
 }
 
 function MatchCardItem({ match }: { match: PlagiarismMatch }) {
@@ -49,19 +50,23 @@ function MatchCardItem({ match }: { match: PlagiarismMatch }) {
   </article>;
 }
 
-export function PlagiarismMatches({ matches, confirmedMatchCount, leadMatchCount, allSearchProvidersFailed, diagnosticsNode }: PlagiarismMatchesProps) {
+export function PlagiarismMatches({ matches, confirmedMatchCount, leadMatchCount, allSearchProvidersFailed, diagnosticsNode, matchesTotal }: PlagiarismMatchesProps) {
   const { lang } = useLanguage();
   const [filter, setFilter] = useState<"all" | "verified" | "leads">("all");
+  const [expanded, setExpanded] = useState(false);
   const visible = matches.filter(match => filter === "all" || (filter === "verified" ? match.confidence === "page" : match.confidence !== "page"));
   const ordered = [...visible].sort((a, b) => Number(b.confidence === "page") - Number(a.confidence === "page"));
+  const shown = expanded ? ordered : ordered.slice(0, 6);
   return <section className="source-panel" aria-labelledby="matches-title">
     <div className="source-heading"><div><h2 id="matches-title">{lang === "uk" ? "Звідки взялися збіги" : "Where the matches come from"}</h2><p className="results-caption">{lang === "uk" ? "Почніть зі спільних фрагментів. Відкрийте джерело, щоб перевірити контекст і цитування." : "Start with the shared passages. Open a source to check context and citations."}</p></div><span className="source-count">{formatNumber(confirmedMatchCount, lang)} {lang === "uk" ? "підтвердж. збігів" : "verified matches"} · {formatNumber(leadMatchCount, lang)} {lang === "uk" ? "підказок" : "leads"}</span></div>
+    {matchesTotal !== undefined && matchesTotal > matches.length && <p className="results-notice">{lang === "uk" ? `Знайдено ${formatNumber(matchesTotal, lang)} збігів за фрагментами. У звіті наведено ${matches.length} найсильніших; відсоток покриття враховує всі підтверджені збіги.` : `${formatNumber(matchesTotal, lang)} chunk matches found. This report lists the strongest ${matches.length}; coverage includes all verified matches.`}</p>}
     {diagnosticsNode}
     {confirmedMatchCount > 0 && leadMatchCount > 0 && <div className="source-filters" role="group" aria-label={lang === "uk" ? "Фільтр джерел" : "Source filter"}>{([
       { key: "all", label: lang === "uk" ? "Усі" : "All" },
       { key: "verified", label: lang === "uk" ? "Підтверджені" : "Verified" },
       { key: "leads", label: lang === "uk" ? "Пошукові підказки" : "Search leads" }
-    ] as const).map(item => <button type="button" key={item.key} aria-pressed={filter === item.key} onClick={() => setFilter(item.key)}>{item.label}</button>)}</div>}
-    {matches.length === 0 ? <div className="source-empty"><h3>{allSearchProvidersFailed ? (lang === "uk" ? "Джерела не вдалося перевірити" : "Sources could not be checked") : (lang === "uk" ? "У перевірених джерелах збігів не знайдено" : "No matches found in checked sources")}</h3><p className="results-caption">{allSearchProvidersFailed ? (lang === "uk" ? "Пошукові провайдери не відповіли. Повторіть перевірку пізніше; відсутність збігів зараз не підтверджена." : "Search providers did not respond. Retry later; the absence of matches is not confirmed.") : (lang === "uk" ? "Цей результат обмежений доступними вебджерелами й не підтверджує унікальність усього тексту." : "This result is limited to accessible web sources and does not establish the uniqueness of the entire text.")}</p></div> : <div className="source-list">{ordered.map(match => <MatchCardItem key={`${match.url}-${match.chunkIndex}`} match={match} />)}</div>}
+    ] as const).map(item => <button type="button" key={item.key} aria-pressed={filter === item.key} onClick={() => { setFilter(item.key); setExpanded(false); }}>{item.label}</button>)}</div>}
+    {matches.length === 0 ? <div className="source-empty"><h3>{allSearchProvidersFailed ? (lang === "uk" ? "Джерела не вдалося перевірити" : "Sources could not be checked") : (lang === "uk" ? "У перевірених джерелах збігів не знайдено" : "No matches found in checked sources")}</h3><p className="results-caption">{allSearchProvidersFailed ? (lang === "uk" ? "Пошукові провайдери не відповіли. Повторіть перевірку пізніше; відсутність збігів зараз не підтверджена." : "Search providers did not respond. Retry later; the absence of matches is not confirmed.") : (lang === "uk" ? "Цей результат обмежений доступними вебджерелами й не підтверджує унікальність усього тексту." : "This result is limited to accessible web sources and does not establish the uniqueness of the entire text.")}</p></div> : <div className="source-list">{shown.map(match => <MatchCardItem key={`${match.url}-${match.chunkIndex}`} match={match} />)}</div>}
+    {ordered.length > 6 && <button type="button" className="results-button" aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>{expanded ? (lang === "uk" ? "Залишити перші 6 збігів" : "Show first 6 matches") : (lang === "uk" ? `Показати решту збігів (${ordered.length - 6})` : `Show ${ordered.length - 6} more matches`)}</button>}
   </section>;
 }

@@ -40,6 +40,10 @@ function looksLikeCodeLine(line: string): boolean {
   return hasCodePattern || hasAssignment || (symbolDensity > 0.16 && !/[А-Яа-яІіЇїЄєҐґ]{3,}/.test(trimmed));
 }
 
+export function normalizeProseLayout(text: string): string {
+  return text.replace(/\r\n?/g, "\n").split("\n").map(line => normalizeWhitespace(line)).join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
 function stripInlineCodeResidue(text: string): { text: string; removedWords: number } {
   let removedWords = 0;
   let cleaned = text;
@@ -51,7 +55,7 @@ function stripInlineCodeResidue(text: string): { text: string; removedWords: num
     });
   }
 
-  return { text: normalizeWhitespace(cleaned), removedWords };
+  return { text: normalizeProseLayout(cleaned), removedWords };
 }
 
 export function filterProseText(rawText: string): ProseFilterResult {
@@ -98,7 +102,7 @@ export function filterProseText(rawText: string): ProseFilterResult {
   }
 
   flushCodeRun();
-  const inlineCleaned = stripInlineCodeResidue(kept.join(" "));
+  const inlineCleaned = stripInlineCodeResidue(kept.join("\n"));
   const text = inlineCleaned.text;
   const removedCodeWords = countWords(removed.join(" ")) + inlineCleaned.removedWords;
 

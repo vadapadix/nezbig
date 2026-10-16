@@ -2,6 +2,19 @@ import { describe, expect, it } from "vitest";
 import { prepareDocumentText } from "./documentPreprocess.js";
 
 describe("prepareDocumentText", () => {
+  it("keeps prose that discusses references or appendices", () => {
+    const body = "Цей матеріал описує практичну перевірку документа та способи читання результатів. ".repeat(6);
+    for (const mention of ["Список джерел потрібен для перевірки цитат, але цей абзац продовжує основну думку.", "References are useful when readers want to check a claim.", "Додаток А пояснює приклад застосування методу."]) {
+      const result = prepareDocumentText(`${body}\n${mention}\nЗАВЕРШЕННЯ ДОКУМЕНТА`);
+      expect(result.text).toContain("ЗАВЕРШЕННЯ ДОКУМЕНТА");
+      expect(result.skippedBibliographyWords).toBe(0);
+    }
+  });
+
+  it("preserves paragraph boundaries through code filtering", () => {
+    const result = prepareDocumentText("Перший абзац із власним спостереженням.\n\nДругий абзац із поясненням результату.");
+    expect(result.text).toContain("\n\n");
+  });
   it("skips course-work title blocks before the introduction", () => {
     const prepared = prepareDocumentText(`
       Міністерство освіти і науки України

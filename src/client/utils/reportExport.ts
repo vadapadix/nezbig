@@ -226,7 +226,7 @@ export function generateReportCanvas(report: ScanReport, lang: Language = getFal
     for (const match of matches) {
       context.fillStyle = printBlack;
       context.font = "800 20px Actay, sans-serif";
-      y = wrapCanvasText(context, `${match.score}% ${lang === "uk" ? "збігу" : "match"}  —  ${match.title}`, 60, y, 1080, 28);
+      y = wrapCanvasText(context, `${match.score}/100 ${lang === "uk" ? "сила збігу" : "match strength"}  —  ${match.title}`, 60, y, 1080, 28);
 
       context.fillStyle = printGray;
       context.font = "400 17px Actay, sans-serif";
@@ -296,10 +296,9 @@ export function generateReportCanvas(report: ScanReport, lang: Language = getFal
   return canvas;
 }
 
-export function downloadReportPng(report: ScanReport, lang: Language = getFallbackLang()): void {
+export async function downloadReportPng(report: ScanReport, lang: Language = getFallbackLang()): Promise<void> {
   const canvas = generateReportCanvas(report, lang);
-  canvas.toBlob((blob) => {
-    if (!blob) return;
+  const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error(lang === "uk" ? "Не вдалося створити PNG-звіт." : "Could not create the PNG report.")), "image/png"));
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -307,7 +306,6 @@ export function downloadReportPng(report: ScanReport, lang: Language = getFallba
     link.download = `nezbig-report-${safeName}.png`;
     link.click();
     URL.revokeObjectURL(url);
-  }, "image/png");
 }
 
 /**

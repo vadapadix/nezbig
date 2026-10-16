@@ -20,6 +20,13 @@ afterEach(() => {
 });
 
 describe("web search diagnostics", () => {
+  it("does not report failed public provider requests as successful empty searches", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("down", { status: 503 })));
+    const result = await searchWebCandidatesDetailed(`Provider health ${crypto.randomUUID()} should preserve the actual HTTP failure`, 5, false, { queryLimit: 1, hydrateLimit: 0, includeAcademic: true });
+    for (const name of ["Crossref", "Wikipedia", "OpenAlex", "Semantic Scholar"]) {
+      expect(result.diagnostics.providers.find(provider => provider.provider === name)).toMatchObject({ succeeded: 0, failed: 1, errorCode: "unavailable" });
+    }
+  });
   it.each([
     ["dailyLimitExceeded", "quota"],
     ["accessNotConfigured", "access"]

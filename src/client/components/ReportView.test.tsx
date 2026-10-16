@@ -30,6 +30,14 @@ beforeEach(() => { localStorage.setItem("nezbig_lang", "uk"); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); localStorage.clear(); });
 
 describe("results report", () => {
+  it("starts with six source cards and exposes additional matches and server omissions", () => {
+    show(baseReport({ matches: Array.from({ length: 8 }, (_, index) => match("page", `Source-${index}`)), matchesTotal: 30 }));
+    expect(screen.getAllByRole("link", { name: /Source-/ })).toHaveLength(6);
+    expect(screen.getByText(/Знайдено 30 збігів/)).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Показати решту збігів (2)" }));
+    expect(screen.getAllByRole("link", { name: /Source-/ })).toHaveLength(8);
+    expect(screen.getByRole("button", { name: "Залишити перші 6 збігів" })).toHaveAttribute("aria-expanded", "true");
+  });
   it("keeps AI explanation and model opinion visible without opening a tab or disclosure", () => {
     show(baseReport({ aiOpinionProbability: 42 }));
     expect(screen.getByRole("heading", { name: "Розширений ШІ-аналіз" })).toBeVisible();
@@ -65,10 +73,10 @@ describe("results report", () => {
     const sources = screen.getByRole("tab", { name: /Джерела та збіги/ });
     sources.focus();
     fireEvent.keyDown(sources, { key: "ArrowRight" });
-    expect(screen.getByRole("tab", { name: "Аналіз ШІ" })).toHaveFocus();
-    expect(screen.getByRole("tab", { name: "Аналіз ШІ" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "Фрагменти з ознаками ШІ" })).toHaveFocus();
+    expect(screen.getByRole("tab", { name: "Фрагменти з ознаками ШІ" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByTestId("location")).toHaveTextContent("document=kept&reportTab=ai");
-    expect(screen.getByRole("tabpanel")).toHaveAccessibleName("Аналіз ШІ");
+    expect(screen.getByRole("tabpanel")).toHaveAccessibleName("Фрагменти з ознаками ШІ");
   });
 
   it("keeps AI loading separate from the completed source report and disables duplicate retries", () => {

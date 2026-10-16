@@ -286,7 +286,7 @@ function analyzeSinglePass(text) {
             score: rhythmScore,
             category: "statistical",
             detail: rhythmScore >= 50
-                ? `Текст має надто рівномірну структуру речень (CV: ${sentenceCv.toFixed(2)}). Людський текст зазвичай чергує довгі й короткі речення, ШІ пише "гладко".`
+                ? `Речення мають схожу довжину (CV: ${sentenceCv.toFixed(2)}). Це може залежати від жанру й саме по собі не визначає авторство.`
                 : "Варіативність довжини речень виглядає природною.",
             evidence: sentences.length >= 2 ? sentenceLengths.slice(0, 8).map((length) => `${length} слів`) : [],
             weight: 1.0
@@ -296,7 +296,7 @@ function analyzeSinglePass(text) {
             score: stylometry.zipfScore,
             category: "statistical",
             detail: stylometry.zipfScore >= 35
-                ? `Текст має аномально низьку частку унікальних слів (${Math.round(stylometry.hapaxRatio * 100)}%), що характерно для генерацій ШІ із зацикленням на середньочастотній лексиці.`
+                ? `Текст має аномально низьку частку унікальних слів (${Math.round(stylometry.hapaxRatio * 100)}%), що може залежати від теми, термінології та повторів.`
                 : `Лексичний розподіл відповідає природній кривій (Hapax: ${Math.round(stylometry.hapaxRatio * 100)}%).`,
             evidence: stylometry.zipfScore >= 30 ? [`частка Hapax Legomena ${Math.round(stylometry.hapaxRatio * 100)}%`] : [],
             weight: 0.85
@@ -316,7 +316,7 @@ function analyzeSinglePass(text) {
             score: stylometry.rhythmDeltaScore,
             category: "structure",
             detail: stylometry.rhythmDeltaScore >= 35
-                ? "Сусідні речення мають майже ідентичну довжину без динамічних пауз та контрастів, типових для людини."
+                ? "Сусідні речення мають схожу довжину. Це корельована з рівномірністю речень ознака; вона не доводить авторство."
                 : "Темпоритм речень виглядає природно.",
             evidence: stylometry.rhythmDeltaScore >= 30 ? ["низька різниця між сусідніми реченнями"] : [],
             weight: 0.8
@@ -343,7 +343,7 @@ function analyzeSinglePass(text) {
             label: "Повтори на початку речень",
             score: repeatedStarts.score,
             category: "structure",
-            detail: repeatedStarts.score >= 40 ? "Виявлено шаблони у початку речень. ШІ схильний починати кілька речень поспіль однаковими конструкціями." : "Початки речень різноманітні.",
+            detail: repeatedStarts.score >= 40 ? "Виявлено повторювані початки речень. Вони трапляються і в інструкціях або шаблонах, написаних людиною." : "Початки речень різноманітні.",
             evidence: repeatedStarts.evidence,
             weight: 0.75
         },
@@ -382,7 +382,7 @@ function analyzeSinglePass(text) {
             score: stylometry.triadicScore,
             category: "structure",
             detail: stylometry.triadicScore >= 35
-                ? "Текст має високу концентрацію трикомпонентних списків (X, Y та Z), що є характерним синтаксичним маркером генеративних моделей."
+                ? "Текст має високу концентрацію трикомпонентних списків (X, Y та Z), що також трапляється у звичайних переліках і не визначає авторство."
                 : "Тріадичні конструкції у межах норми.",
             evidence: stylometry.evidence.filter((e) => e.includes("Rule of Three")),
             weight: 0.75
@@ -400,7 +400,7 @@ function analyzeSinglePass(text) {
         ...patternBased
     ];
     // Genre and punctuation are descriptive context, never authorship evidence.
-    const contextualLabels = new Set(["Одноманітна пунктуація", "Безособовий стиль", "Шаблон академічної генерації"]);
+    const contextualLabels = new Set(["Одноманітна пунктуація", "Безособовий стиль", "Шаблон академічної генерації", "Рівномірність абзаців"]);
     for (const signal of signalDrafts) {
         if (!contextualLabels.has(signal.label))
             continue;

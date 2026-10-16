@@ -183,6 +183,8 @@ export type ScanReport = {
   skippedBibliographyWords?: number;
   fileEvidence?: FileEvidence;
   matches: PlagiarismMatch[];
+  matchesTotal?: number;
+  verifiedSourcesTotal?: number;
   aiSignals: AiSignal[];
   summary: string;
   sourceText?: string;

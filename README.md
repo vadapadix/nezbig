@@ -1,59 +1,67 @@
-# AntiPlug Text Forensics
+# Незбіг
 
-TypeScript web app for checking pasted text or uploaded documents for likely plagiarism and AI-writing signals.
+Вебзастосунок для перевірки текстових збігів у відкритих джерелах, перегляду локальних ознак ШІ та окремої думки мовної моделі. Інтерфейс українською й англійською. Публічний сайт: https://nezbig.vercel.app/.
 
-## Run Locally
+Застосунок допомагає перевіряти фрагменти й посилання. Він не встановлює авторство і не видає сертифікат оригінальності.
 
-```bash
-npm install
+## Документація
+
+- [Як читати звіт](docs/REPORT_GUIDE_UA.md): відсотки, джерела, помилки й обмеження.
+- [Архітектура](docs/ARCHITECTURE_UA.md): фактичний потік даних та алгоритми.
+- [Розгортання на Vercel](docs/VERCEL_UA.md): змінні, сховище, OAuth, перевірка запуску.
+- [Результати перегляду](docs/REVIEW_2026-10-16.md): виправлення, перевірки та відкриті обмеження.
+- [Аудит контекстних ознак](docs/ai-context-audit.md): джерела, стиль та хибні спрацьовування.
+
+## Локальний запуск
+
+Використовуйте актуальну версію Node.js, сумісну з установленими Vite та jsdom. Для гілки Vite 7 потрібен Node.js 20.19+ або 22.12+; див. [вимоги Vite](https://vite.dev/guide/).
+
+```powershell
+npm ci
+Copy-Item .env.example .env
 npm run dev
 ```
 
-Open `http://127.0.0.1:5173/`.
-
-The React client runs on port `5173`; the Express API runs on `8787`.
-
-## Supported Inputs
-
-- Pasted text
-- `.txt`, `.md`, `.csv`, `.json`, `.rtf`
-- `.docx`
-- `.pdf`
-
-Word formatting is retained for rich clipboard paste/copy. Humanized uploaded `.docx` files can be downloaded again as real OOXML documents while keeping the original package styles, tables, media, and layout metadata.
-
-## Notes
-
-The plagiarism check covers the whole document, searches multiple open-web providers, hydrates promising pages, and compares them with n-grams, winnowing fingerprints, longest runs, and a local full-text index. It does not claim to crawl or index the entire internet locally.
-
-AI detection is a transparent segment-based heuristic ensemble with a separate optional LLM opinion. Neither value is a definitive authorship verdict.
-
-`Match strength` is the strongest verified source match on a 0–100 scale. It is not the percentage of plagiarized words. `Verified verbatim coverage` separately unions exact matching word intervals across sources and overlapping chunks, divided by all words in the prepared document (after title/bibliography exclusions). It is a conservative lower bound; it does not measure paraphrases or undiscovered sources. Legacy reports without coverage display it as unavailable.
-
-Humanization uses automatic style replacement rules. Before/after scores come from the same local detector, may increase, and do not prove text quality or authorship. The calibration corpus is small and synthetic, suitable for regression checks rather than real-world accuracy claims.
-
-## Authentication and retention
-
-- Production requires a random `JWT_SECRET` of at least 32 characters. Missing, short and example secrets prevent startup. Development without a configured secret uses a process-local random secret, so sessions reset on restart.
-- Set `CLIENT_URL` to the public HTTPS frontend origin. Optional `AUTH_ALLOWED_ORIGINS` is a comma-separated list of additional exact HTTPS origins. OAuth uses only these return origins, a signed browser-bound state cookie, and the explicit `GOOGLE_REDIRECT_URI`; credentials are never returned in URLs.
-- Login uses HTTP-only cookies (`Secure` in production). Old URL-token login is no longer accepted. Use HTTPS for public deployments and a stable secret shared by application instances.
-- Account reports are private. UUID knowledge or a copied private URL does not grant access. Anonymous reports remain in bounded memory for up to 30 minutes; guest job polling also requires the submitting browser's cookie. Guest jobs are not durable across restarts or different instances; serverless scans return their results synchronously.
-- Signed-in scans and imported browser reports are stored in account history, including matching excerpts and up to 100,000 source characters. Files remain until deletion; Redis/KV report copies expire after 30 days. Set `NEZBIG_DATA_DIR` to a durable private directory/volume for local or Docker deployments. Account credentials require durable file storage or configured Redis; ephemeral serverless files alone cannot provide durable password accounts.
-- Deleting history deletes report payloads from files, process memory and configured remote stores, and clears account result caches. Completed account jobs store metadata rather than duplicated report content. Deletion errors are displayed so users can retry. Browser history is scoped by account; guest history is imported on login.
-- Imported browser reports receive fresh server IDs, preventing client IDs from overwriting or claiming another account's report. Existing account history remains owner-gated, including legacy records associated with that account.
-- Web search, optional Cohere reranking and optional AI opinion transmit document excerpts to external providers. Search-query caches can contain excerpts and have a separate lifetime from report history. See the in-app privacy policy for data handling details.
-
-After upgrading, configure production secrets/origins before restart and sign in again if previous development sessions used the old fallback secret. Historical shared links now require the owner's account.
-
-## Architecture
-
-The Ukrainian diploma-style architecture description is available in [`docs/ARCHITECTURE_UA.md`](docs/ARCHITECTURE_UA.md).
-
-## E2E Testing
-
-Playwright is configured to store browser binaries on drive `D:` to save space on `C:`. 
-To run tests locally, you must specify the `PLAYWRIGHT_BROWSERS_PATH` environment variable:
+Інтерфейс: `http://127.0.0.1:5173`; API: `http://127.0.0.1:8787`. У development секрет сесії без налаштування генерується для процесу; після перезапуску такі сесії припиняються. Для пошукових і LLM-провайдерів додайте власні ключі в `.env`. Значення секретів не повинні потрапляти в Git або змінні з префіксом `VITE_`.
 
 ```powershell
-$env:PLAYWRIGHT_BROWSERS_PATH="D:\playwright-browsers"; npx playwright test
+npm test
+npm run lint
+npm run build
+npm start
 ```
+
+`build` компілює сервер у `.vercel-server`, перевіряє TypeScript і створює клієнт у `dist`. `start` запускає зібраний Express-сервер. `npm run preview` показує лише статичну клієнтську збірку, без окремого API.
+
+## Можливості
+
+- Вставлення тексту та файли TXT, MD/Markdown, CSV, JSON, RTF, DOCX, PDF. PDF без текстового шару не проходить OCR: скановане зображення потрібно спершу розпізнати окремо.
+- Пошук по перекривних фрагментах із включенням кінця документа. Це покриття вхідного тексту пошуковими запитами, а не гарантія знаходження всіх інтернет-джерел.
+- Пошукові підказки відокремлені від прочитаних джерел. Перевірена сторінка замінює свій snippet навіть тоді, коли її бал нижчий.
+- Окремі показники: дослівне покриття тексту, сила найсильнішого збігу, локальний ШІ-індикатор, додаткова ШІ-думка.
+- Приватна історія облікового запису, імпорт/експорт звітів, PDF, PNG, JSON і робота з Google Drive.
+- Редактор стилю виконує заміни за правилами. Для DOCX підтримується перенесення змін у початковий OOXML-пакет зі збереженням доступного форматування. Зміст і верстку результату слід переглянути.
+
+## Чого не означають відсотки
+
+`matchedTextPercent` — об'єднання підтверджених точних збігів вікон із дев'яти слів, поділене на кількість слів підготовленого документа. Перетини враховуються один раз. Частина стандартних академічних формулювань виключається. Це консервативна нижня межа, яка не охоплює всі перефразування, переклади чи невідомі джерела.
+
+`plagiarismScore` — сила найсильнішого прийнятного збігу з прочитаним джерелом, 0–100. Це не частка плагіату в документі. Цитата з правильним посиланням також може бути точним збігом.
+
+`aiProbability` історично так названо в API, але це некалібрований евристичний бал, а не статистична ймовірність. Джерела, URL, формат файлу, проста пунктуація, безособовий стиль та стандартні формулювання мети дослідження не повинні слугувати доказом авторства. Після зміни правил старі звіти автоматично не перераховуються.
+
+## Дані й зовнішні сервіси
+
+Пошукові запити містять уривки документа. За ввімкнення додаткових сервісів уривки також надсилаються Cohere та провайдерам ШІ-думки. Локальний ШІ-аналіз не потребує LLM, але вебперевірка використовує зовнішні сервіси.
+
+Сесія застосунку зберігається в HTTP-only cookie; production вимагає HTTPS і випадкового `JWT_SECRET` довжиною щонайменше 32 символи. Звіти облікового запису доступні лише власнику. Знання UUID не надає доступу.
+
+Звіти містять уривки й до 100 000 символів вихідного тексту. Redis/KV-копії звітів мають строк 30 днів; файлові копії зберігаються до видалення. Для локального сервера потрібен постійний том `NEZBIG_DATA_DIR`. Для Vercel налаштуйте Redis: тимчасова файлова система не забезпечує сталу історію й парольні облікові записи. KV REST використовується окремо для розподіленого кешу; сам `REDIS_URL` не робить усі пошукові кеші розподіленими.
+
+Гостьові завдання й результати обмежені пам'яттю процесу та 30 хвилинами; вони не є надійним міжінстансним сховищем. На Vercel базова перевірка завершується всередині запиту. Локальна браузерна історія — окрема копія, її доступність залежить від браузера.
+
+## Перевірки якості
+
+`npm test` запускає Vitest/Testing Library та серверні регресії без реальних платних API-запитів. `npm run calibrate` показує результати на малому синтетичному корпусі з `tests/fixtures/ai-corpus`; це не незалежна оцінка точності й не калібрування ймовірності.
+
+Браузерні сценарії: `npx playwright test` після встановлення сумісних браузерів. Якщо браузери встановлено в іншому каталозі, задайте `PLAYWRIGHT_BROWSERS_PATH` відповідно до своєї системи. У цьому перегляді браузерні сценарії та візуальна перевірка не запускалися через політику доступу браузерного інструмента; DOM-тести не замінюють перегляд реального екрана.

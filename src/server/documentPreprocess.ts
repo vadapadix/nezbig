@@ -1,5 +1,5 @@
-import { countWords, normalizeWhitespace } from "./chunking.js";
-import { filterProseText } from "./proseFilter.js";
+import { countWords } from "./chunking.js";
+import { filterProseText, normalizeProseLayout } from "./proseFilter.js";
 
 export type PreparedDocument = {
   text: string;
@@ -32,15 +32,21 @@ export const BIBLIOGRAPHY_PATTERNS = [
   /(?<![\p{L}\p{N}_])(?:(?:розділ\s+\d+[\.:\s]+|\d+[\.\)]\s*)?(?:додатки|додаток\s+[а-яa-z0-9]|appendices|appendix\s+[a-z0-9]))(?!\p{L})\s*[:\.\n\r—–-]*/iu
 ];
 
-function findBibliographyStart(text: string): number {
+export function findBibliographyStart(text: string): number {
   // A bibliography is normally in the latter half of the document (> 35% of total text length)
   const minPos = Math.floor(text.length * 0.35);
-  for (const pattern of BIBLIOGRAPHY_PATTERNS) {
-    const slice = text.slice(minPos);
-    const match = pattern.exec(slice);
-    if (match && match.index !== undefined) {
-      return minPos + match.index;
-    }
+  // Appendices can contain authored prose; only bibliography headings qualify.
+  const pattern = new RegExp(BIBLIOGRAPHY_PATTERNS[0]!.source, "giu");
+  for (const match of text.matchAll(pattern)) {
+    const position = match.index;
+    if (position < minPos) continue;
+    const before = text.slice(text.lastIndexOf("\n", position - 1) + 1, position);
+    const after = text.slice(position + match[0].length);
+    const restOfHeadingLine = text.slice(position, text.indexOf("\n", position) < 0 ? text.length : text.indexOf("\n", position)).replace(new RegExp(BIBLIOGRAPHY_PATTERNS[0]!.source, "iu"), "");
+    const standaloneHeading = before.trim() === "" && restOfHeadingLine.trim() === "";
+    // Flattened PDF text needs numbered references and dates, not just a keyword.
+    const structuredTail = /^\s*\d{1,3}[.)]\s/u.test(after) && (after.match(/(?:^|\s)\d{1,3}[.)]\s+[\p{L}]/gu)?.length ?? 0) >= 2 && /\b(?:19|20)\d{2}\b/u.test(after);
+    if (standaloneHeading || structuredTail) return position;
   }
   return -1;
 }
@@ -75,7 +81,7 @@ export function prepareDocumentText(rawText: string): PreparedDocument {
 
   if (markerCount >= 2 && bodyStart > 30) {
     const skipped = text.slice(0, bodyStart);
-    const cleaned = normalizeWhitespace(text.slice(bodyStart));
+    const cleaned = normalizeProseLayout(text.slice(bodyStart));
 
     if (cleaned.length > 100 || countWords(cleaned) >= 20) {
       skippedTitleWords = countWords(skipped);
@@ -85,7 +91,7 @@ export function prepareDocumentText(rawText: string): PreparedDocument {
   }
 
   return {
-    text: normalizeWhitespace(text),
+    text: normalizeProseLayout(text),
     skippedTitleWords,
     skippedBibliographyWords,
     notes

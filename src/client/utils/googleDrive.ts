@@ -80,34 +80,34 @@ export async function loadGoogleGsiScript(): Promise<void> {
   });
 }
 
-const TOKEN_KEY = "nezbig_gdrive_token";
-const EXPIRES_KEY = "nezbig_gdrive_expires_at";
+let driveToken: { value: string; expiresAt: number } | null = null;
+
+export function clearDriveAccessToken(): void {
+  driveToken = null;
+  try {
+    localStorage.removeItem("nezbig_gdrive_token");
+    localStorage.removeItem("nezbig_gdrive_expires_at");
+  } catch { /* Storage can be disabled. */ }
+}
 
 export function getSavedDriveAccessToken(): string | null {
+  // Remove credentials persisted by older versions; never migrate them back.
   try {
-    const token = localStorage.getItem(TOKEN_KEY);
-    const expiresAt = Number(localStorage.getItem(EXPIRES_KEY) || "0");
-    if (token && Date.now() < expiresAt - 60000) {
-      return token;
-    }
-  } catch {
-    // ignore
-  }
-  return null;
+    localStorage.removeItem("nezbig_gdrive_token");
+    localStorage.removeItem("nezbig_gdrive_expires_at");
+  } catch { /* Storage can be disabled. */ }
+  if (!driveToken || Date.now() >= driveToken.expiresAt - 60000) { driveToken = null; return null; }
+  return driveToken.value;
 }
 
 export function saveDriveAccessToken(token: string, expiresInSeconds = 3500): void {
-  try {
-    localStorage.setItem(TOKEN_KEY, token);
-    localStorage.setItem(EXPIRES_KEY, String(Date.now() + expiresInSeconds * 1000));
-  } catch {
-    // ignore
-  }
+  clearDriveAccessToken();
+  driveToken = { value: token, expiresAt: Date.now() + expiresInSeconds * 1000 };
 }
 
 /**
  * Requests an OAuth access token with drive.file scope using Google Identity Services.
- * Reuses saved token from localStorage if valid. Uses prompt: "" to reuse granted consent silently.
+ * Reuses an in-memory token in the current page if valid. Uses prompt: "" to reuse granted consent silently.
  */
 export async function requestDriveAccessToken(): Promise<string> {
   const existing = getSavedDriveAccessToken();

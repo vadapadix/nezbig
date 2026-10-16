@@ -43,12 +43,12 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion, onBackT
   const partialSearch = succeeded > 0 && failed > 0;
   const coverageAvailable = !searchUnavailable && report.matchedTextPercent !== undefined;
   const percent = coverageAvailable ? new Intl.NumberFormat(lang === "uk" ? "uk-UA" : "en-US", { maximumFractionDigits: 1 }).format(report.matchedTextPercent!) : "—";
-  const sourceCount = new Set(confirmed.map(match => match.url.replace(/#.*$/, "").replace(/\/$/, ""))).size;
+  const sourceCount = report.verifiedSourcesTotal ?? new Set(confirmed.map(match => match.url.replace(/#.*$/, "").replace(/\/$/, ""))).size;
   const aiUnavailable = report.aiVerdict === "insufficient";
   const notes = (report.scanNotes ?? []).filter(note => note && !/^Вебіндекси:|^Web indexes:|^Перевірка сторінок:|^Page verification:/i.test(note));
   const tabs: Array<{ key: ReportTab; label: string; meta?: string }> = [
     { key: "sources", label: lang === "uk" ? "Джерела та збіги" : "Sources & matches", meta: formatNumber(report.matches.length, lang) },
-    { key: "ai", label: lang === "uk" ? "Аналіз ШІ" : "AI analysis" },
+    { key: "ai", label: lang === "uk" ? "Фрагменти з ознаками ШІ" : "AI signal excerpts" },
     { key: "technical", label: lang === "uk" ? "Методика й деталі" : "Method & details" }
   ];
 
@@ -116,12 +116,16 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion, onBackT
         </div>
       </div>
 
-      <div className="results-tabs" role="tablist" aria-label={lang === "uk" ? "Розділи звіту" : "Report sections"}>
+      <nav className="results-jump" aria-label={lang === "uk" ? "Швидкий перехід у звіті" : "Report shortcuts"}>
+        <a href={`#${tabId}-sources-section`} onClick={() => selectTab("sources")}>{lang === "uk" ? "Джерела та збіги ↓" : "Sources & matches ↓"}</a>
+        <a href={`#${tabId}-ai-explanation`}>{lang === "uk" ? "Розширений ШІ-аналіз ↓" : "Detailed AI analysis ↓"}</a>
+      </nav>
+      <div id={`${tabId}-sources-section`} className="results-tabs" role="tablist" aria-label={lang === "uk" ? "Розділи звіту" : "Report sections"}>
         {tabs.map((tab, index) => <button key={tab.key} type="button" role="tab" id={`${tabId}-${tab.key}`} aria-selected={activeTab === tab.key} aria-controls={`${tabId}-${tab.key}-panel`} tabIndex={activeTab === tab.key ? 0 : -1} onClick={() => selectTab(tab.key)} onKeyDown={event => handleTabKeys(event, index)}>{tab.label}{tab.meta && <span>{tab.meta}</span>}</button>)}
       </div>
 
       {tabs.map(tab => <div key={tab.key} id={`${tabId}-${tab.key}-panel`} role="tabpanel" aria-labelledby={`${tabId}-${tab.key}`} tabIndex={0} className="results-panel" hidden={activeTab !== tab.key}>
-        {activeTab === "sources" && tab.key === "sources" && <PlagiarismMatches matches={report.matches} confirmedMatchCount={confirmed.length} leadMatchCount={leads} allSearchProvidersFailed={searchUnavailable} />}
+        {activeTab === "sources" && tab.key === "sources" && <PlagiarismMatches key={report.id} matchesTotal={report.matchesTotal} matches={report.matches} confirmedMatchCount={confirmed.length} leadMatchCount={leads} allSearchProvidersFailed={searchUnavailable} />}
         {activeTab === "ai" && tab.key === "ai" && <div className="results-ai">
           {report.aiSuspiciousSegments.length ? <SuspiciousSegments segments={report.aiSuspiciousSegments} /> : <section className="results-section"><h2>{lang === "uk" ? "Підозрілих сегментів не виділено" : "No suspicious segments highlighted"}</h2><p className="results-caption">{lang === "uk" ? "Це не підтверджує людське авторство. Врахуйте надійність оцінки та обмеження аналізу." : "This does not establish human authorship. Consider assessment reliability and analysis limitations."}</p></section>}
         </div>}
@@ -139,7 +143,7 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion, onBackT
         </article>)}</div>
       </section> : null}
 
-      <AiAnalysisPanel report={report} />
+      <div id={`${tabId}-ai-explanation`} className="results-ai-anchor"><AiAnalysisPanel report={report} /></div>
 
       <p className="results-footnote">{lang === "uk" ? "Звіт допомагає перевірити текст і джерела. Остаточний висновок потребує перегляду людиною." : "This report supports reviewing text and sources. A final conclusion requires human review."}</p>
     </section>

@@ -1,3 +1,4 @@
+import { uniqueMatches } from "./reportMatches.js";
 import "dotenv/config";
 import crypto from "crypto";
 import helmet from "helmet";
@@ -95,7 +96,7 @@ async function submitScan(req, res, input, evidence) {
     const principal = scanPrincipal(req, res);
     const userId = req.user?.id;
     const settings = sanitizeSettings(input.settings);
-    const key = reportCacheKey(principal, { text: input.text, fileName: input.fileName || "Вставлений текст", settings, evidence: evidence ?? null, version: 4 });
+    const key = reportCacheKey(principal, { text: input.text, fileName: input.fileName || "Вставлений текст", settings, evidence: evidence ?? null, version: 5 });
     const candidate = reportCache.get(key);
     const cached = candidate && (!userId || await getOwnedReport(userId, candidate.id)) ? candidate : undefined;
     if (cached) {
@@ -218,16 +219,6 @@ async function mapWithConcurrency(items, concurrency, worker) {
     await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => runWorker()));
     return results;
 }
-function uniqueMatches(matches) {
-    const bestByUrl = new Map();
-    for (const match of matches) {
-        const key = `${match.url.replace(/#.*$/, "").replace(/\/$/, "")}:${match.chunkIndex}`;
-        const current = bestByUrl.get(key);
-        if (!current || match.score > current.score)
-            bestByUrl.set(key, match);
-    }
-    return [...bestByUrl.values()];
-}
 async function runScan(request, fileEvidence, onProgress) {
     const prepared = prepareDocumentText(request.text);
     const text = prepared.text;
@@ -287,7 +278,7 @@ async function runScan(request, fileEvidence, onProgress) {
     const allMatches = [...preliminaryMatches.map(({ match }) => match), ...hydratedMatches];
     const validMatches = uniqueMatches(allMatches)
         .filter((match) => isValidPlagiarismMatch(match, settings))
-        .sort((a, b) => b.score - a.score || b.longestRun - a.longestRun);
+        .sort((a, b) => Number(b.confidence === "page") - Number(a.confidence === "page") || b.score - a.score || b.longestRun - a.longestRun);
     const coverage = documentMatchCoverage(validMatches, wordCount);
     const matches = validMatches.slice(0, 24);
     const plagiarismScore = calculateConfirmedPlagiarismScore(matches);
@@ -325,6 +316,8 @@ async function runScan(request, fileEvidence, onProgress) {
         skippedBibliographyWords: prepared.skippedBibliographyWords,
         fileEvidence,
         matches,
+        matchesTotal: validMatches.length,
+        verifiedSourcesTotal: new Set(validMatches.filter(match => match.confidence === "page").map(match => match.url.replace(/#.*$/, "").replace(/\/$/, ""))).size,
         aiSignals: localAi.signals,
         summary: summarizeReport(plagiarismScore, localAi.probability, matches, searchDiagnostics, localAi.verdict),
         sourceText: request.text.slice(0, 100000)

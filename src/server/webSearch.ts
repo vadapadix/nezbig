@@ -329,7 +329,7 @@ async function searchCrossref(query: string, maxResults: number): Promise<Search
       }
     });
 
-    if (!response.ok) return [];
+    if (!response.ok) throw new SearchProviderError(response.status === 429 ? "quota" : response.status === 401 || response.status === 403 ? "access" : "unavailable");
 
     const data = (await response.json()) as any;
     const items = data.message?.items ?? [];
@@ -364,8 +364,8 @@ async function searchCrossref(query: string, maxResults: number): Promise<Search
 
     await searchCache.set(key, results);
     return results;
-  } catch {
-    return [];
+  } catch (error) {
+    throw new SearchProviderError(isTimeoutError(error) ? "timeout" : error instanceof SearchProviderError ? error.code : "unavailable");
   }
 }
 
@@ -407,7 +407,7 @@ async function searchOpenAlex(query: string, maxResults: number): Promise<Search
       }
     });
 
-    if (!response.ok) return [];
+    if (!response.ok) throw new SearchProviderError(response.status === 429 ? "quota" : response.status === 401 || response.status === 403 ? "access" : "unavailable");
 
     const payload = (await response.json()) as {
       results?: Array<{
@@ -452,8 +452,8 @@ async function searchOpenAlex(query: string, maxResults: number): Promise<Search
 
     await searchCache.set(key, results);
     return results;
-  } catch {
-    return [];
+  } catch (error) {
+    throw new SearchProviderError(isTimeoutError(error) ? "timeout" : error instanceof SearchProviderError ? error.code : "unavailable");
   }
 }
 
@@ -497,7 +497,7 @@ async function searchWikipedia(query: string, maxResults: number): Promise<Searc
       }
     });
 
-    if (!response.ok) return [];
+    if (!response.ok) throw new SearchProviderError(response.status === 429 ? "quota" : response.status === 401 || response.status === 403 ? "access" : "unavailable");
 
     const payload = (await response.json()) as { query?: { search?: Array<{ title?: string; snippet?: string; pageid?: number }> } };
 
@@ -517,8 +517,8 @@ async function searchWikipedia(query: string, maxResults: number): Promise<Searc
 
     await searchCache.set(key, results);
     return results;
-  } catch {
-    return [];
+  } catch (error) {
+    throw new SearchProviderError(isTimeoutError(error) ? "timeout" : error instanceof SearchProviderError ? error.code : "unavailable");
   }
 }
 
@@ -547,7 +547,7 @@ async function searchSemanticScholar(query: string, maxResults: number): Promise
       }
     });
 
-    if (!response.ok) return [];
+    if (!response.ok) throw new SearchProviderError(response.status === 429 ? "quota" : response.status === 401 || response.status === 403 ? "access" : "unavailable");
 
     const payload = (await response.json()) as {
       data?: Array<{
@@ -583,8 +583,8 @@ async function searchSemanticScholar(query: string, maxResults: number): Promise
 
     await searchCache.set(key, results);
     return results;
-  } catch {
-    return [];
+  } catch (error) {
+    throw new SearchProviderError(isTimeoutError(error) ? "timeout" : error instanceof SearchProviderError ? error.code : "unavailable");
   }
 }
 

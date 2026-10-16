@@ -28,26 +28,14 @@ export function ExportToolbar({ report, onMessage }: ExportToolbarProps) {
     </svg>
   );
 
-  const handlePdfClick = () => {
-    setExportingType("pdf");
-    setTimeout(() => {
-      try {
-        downloadReportPdf(report, lang);
-      } finally {
-        setExportingType(null);
-      }
-    }, 20);
-  };
-
-  const handlePngClick = () => {
-    setExportingType("png");
-    setTimeout(() => {
-      try {
-        downloadReportPng(report, lang);
-      } finally {
-        setExportingType(null);
-      }
-    }, 20);
+  const handleFileClick = async (type: "pdf" | "png") => {
+    setExportingType(type);
+    try {
+      if (type === "pdf") await downloadReportPdf(report, lang);
+      else await downloadReportPng(report, lang);
+    } catch {
+      onMessage?.(lang === "uk" ? "Не вдалося створити звіт. Повторіть завантаження." : "Could not create the report. Retry the download.", "error");
+    } finally { setExportingType(null); }
   };
 
   const handleJsonClick = () => {
@@ -91,10 +79,10 @@ export function ExportToolbar({ report, onMessage }: ExportToolbarProps) {
     }
   };
 
-  const btnClass = "px-3 py-2 rounded-xl border border-white/10 hover:border-emerald-glow/40 bg-surface-container/60 hover:bg-surface-bright text-xs font-semibold text-white/90 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed";
+  const btnClass = "px-3 py-2 rounded-xl border border-white/10 hover:border-emerald-glow/40 bg-surface-container/60 hover:bg-surface-bright text-xs font-semibold text-white/90 hover:text-white transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed";
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2" aria-busy={exportingType !== null}>
       {/* Save to Google Drive */}
       <button
         className={btnClass}
@@ -126,11 +114,11 @@ export function ExportToolbar({ report, onMessage }: ExportToolbarProps) {
         className={btnClass}
         type="button"
         disabled={exportingType !== null}
-        onClick={handlePdfClick}
+        onClick={() => void handleFileClick("pdf")}
         title={lang === "uk" ? "Завантажити PDF-звіт" : "Download PDF Report"}
       >
         {downloadIcon}
-        <span>{exportingType === "pdf" ? "PDF..." : "PDF"}</span>
+        <span>{exportingType === "pdf" ? "PDF…" : "PDF"}</span>
       </button>
 
       {/* PNG */}
@@ -138,11 +126,11 @@ export function ExportToolbar({ report, onMessage }: ExportToolbarProps) {
         className={btnClass}
         type="button"
         disabled={exportingType !== null}
-        onClick={handlePngClick}
+        onClick={() => void handleFileClick("png")}
         title={lang === "uk" ? "Завантажити зображення звіту" : "Download PNG Image"}
       >
         {downloadIcon}
-        <span>{exportingType === "png" ? "PNG..." : "PNG"}</span>
+        <span>{exportingType === "png" ? "PNG…" : "PNG"}</span>
       </button>
 
       {/* JSON */}

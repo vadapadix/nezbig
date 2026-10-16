@@ -442,7 +442,7 @@ export default function Home({ showToast }: { showToast: (msg: string, type?: "s
                   <input type="radio" name="check_mode" className="mt-1" checked={settings.sensitivity === "balanced"} onChange={() => setSettings(s => ({...s, sensitivity: "balanced"}))} />
                   <div className="flex flex-col">
                     <span className="font-body-md text-body-md text-white font-medium">{lang === "uk" ? "Глибоко" : "Deep Analysis"}</span>
-                    <span className="font-label-sm text-label-sm text-on-surface-variant mt-1">{lang === "uk" ? "Детальний аналіз, вища точність" : "Full coverage with academic indexing"}</span>
+                    <span className="font-label-sm text-label-sm text-on-surface-variant mt-1">{lang === "uk" ? "Більше пошукових запитів і академічних джерел" : "Full coverage with academic indexing"}</span>
                   </div>
                 </label>
                 <label className="mode-card flex items-start gap-4 p-4 rounded-lg bg-surface-container-high/60 hover:bg-surface-bright/80 backdrop-blur-sm transition-colors cursor-pointer border border-transparent hover:border-white/20 has-[:checked]:border-emerald-glow/50 has-[:checked]:bg-emerald-glow/20">
