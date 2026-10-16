@@ -19,17 +19,6 @@ const HEAD_CHARS = 2800;
 const TAIL_CHARS = 1400;
 const MAX_SUSPICIOUS_EXCERPTS = 3;
 
-type AuthorshipJson = {
-  probability?: unknown;
-  verdict?: unknown;
-  signals?: Array<{
-    label?: unknown;
-    score?: unknown;
-    detail?: unknown;
-    evidence?: unknown;
-  }>;
-};
-
 export const JSON_SHAPE_PROMPT = `Return JSON with this exact shape:
 {
   "probability": 0-100,

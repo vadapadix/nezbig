@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { jwtSecret, cookieOptions } from "./security.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import type { Request, Response, NextFunction } from "express";
@@ -32,7 +33,7 @@ declare global {
 }
 
 // ---------- Config ----------
-const JWT_SECRET = process.env.JWT_SECRET || "nezbig-dev-secret-change-me-in-prod";
+const JWT_SECRET = jwtSecret;
 const JWT_EXPIRES = "30d";
 const COOKIE_NAME = "nezbig_token";
 const SALT_ROUNDS = 10;
@@ -48,6 +49,7 @@ const memoryGoogleIndex = new Map<string, string>(); // googleId -> userId
 
 function getUserStorageDir(): string {
   const candidateDirs = [
+    ...(process.env.NEZBIG_DATA_DIR ? [path.resolve(process.env.NEZBIG_DATA_DIR, "users")] : []),
     path.resolve(process.cwd(), ".nezbig-data", "users"),
     path.resolve(os.tmpdir(), "nezbig-data", "users")
   ];
@@ -293,12 +295,14 @@ export function generateToken(user: User): string {
     name: user.name,
     avatarUrl: user.avatarUrl,
   };
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES });
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES, audience: "nezbig-auth", algorithm: "HS256" });
 }
 
 export function verifyToken(token: string): AuthPayload | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as AuthPayload;
+    const payload = jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"], audience: "nezbig-auth" });
+    if (typeof payload === "string" || typeof payload.id !== "string" || !/^[a-zA-Z0-9_-]{1,128}$/.test(payload.id) || typeof payload.email !== "string" || typeof payload.name !== "string") return null;
+    return payload as AuthPayload;
   } catch {
     return null;
   }
@@ -307,18 +311,15 @@ export function verifyToken(token: string): AuthPayload | null {
 // ---------- Cookie helpers ----------
 
 export function setAuthCookie(res: Response, token: string): void {
-  const isHttps = process.env.NODE_ENV === "production" && process.env.VERCEL === "1";
   res.cookie(COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: isHttps,
-    sameSite: "lax",
+    ...cookieOptions(),
     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     path: "/",
   });
 }
 
 export function clearAuthCookie(res: Response): void {
-  res.clearCookie(COOKIE_NAME, { path: "/" });
+  res.clearCookie(COOKIE_NAME, cookieOptions());
 }
 
 // ---------- Middleware ----------

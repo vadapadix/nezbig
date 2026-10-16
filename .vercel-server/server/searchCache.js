@@ -13,23 +13,36 @@ export class MemoryTtlCache {
     has(key) {
         return this.getLiveEntry(key) !== undefined;
     }
+    deleteMatching(predicate) {
+        for (const [key, entry] of this.entries) {
+            if (predicate(key, entry.value))
+                this.remove(key);
+        }
+    }
     set(key, value, customTtlMs) {
+        this.remove(key);
         if (this.entries.size >= this.maxEntries) {
             const firstKey = this.entries.keys().next().value;
             if (firstKey)
-                this.entries.delete(firstKey);
+                this.remove(firstKey);
         }
-        this.entries.set(key, {
-            expiresAt: Date.now() + (customTtlMs ?? this.ttlMs),
-            value
-        });
+        const ttl = customTtlMs ?? this.ttlMs;
+        const timer = setTimeout(() => this.remove(key), ttl);
+        timer.unref?.();
+        this.entries.set(key, { expiresAt: Date.now() + ttl, value, timer });
+    }
+    remove(key) {
+        const entry = this.entries.get(key);
+        if (entry?.timer)
+            clearTimeout(entry.timer);
+        this.entries.delete(key);
     }
     getLiveEntry(key) {
         const entry = this.entries.get(key);
         if (!entry)
             return undefined;
         if (entry.expiresAt < Date.now()) {
-            this.entries.delete(key);
+            this.remove(key);
             return undefined;
         }
         return entry;

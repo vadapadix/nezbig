@@ -40,7 +40,7 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
-    setupFiles: ["src/client/testSetup.ts"],
+    setupFiles: ["src/client/testSetup.ts", "src/server/testStorageSetup.ts"],
     exclude: ["node_modules", "tests/**"]
   }
 });

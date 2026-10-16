@@ -2,6 +2,7 @@ export type TextChunk = {
   index: number;
   text: string;
   wordCount: number;
+  startWord: number;
 };
 
 const WORD_PATTERN = /\S+/g;
@@ -28,7 +29,8 @@ export function chunkText(text: string, chunkWords: number, overlapWords: number
     chunks.push({
       index: chunks.length,
       text: slice.join(" "),
-      wordCount: slice.length
+      wordCount: slice.length,
+      startWord: start
     });
     if (start + safeChunkWords >= words.length) break;
   }

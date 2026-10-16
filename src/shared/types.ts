@@ -98,6 +98,7 @@ export type PlagiarismMatch = SearchCandidate & {
   excerpt: string;
   submittedEvidence?: string;
   sourceEvidence?: string;
+  matchedWordRanges?: Array<{ start: number; end: number }>;
 };
 
 export type AiSignal = {
@@ -158,6 +159,8 @@ export type ScanReport = {
   wordCount: number;
   chunksChecked: number;
   plagiarismScore: number;
+  matchedWords?: number;
+  matchedTextPercent?: number;
   aiProbability: number;
   aiVerdict: AiVerdict;
   aiReliability: AiReliability;

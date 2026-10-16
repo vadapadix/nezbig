@@ -1,3 +1,4 @@
+import { localHistoryKey } from "../utils/localHistory";
 import { useMemo, useState, useRef, useEffect, useCallback, Suspense, lazy } from "react";
 import { useSearchParams, useLocation } from "react-router-dom";
 import { useScan } from "../hooks/useScan";
@@ -110,7 +111,7 @@ export default function Home({ showToast }: { showToast: (msg: string, type?: "s
   useEffect(() => {
     if (!report) return;
     try {
-      const stored = JSON.parse(localStorage.getItem("nezbig_local_history") || "[]");
+      const stored = JSON.parse(localStorage.getItem(localHistoryKey()) || "[]");
       const filtered = stored.filter((item: any) => item.id !== report.id);
       filtered.unshift({
         id: report.id,
@@ -121,7 +122,7 @@ export default function Home({ showToast }: { showToast: (msg: string, type?: "s
         aiProbability: report.aiProbability,
         fullReport: report
       });
-      localStorage.setItem("nezbig_local_history", JSON.stringify(filtered.slice(0, 50)));
+      localStorage.setItem(localHistoryKey(), JSON.stringify(filtered.slice(0, 50)));
       window.dispatchEvent(new Event("nezbig_history_updated"));
       if (isLoggedIn) {
         void syncHistory();

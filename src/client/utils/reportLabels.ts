@@ -85,23 +85,9 @@ export function formatAiOpinionVerdict(report: ScanReport, lang: "uk" | "en" = "
     return report.aiOpinionNote.trim();
   }
 
-  const prob = report.aiOpinionProbability ?? 0;
-  if (prob < 18) {
-    return lang === "uk"
-      ? "Текст демонструє високу природність та автентичний авторський стиль: динамічний ритм, живу варіативність речень та багату лексику. Ознак штучної генерації не виявлено."
-      : "The text demonstrates high naturalness and authentic authorship: dynamic rhythm, varied sentence lengths, and rich vocabulary. No synthetic AI patterns detected.";
-  }
-  if (prob < 45) {
-    return lang === "uk"
-      ? "Текст здебільшого відповідає природному стилю написання, проте окремі фрагменти містять підвищену однорідність синтаксису чи стандартні академічні кліше. Загальний ризик використання ШІ низький."
-      : "The text mostly matches natural human writing, though certain segments display elevated syntactic uniformity or standard academic transitional phrases. Overall AI risk is low.";
-  }
-  if (prob < 70) {
-    return lang === "uk"
-      ? "Виявлено помітні ознаки комп'ютерної генерації або глибокого редагування ШІ: передбачувана структура абзаців, згладжений ритм речень, надмірне використання стандартних зв'язок та низька варіативність синтаксису."
-      : "Noticeable indicators of computer generation or extensive AI editing detected: predictable paragraph structure, smoothed sentence rhythm, excessive transitional clichés, and limited syntactic variance.";
-  }
+  const score = report.aiOpinionProbability;
+  if (score === undefined) return lang === "uk" ? "Немає відповіді моделі." : "No model response.";
   return lang === "uk"
-    ? "Висока ймовірність генерації штучним інтелектом: виявлено характерні структурні патерни мовних моделей — симетричну довжину речень, тріадні переліки, формульні конструкції переходів та відсутність живої авторської нерівномірності ритму."
-    : "High probability of AI generation: characteristic LLM structural patterns detected — symmetrical sentence lengths, triadic list groupings, formulaic transitional phrases, and absence of natural human rhythmic burstiness.";
+    ? `Модель надала індикатор ${score}/100. Це додаткова оцінка, яка може помилятися і не підтверджує авторство.`
+    : `The model returned an indicator of ${score}/100. This additional assessment can be wrong and does not establish authorship.`;
 }

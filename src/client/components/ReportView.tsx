@@ -7,7 +7,8 @@ import { PlagiarismMatches } from "./PlagiarismMatches";
 import { ProviderDiagnostics } from "./ProviderDiagnostics";
 import { SignalCard } from "./SignalCard";
 import { useLanguage } from "../context/LanguageContext";
-import { formatNumber, riskLabel, aiMetricCaption, reportSummaryText, uncertaintyBand, formatAiOpinionVerdict } from "../utils/reportLabels";
+import { useAuth } from "../hooks/useAuth";
+import { formatNumber, riskLabel, aiMetricCaption, reportSummaryText, formatAiOpinionVerdict } from "../utils/reportLabels";
 import { translateReportSummary, translateScanNote } from "../utils/reportI18n";
 
 interface ReportViewProps {
@@ -21,6 +22,7 @@ interface ReportViewProps {
 
 export function ReportView({ report, llmBusy, reportRef, onRetryOpinion, onBackToEditor, onMessage }: ReportViewProps) {
   const { lang, t } = useLanguage();
+  const { isLoggedIn } = useAuth();
   const [copiedLink, setCopiedLink] = useState(false);
   const [activeTab, setActiveTab] = useState<"sources" | "ai" | "technical">(
     report.plagiarismScore > 0 || report.matches.length > 0
@@ -53,7 +55,7 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion, onBackT
     (note) => !/^Вебіндекси:|^Web indexes:|^Перевірка сторінок:|^Page verification:/i.test(note)
   );
 
-  const isClean = report.plagiarismScore <= 15 && report.aiProbability <= 20;
+  const isClean = !allSearchProvidersFailed && searchSuccessCount > 0 && report.aiVerdict === "low" && report.aiReliability.level !== "low" && report.plagiarismScore <= 15 && report.aiProbability <= 20;
   const isHighRisk = report.plagiarismScore >= 35 || report.aiProbability >= 50;
   const opinionVerdict = formatAiOpinionVerdict(report, lang);
 
@@ -88,7 +90,7 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion, onBackT
           </div>
 
           <div className="flex items-center gap-2.5 shrink-0">
-            <button
+            {isLoggedIn && <button
               className={`px-4 py-2 rounded-xl border text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer ${
                 copiedLink
                   ? "bg-emerald-glow/20 border-emerald-glow text-emerald-glow shadow-sm"
@@ -96,7 +98,7 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion, onBackT
               }`}
               type="button"
               onClick={handleCopyLink}
-              title={copiedLink ? (lang === "uk" ? "Посилання скопійовано" : "Link copied") : (lang === "uk" ? "Копіювати посилання" : "Copy Link")}
+              title={lang === "uk" ? "Приватне посилання: доступне лише у вашому обліковому записі" : "Private link: accessible only in your account"}
             >
               {copiedLink ? (
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-glow shrink-0">
@@ -111,8 +113,8 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion, onBackT
                   <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
                 </svg>
               )}
-              <span>{copiedLink ? (lang === "uk" ? "Скопійовано!" : "Copied!") : (lang === "uk" ? "Поділитися" : "Share")}</span>
-            </button>
+              <span>{copiedLink ? (lang === "uk" ? "Скопійовано!" : "Copied!") : (lang === "uk" ? "Приватне посилання" : "Private link")}</span>
+            </button>}
             <ExportToolbar report={report} onMessage={onMessage} />
           </div>
         </div>
@@ -158,10 +160,10 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion, onBackT
           <div className="flex-1 min-w-0">
             <h3 className="text-body-lg font-bold text-white mb-1 leading-snug">
               {isClean
-                ? (lang === "uk" ? "Текст успішно пройшов перевірку" : "Document passed verification")
+                ? (lang === "uk" ? "Сильних сигналів запозичень або ШІ не знайдено" : "No strong matching or AI signals found")
                 : isHighRisk
                   ? (lang === "uk" ? "Виявлено суттєві запозичення або високий ризик ШІ" : "Significant matches or elevated AI risk detected")
-                  : (lang === "uk" ? "Текст містить окремі запозичення або помірні ознаки ШІ" : "Moderate matches or potential AI traces detected")}
+                  : (lang === "uk" ? "Перевірку завершено — перегляньте результати й обмеження" : "Analysis complete — review findings and limitations")}
             </h3>
             <p className="text-body-sm text-slate-300 m-0 leading-relaxed">
               {translateReportSummary(reportSummaryText(report, lang), lang)}
@@ -169,6 +171,12 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion, onBackT
           </div>
         </div>
 
+        <p className="text-body-sm text-slate-300 m-0">
+          {report.matchedTextPercent !== undefined
+            ? (lang === "uk" ? `Підтверджені дослівні збіги: ${report.matchedTextPercent}% (${report.matchedWords ?? 0} із ${report.wordCount} проаналізованих слів). Це мінімальне знайдене покриття, без оцінки перефразувань.` : `Verified verbatim coverage: ${report.matchedTextPercent}% (${report.matchedWords ?? 0} of ${report.wordCount} analyzed words). This is a detected lower bound and does not estimate paraphrases.`)
+            : (lang === "uk" ? "Для цього старого звіту частку дослівних збігів не обчислено." : "Verbatim coverage was not calculated for this legacy report.")}
+          {" "}{lang === "uk" ? "Бали ШІ є евристичними індикаторами, а не ймовірністю авторства чи статистичним довірчим інтервалом." : "AI scores are heuristic indicators, not authorship probabilities or statistical confidence intervals."}
+        </p>
         {/* 4 Executive Score Meters (.metrics) - Uniform & Clean */}
         <div className="metrics grid grid-cols-2 lg:grid-cols-4 gap-4 m-0">
           {/* 1. Plagiarism Score */}
@@ -182,7 +190,7 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion, onBackT
                 title={riskLabel(report.plagiarismScore, lang)}
               />
             </div>
-            <strong>{report.plagiarismScore}%</strong>
+            <strong>{allSearchProvidersFailed ? "—" : `${report.plagiarismScore}/100`}</strong>
             <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden my-2">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${
@@ -192,10 +200,10 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion, onBackT
               />
             </div>
             <small className="text-xs text-slate-300">
-              {riskLabel(report.plagiarismScore, lang)} {lang === "uk" ? "ризик" : "risk"} ·{" "}
+              {lang === "uk" ? "Найсильніший збіг" : "Strongest match"} ·{" "}
               {confirmedMatchCount > 0
                 ? `${confirmedMatchCount} ${lang === "uk" ? "підтвердж." : "verified"}`
-                : lang === "uk" ? "0 запозичень" : "0 matches"}
+                : lang === "uk" ? "0 підтверджених джерел" : "0 verified sources"}
             </small>
           </article>
 
@@ -215,9 +223,6 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion, onBackT
             ) : (
               <div className="flex items-baseline gap-1.5">
                 <strong>{report.aiProbability}%</strong>
-                <span className="uncertainty-band text-xs text-slate-400">
-                  ±{uncertaintyBand(report)} {lang === "uk" ? "п.п." : "pts"}
-                </span>
               </div>
             )}
             <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden my-2">
@@ -458,7 +463,7 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion, onBackT
                     {lang === "uk" ? "AI-думка від нейромережі" : "Independent AI Opinion"}
                   </h3>
                   <span className="text-xs text-slate-400">
-                    {lang === "uk" ? "Глибинний семантичний та стилометричний аналіз" : "Deep semantic & stylometric evaluation"}
+                    {lang === "uk" ? "Додаткова оцінка мовної моделі; можливі помилки" : "Additional language-model assessment; errors are possible"}
                   </span>
                 </div>
               </div>
@@ -608,12 +613,12 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion, onBackT
                   </div>
                   <div>
                     <strong className="block text-slate-100 font-semibold mb-1">
-                      {lang === "uk" ? "ШІ-аномалій не виявлено" : "No AI anomalies detected"}
+                      {lang === "uk" ? "Підозрілих сегментів не виділено" : "No suspicious segments highlighted"}
                     </strong>
                     <p className="text-body-sm text-slate-300 m-0 leading-relaxed">
                       {lang === "uk"
-                        ? "Стилометричні показники ритму, довжини речень та лексичної варіативності перебувають у межах природного авторського тексту."
-                        : "Stylometric indicators for sentence rhythm, length, and lexical diversity remain within natural human writing bounds."}
+                        ? "Це не підтверджує людське авторство. Врахуйте довжину тексту, підтримувану мову та надійність аналізу."
+                        : "This does not establish human authorship. Consider text length, language coverage and analysis reliability."}
                     </p>
                   </div>
                 </div>

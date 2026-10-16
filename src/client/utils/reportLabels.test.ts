@@ -67,11 +67,13 @@ describe("formatAiOpinionVerdict", () => {
     const verdict = formatAiOpinionVerdict(report, "uk");
     expect(verdict).not.toContain("fallback");
     expect(verdict).not.toContain("nvidia");
-    expect(verdict).toContain("природн");
+    expect(verdict).toContain("8/100");
+    expect(verdict).toContain("не підтверджує авторство");
   });
 
   it("returns appropriate verdict for high AI probability", () => {
     const report = baseReport({ aiOpinionProbability: 85 });
-    expect(formatAiOpinionVerdict(report, "uk")).toContain("генерації штучним інтелектом");
+    expect(formatAiOpinionVerdict(report, "uk")).toContain("85/100");
+    expect(formatAiOpinionVerdict(report, "uk")).not.toContain("Висока ймовірність генерації");
   });
 });

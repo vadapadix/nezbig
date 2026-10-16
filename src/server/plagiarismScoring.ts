@@ -1,4 +1,5 @@
 import { normalizeWhitespace } from "./chunking.js";
+import { verifiedWordRanges } from "./matchCoverage.js";
 import { FullTextIndex } from "./fullTextIndex.js";
 import type { PlagiarismMatch, SearchCandidate } from "../shared/types.js";
 import { tokenize, clampScore, stableHash, overlapRatio, buildNgrams } from "./utils/textUtils.js";
@@ -118,7 +119,7 @@ export function isAcademicBoilerplate(phrase: string): boolean {
   return BOILERPLATE_PATTERNS.some((pattern) => pattern.test(phrase));
 }
 
-export function scoreCandidate(chunkText: string, candidate: SearchCandidate, chunkIndex: number): PlagiarismMatch {
+export function scoreCandidate(chunkText: string, candidate: SearchCandidate, chunkIndex: number, chunkStartWord = 0): PlagiarismMatch {
   const sourceTokens = tokenize(chunkText);
   const sourceRunTokens = tokenize(chunkText, true);
   const candidateText = sourceForCandidate(candidate);
@@ -169,7 +170,8 @@ export function scoreCandidate(chunkText: string, candidate: SearchCandidate, ch
     hashOverlapPercent: clampScore(hashOverlap * 100),
     fullTextRank: clampScore(fullTextRank * 100),
     longestRun,
-    confidence: candidate.sourceText ? "page" : "snippet",
+    confidence: candidate.sourceText && candidateText === candidate.sourceText.trim() ? "page" : "snippet",
+    matchedWordRanges: candidate.sourceText && candidateText === candidate.sourceText.trim() ? verifiedWordRanges(chunkText, candidateText, chunkStartWord, isAcademicBoilerplate) : [],
     excerpt: normalizeWhitespace(chunkText).split(" ").slice(0, 48).join(" "),
     submittedEvidence: longestRun >= 7 && !isBoilerplate ? sourceRunTokens.slice(commonRun.sourceStart, commonRun.sourceStart + longestRun).join(" ") : undefined,
     sourceEvidence: longestRun >= 7 && !isBoilerplate && candidate.sourceText ? candidateRunTokens.slice(commonRun.candidateStart, commonRun.candidateStart + longestRun).join(" ") : undefined

@@ -57,7 +57,7 @@ export const translations = {
 
     // Report
     reportTitle: "Звіт Незбіг",
-    plagiarism: "Плагіат",
+    plagiarism: "Сила збігів",
     aiAnalysis: "ШІ-аналіз",
     aiOpinion: "AI-думка",
     fragments: "Фрагменти",
@@ -133,7 +133,7 @@ export const translations = {
 
     // Report
     reportTitle: "Nezbig Report",
-    plagiarism: "Plagiarism",
+    plagiarism: "Match strength",
     aiAnalysis: "AI Detection",
     aiOpinion: "AI Opinion",
     fragments: "Chunks",

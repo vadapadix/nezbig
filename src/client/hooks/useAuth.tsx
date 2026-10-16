@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, createContext, useContext, type ReactNode } from "react";
+import { localHistoryKey, GUEST_HISTORY_KEY } from "../utils/localHistory";
+import { useState, useEffect, useCallback, useRef, createContext, useContext, type ReactNode } from "react";
 
 export interface AuthUser {
   id: string;
@@ -23,16 +24,9 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 function getStoredUser(): AuthUser | null {
   try {
+    localHistoryKey();
     const raw = localStorage.getItem("nezbig_auth_user");
     return raw ? (JSON.parse(raw) as AuthUser) : null;
-  } catch {
-    return null;
-  }
-}
-
-function getStoredToken(): string | null {
-  try {
-    return localStorage.getItem("nezbig_auth_token");
   } catch {
     return null;
   }
@@ -41,26 +35,15 @@ function getStoredToken(): string | null {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(() => getStoredUser());
   const [loading, setLoading] = useState(true);
+  const syncInFlight = useRef(false);
 
   const getAuthHeaders = useCallback((): HeadersInit => {
-    const token = getStoredToken();
     const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
     return headers;
   }, []);
 
   const refresh = useCallback(async () => {
     try {
-      const token = getStoredToken();
-      if (!token) {
-        setUser(null);
-        localStorage.removeItem("nezbig_auth_user");
-        setLoading(false);
-        return;
-      }
-
       const headers = getAuthHeaders();
       const res = await fetch("/api/auth/me", {
         headers,
@@ -84,17 +67,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [getAuthHeaders]);
 
   const syncHistory = useCallback(async () => {
+    if (syncInFlight.current) return;
+    syncInFlight.current = true;
     try {
-      const raw = localStorage.getItem("nezbig_local_history");
-      const localItems: any[] = raw ? JSON.parse(raw) : [];
-      const authToken = localStorage.getItem("nezbig_auth_token");
-      if (!authToken) {
-        // Not authenticated: do not sync, preserve local history intact
-        return;
-      }
+      const storageKey = localHistoryKey();
+      const raw = localStorage.getItem(storageKey);
+      if (!localStorage.getItem("nezbig_auth_user")) return;
+      const accountItems = raw ? JSON.parse(raw) : [];
+      const guestItems = JSON.parse(localStorage.getItem(GUEST_HISTORY_KEY) || "[]");
+      const localItems: any[] = [...(Array.isArray(guestItems) ? guestItems : []), ...(Array.isArray(accountItems) ? accountItems : [])];
       const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${authToken}`
+        "Content-Type": "application/json"
       };
 
       if (Array.isArray(localItems) && localItems.length > 0) {
@@ -105,6 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           body: JSON.stringify({ items: localItems }),
         });
         if (res.ok) {
+          if (localHistoryKey() !== storageKey) return;
           const data = await res.json();
           if (data.items && Array.isArray(data.items)) {
             const reportMap = new Map<string, any>();
@@ -115,7 +99,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               ...it,
               fullReport: it.fullReport || reportMap.get(it.id) || undefined,
             }));
-            localStorage.setItem("nezbig_local_history", JSON.stringify(updatedLocal));
+            localStorage.setItem(localHistoryKey(), JSON.stringify(updatedLocal));
+            localStorage.removeItem(GUEST_HISTORY_KEY);
             window.dispatchEvent(new Event("nezbig_history_updated"));
             return;
           }
@@ -127,24 +112,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // ONLY if localItems is completely empty, fetch from account to populate local cache
       const fetchRes = await fetch("/api/history", { headers, credentials: "include" });
       if (fetchRes.ok) {
+        if (localHistoryKey() !== storageKey) return;
         const serverItems = await fetchRes.json();
         if (Array.isArray(serverItems) && serverItems.length > 0) {
-          localStorage.setItem("nezbig_local_history", JSON.stringify(serverItems));
+          localStorage.setItem(localHistoryKey(), JSON.stringify(serverItems));
           window.dispatchEvent(new Event("nezbig_history_updated"));
         }
       }
     } catch {
       // Never wipe or damage local history on network error
+    } finally {
+      syncInFlight.current = false;
     }
   }, []);
 
   // Check for auth_success/auth_error in URL (from Google OAuth redirect)
   useEffect(() => {
+    localStorage.removeItem("nezbig_auth_token");
     const params = new URLSearchParams(window.location.search);
-    if (params.has("token")) {
-      const token = params.get("token");
-      if (token) localStorage.setItem("nezbig_auth_token", token);
-    }
+    if (params.has("token")) window.history.replaceState({}, "", window.location.pathname);
     if (params.has("auth_success")) {
       void refresh().then(() => {
         void syncHistory();
@@ -160,8 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     void refresh().then(() => {
-      const token = localStorage.getItem("nezbig_auth_token");
-      if (token) void syncHistory();
+      void syncHistory();
     });
   }, [refresh, syncHistory]);
 
@@ -175,9 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       const data = await res.json();
       if (!res.ok) return { error: data.error || "Помилка при вході." };
-      if (data.token) {
-        localStorage.setItem("nezbig_auth_token", data.token);
-      }
+      localStorage.removeItem("nezbig_auth_token");
       if (data.user) {
         setUser(data.user);
         localStorage.setItem("nezbig_auth_user", JSON.stringify(data.user));
@@ -199,9 +182,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       const data = await res.json();
       if (!res.ok) return { error: data.error || "Помилка при реєстрації." };
-      if (data.token) {
-        localStorage.setItem("nezbig_auth_token", data.token);
-      }
+      localStorage.removeItem("nezbig_auth_token");
       if (data.user) {
         setUser(data.user);
         localStorage.setItem("nezbig_auth_user", JSON.stringify(data.user));

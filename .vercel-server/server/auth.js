@@ -1,9 +1,10 @@
 import crypto from "crypto";
+import { jwtSecret, cookieOptions } from "./security.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { redis } from "./db.js";
 // ---------- Config ----------
-const JWT_SECRET = process.env.JWT_SECRET || "nezbig-dev-secret-change-me-in-prod";
+const JWT_SECRET = jwtSecret;
 const JWT_EXPIRES = "30d";
 const COOKIE_NAME = "nezbig_token";
 const SALT_ROUNDS = 10;
@@ -16,6 +17,7 @@ const memoryEmailIndex = new Map(); // email -> userId
 const memoryGoogleIndex = new Map(); // googleId -> userId
 function getUserStorageDir() {
     const candidateDirs = [
+        ...(process.env.NEZBIG_DATA_DIR ? [path.resolve(process.env.NEZBIG_DATA_DIR, "users")] : []),
         path.resolve(process.cwd(), ".nezbig-data", "users"),
         path.resolve(os.tmpdir(), "nezbig-data", "users")
     ];
@@ -246,11 +248,14 @@ export function generateToken(user) {
         name: user.name,
         avatarUrl: user.avatarUrl,
     };
-    return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES });
+    return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES, audience: "nezbig-auth", algorithm: "HS256" });
 }
 export function verifyToken(token) {
     try {
-        return jwt.verify(token, JWT_SECRET);
+        const payload = jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"], audience: "nezbig-auth" });
+        if (typeof payload === "string" || typeof payload.id !== "string" || !/^[a-zA-Z0-9_-]{1,128}$/.test(payload.id) || typeof payload.email !== "string" || typeof payload.name !== "string")
+            return null;
+        return payload;
     }
     catch {
         return null;
@@ -258,17 +263,14 @@ export function verifyToken(token) {
 }
 // ---------- Cookie helpers ----------
 export function setAuthCookie(res, token) {
-    const isHttps = process.env.NODE_ENV === "production" && process.env.VERCEL === "1";
     res.cookie(COOKIE_NAME, token, {
-        httpOnly: true,
-        secure: isHttps,
-        sameSite: "lax",
+        ...cookieOptions(),
         maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
         path: "/",
     });
 }
 export function clearAuthCookie(res) {
-    res.clearCookie(COOKIE_NAME, { path: "/" });
+    res.clearCookie(COOKIE_NAME, cookieOptions());
 }
 // ---------- Middleware ----------
 export function authMiddleware(req, _res, next) {

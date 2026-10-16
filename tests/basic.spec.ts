@@ -57,6 +57,8 @@ test('full scan flow with mock API and return to editor', async ({ page }) => {
         wordCount: 120,
         chunksChecked: 1,
         plagiarismScore: 45,
+        matchedWords: 15,
+        matchedTextPercent: 12.5,
         aiProbability: 10,
         aiVerdict: 'low',
         aiReliability: { score: 90, level: 'high', reason: '', segmentCount: 1, segmentSpread: 0 },
@@ -99,7 +101,8 @@ test('full scan flow with mock API and return to editor', async ({ page }) => {
   await expect(reportSection).toBeVisible({ timeout: 10000 });
   
   const plagiarismScore = page.locator('.metrics article:first-child strong');
-  await expect(plagiarismScore).toHaveText('45%');
+  await expect(plagiarismScore).toHaveText('45/100');
+  await expect(reportSection).toContainText('12.5%');
 
   // Back to editor button
   const backBtn = page.getByRole('button', { name: /повернутись до редактора|back to editor/i }).first();
@@ -108,6 +111,27 @@ test('full scan flow with mock API and return to editor', async ({ page }) => {
 
   // Editor is visible again
   await expect(page.locator('[contenteditable]')).toBeVisible();
+});
+
+test('cookie login survives reload without a stored bearer token', async ({ page }) => {
+  await page.goto('/');
+  const email = `browser-${Date.now()}@example.com`;
+  const result = await page.evaluate(async ({ email }) => {
+    const response = await fetch('/api/auth/register', {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Cookie Browser User', email, password: 'password123' })
+    });
+    return { status: response.status, data: await response.json() };
+  }, { email });
+  expect(result.status).toBe(200);
+  expect(result.data.token).toBeUndefined();
+  await page.reload();
+  await expect(page.locator('nav').getByText('Cookie Browser User', { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem('nezbig_auth_token'))).toBeNull();
+  expect(await page.evaluate(() => document.cookie)).not.toContain('nezbig_token');
+  const sessionCookie = (await page.context().cookies()).find(cookie => cookie.name === 'nezbig_token');
+  expect(sessionCookie?.httpOnly).toBe(true);
+  expect(sessionCookie?.secure).toBe(true);
 });
 
 test('humanize page loads, selects modes, and accepts text', async ({ page }) => {

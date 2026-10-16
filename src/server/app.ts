@@ -2,22 +2,24 @@ import "dotenv/config";
 import crypto from "crypto";
 import helmet from "helmet";
 import cors from "cors";
-import express from "express";
+import express, { type Request, type Response } from "express";
 import cookieParser from "cookie-parser";
 import multer from "multer";
 import pino from "pino";
 import * as diff from "diff";
 import { rateLimit } from "express-rate-limit";
 import { ScanRequestSchema, ScanSettingsSchema, LlmOpinionRequestSchema, HumanizeRequestSchema } from "../shared/validation.js";
-import { saveReport, getReport } from "./db.js";
-import { scanJobCache, reportCache } from "./jobStore.js";
+import { saveReport, getReport, getOwnedReport, updateOwnedReport } from "./db.js";
+import { scanJobCache, reportCache, reportCacheKey } from "./jobStore.js";
+import { scanPrincipal, clientOrigins } from "./security.js";
+import { documentMatchCoverage } from "./matchCoverage.js";
 import { chunkText, countWords } from "./chunking.js";
 import { prepareDocumentText } from "./documentPreprocess.js";
 import { mergeRevisedTextIntoHtml } from "./formattedDocument.js";
 import { mergeRevisedTextIntoDocx } from "./formattedDocx.js";
 import { humanizeText } from "./humanizer.js";
 import { analyzeWithLlmProviders } from "./llmOpinion.js";
-import { emptySearchDiagnostics, mergeSearchDiagnostics, searchDiagnosticsNotes } from "./searchDiagnostics.js";
+import { emptySearchDiagnostics, mergeSearchDiagnostics } from "./searchDiagnostics.js";
 import { calculateConfirmedPlagiarismScore, scoreCandidate, detectAiSignals, summarizeReport, rerankCandidates } from "./scoring.js";
 import { isAcademicBoilerplate } from "./plagiarismScoring.js";
 import { decodeUploadFileName, extractTextFromUpload } from "./textExtraction.js";
@@ -29,13 +31,10 @@ import type { FileEvidence, LlmOpinion, PlagiarismMatch, ScanReport, ScanRequest
 
 export const app = express();
 
-async function persistLlmOpinion(reportId: string | undefined, opinion: LlmOpinion): Promise<void> {
-  if (!reportId) return;
+async function persistLlmOpinion(reportId: string | undefined, opinion: LlmOpinion, userId?: string): Promise<void> {
+  if (!reportId || !userId) return;
   try {
-    const stored = await getReport(reportId);
-    if (!stored) return;
-    await saveReport(reportId, {
-      ...stored,
+    await updateOwnedReport(userId, reportId, {
       aiOpinionProbability: opinion.aiProbability,
       aiOpinionModel: opinion.aiModel,
       aiOpinionNote: opinion.aiNote,
@@ -70,13 +69,14 @@ const logger = pino({ level: process.env.LOG_LEVEL || "info" });
 
 app.use(
   cors({
-    origin: process.env.CLIENT_URL ?? "http://localhost:5173",
-    methods: ["POST", "GET"],
+    origin: clientOrigins(),
+    methods: ["POST", "GET", "DELETE", "OPTIONS"],
     credentials: true,
   })
 );
 app.use(cookieParser());
 app.use(express.json({ limit: "10mb" }));
+app.use("/api", (_req, res, next) => { res.setHeader("Cache-Control", "no-store"); next(); });
 app.use(authMiddleware);
 
 // Auth and History routes
@@ -91,6 +91,64 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 50 * 1024 * 1024 }
 });
+
+async function saveAccountReport(report: ScanReport, userId?: string): Promise<void> {
+  if (!userId) return;
+  await saveReport(report.id, report, userId);
+  await saveUserReport(userId, report.id);
+}
+
+// Reuse computation only within one principal and with every input included in the key.
+// Each submission still gets its own report identity and current metadata.
+async function submitScan(req: Request, res: Response, input: ScanRequest, evidence?: FileEvidence): Promise<void> {
+  const principal = scanPrincipal(req, res);
+  const userId = req.user?.id;
+  const settings = sanitizeSettings(input.settings);
+  const key = reportCacheKey(principal, { text: input.text, fileName: input.fileName || "Вставлений текст", settings, evidence: evidence ?? null, version: 2 });
+  const candidate = reportCache.get(key);
+  const cached = candidate && (!userId || await getOwnedReport(userId, candidate.id)) ? candidate : undefined;
+  if (cached) {
+    const report = { ...cached, id: crypto.randomUUID(), checkedAt: new Date().toISOString() };
+    await saveAccountReport(report, userId);
+    res.json({ jobId: report.id, status: "completed", result: report });
+    return;
+  }
+  if (process.env.VERCEL === "1") {
+    const report = await runScan(input, evidence);
+    await saveAccountReport(report, userId);
+    reportCache.set(key, report);
+    res.json({ jobId: report.id, status: "completed", result: report });
+    return;
+  }
+  const jobId = crypto.randomUUID();
+  const createdAt = new Date().toISOString();
+  await scanJobCache.set(jobId, { id: jobId, principal, status: "pending", createdAt });
+  void (async () => {
+    try {
+      await scanJobCache.set(jobId, { id: jobId, principal, status: "processing", createdAt });
+      const report = await runScan(input, evidence, (checked, total) => {
+        void scanJobCache.set(jobId, { id: jobId, principal, status: "processing", progress: { chunksChecked: checked, totalChunks: total }, createdAt }).catch(error => logger.warn(error));
+      });
+      await saveAccountReport(report, userId);
+      reportCache.set(key, report);
+      await scanJobCache.set(jobId, { id: jobId, principal, status: "completed", result: report, createdAt });
+    } catch (error) {
+      logger.error(error);
+      await scanJobCache.set(jobId, { id: jobId, principal, status: "error", error: error instanceof Error ? error.message : "Помилка при перевірці", createdAt });
+    }
+  })().catch(error => logger.error(error));
+  res.json({ jobId });
+}
+
+async function canUpdateOpinion(req: Request, res: Response, reportId?: string): Promise<boolean> {
+  if (!reportId) return true;
+  const existing = await getReport(reportId);
+  // Unsaved guest/local reports can receive a response, but are never persisted by this endpoint.
+  if (!existing) return true;
+  if (req.user && await getOwnedReport(req.user.id, reportId)) return true;
+  res.status(404).json({ error: "Звіт не знайдено." });
+  return false;
+}
 
 const defaultSettings: ScanSettings = {
   maxChunks: 14,
@@ -228,7 +286,7 @@ async function runScan(request: ScanRequest, fileEvidence?: FileEvidence, onProg
         logger.warn({ err: rerankError }, "Semantic reranking failed; falling back to raw candidates");
       }
       return {
-        matches: candidates.map((candidate): ChunkMatch => ({ chunkText: chunk.text, match: scoreCandidate(chunk.text, candidate, chunk.index) })),
+        matches: candidates.map((candidate): ChunkMatch => ({ chunkText: chunk.text, match: scoreCandidate(chunk.text, candidate, chunk.index, chunk.startWord) })),
         diagnostics: search.diagnostics
       };
     } catch (error) {
@@ -253,13 +311,17 @@ async function runScan(request: ScanRequest, fileEvidence?: FileEvidence, onProg
     hydrationTargets.length
   );
   searchDiagnostics = mergeSearchDiagnostics(searchDiagnostics, hydration.diagnostics);
-  const hydratedMatches = hydration.candidates.map((candidate, index) => scoreCandidate(hydrationTargets[index]!.chunkText, candidate, hydrationTargets[index]!.match.chunkIndex));
+  const hydratedMatches = hydration.candidates.map((candidate, index) => {
+    const target = hydrationTargets[index]!;
+    return scoreCandidate(target.chunkText, candidate, target.match.chunkIndex, chunks[target.match.chunkIndex]!.startWord);
+  });
   const allMatches = [...preliminaryMatches.map(({ match }) => match), ...hydratedMatches];
 
-  const matches = uniqueMatches(allMatches)
+  const validMatches = uniqueMatches(allMatches)
     .filter((match) => isValidPlagiarismMatch(match, settings))
-    .sort((a, b) => b.score - a.score || b.longestRun - a.longestRun)
-    .slice(0, 24);
+    .sort((a, b) => b.score - a.score || b.longestRun - a.longestRun);
+  const coverage = documentMatchCoverage(validMatches, wordCount);
+  const matches = validMatches.slice(0, 24);
 
   const plagiarismScore = calculateConfirmedPlagiarismScore(matches);
   const localAi = detectAiSignals(text);
@@ -280,6 +342,8 @@ async function runScan(request: ScanRequest, fileEvidence?: FileEvidence, onProg
     wordCount,
     chunksChecked: chunks.length,
     plagiarismScore,
+    matchedWords: coverage.matchedWords,
+    matchedTextPercent: coverage.percent,
     aiProbability: localAi.probability,
     aiVerdict: localAi.verdict,
     aiReliability: localAi.reliability,
@@ -305,7 +369,7 @@ app.get("/api/health", (_request, response) => {
   response.json({ ok: true, app: "nezbig" });
 });
 
-app.post("/api/extract", upload.single("file"), async (request, response) => {
+app.post("/api/extract", fileLimiter, upload.single("file"), async (request, response) => {
   try {
     if (!request.file) {
       response.status(400).json({ error: "Додайте файл для обробки." });
@@ -331,10 +395,7 @@ app.post("/api/scan", scanLimiter, async (request, response) => {
   try {
     const parsed = ScanRequestSchema.parse(request.body);
     const report = await runScan(parsed as unknown as ScanRequest);
-    await saveReport(report.id, report);
-    if (request.user?.id) {
-      await saveUserReport(request.user.id, report.id);
-    }
+    await saveAccountReport(report, request.user?.id);
     response.json(report);
   } catch (error) {
     response.status(400).json({ error: error instanceof Error ? error.message : "Не вдалося виконати перевірку." });
@@ -344,50 +405,7 @@ app.post("/api/scan", scanLimiter, async (request, response) => {
 app.post("/api/scan/jobs", scanLimiter, async (request, response) => {
   try {
     const parsed = ScanRequestSchema.parse(request.body);
-    const settings = sanitizeSettings(parsed.settings);
-    const userId = request.user?.id;
-    
-    const textHash = crypto.createHash("sha256").update(parsed.text).digest("hex");
-    const reportKey = `${textHash}:${settings.sensitivity}`;
-    const cached = await reportCache.get(reportKey);
-    
-    if (cached) {
-      if (userId) await saveUserReport(userId, cached.id);
-      response.json({ jobId: cached.id, status: "completed", result: cached });
-      return;
-    }
-
-    const jobId = crypto.randomUUID();
-
-    if (process.env.VERCEL === "1") {
-      const report = await runScan(parsed as unknown as ScanRequest);
-      await saveReport(report.id, report);
-      if (userId) await saveUserReport(userId, report.id);
-      response.json({ jobId: jobId, status: "completed", result: report });
-      return;
-    }
-
-    await scanJobCache.set(jobId, { id: jobId, status: "pending", createdAt: new Date().toISOString() });
-
-    Promise.resolve().then(async () => {
-      try {
-        await scanJobCache.set(jobId, { id: jobId, status: "processing", createdAt: new Date().toISOString() });
-        const report = await runScan(parsed as unknown as ScanRequest, undefined, (checked, total) => {
-          scanJobCache.set(jobId, { id: jobId, status: "processing", progress: { chunksChecked: checked, totalChunks: total }, createdAt: new Date().toISOString() }).catch(() => {});
-        });
-        
-        await saveReport(report.id, report);
-        await reportCache.set(reportKey, report);
-        if (userId) await saveUserReport(userId, report.id);
-        
-        await scanJobCache.set(jobId, { id: jobId, status: "completed", result: report, createdAt: new Date().toISOString() }, 1000 * 60 * 30);
-      } catch (error) {
-        logger.error(error);
-        await scanJobCache.set(jobId, { id: jobId, status: "error", error: error instanceof Error ? error.message : "Помилка при перевірці", createdAt: new Date().toISOString() }, 1000 * 60 * 10);
-      }
-    });
-
-    response.json({ jobId });
+    await submitScan(request, response, parsed as ScanRequest);
   } catch (error) {
     response.status(400).json({ error: error instanceof Error ? error.message : "Не вдалося запустити перевірку." });
   }
@@ -396,7 +414,7 @@ app.post("/api/scan/jobs", scanLimiter, async (request, response) => {
 app.get("/api/scan-status/:jobId", async (request, response) => {
   try {
     const job = await scanJobCache.get(request.params.jobId);
-    if (!job) {
+    if (!job || job.principal !== scanPrincipal(request, response)) {
       response.status(404).json({ error: "Завдання не знайдено" });
       return;
     }
@@ -408,7 +426,11 @@ app.get("/api/scan-status/:jobId", async (request, response) => {
       return;
     }
     
-    response.json(job);
+    const result = job.reportId && request.user ? await getOwnedReport(request.user.id, job.reportId) : job.result;
+    if (job.status === "completed" && !result) { response.status(404).json({ error: "Звіт видалено або недоступний." }); return; }
+    const { principal: _principal, ...publicJob } = job;
+    response.setHeader("Cache-Control", "no-store");
+    response.json({ ...publicJob, result });
   } catch {
     response.status(500).json({ error: "Помилка сервера" });
   }
@@ -424,7 +446,9 @@ app.post("/api/scan-file", fileLimiter, upload.single("file"), async (request, r
     const extracted = await extractTextFromUpload(request.file);
     const rawSettings = typeof request.body.settings === "string" ? JSON.parse(request.body.settings) : request.body.settings;
     const settings = ScanSettingsSchema.parse(rawSettings);
-    response.json(await runScan({ text: extracted.text, fileName: extracted.fileName, settings: settings as ScanSettings }, extracted.fileEvidence));
+    const report = await runScan({ text: extracted.text, fileName: extracted.fileName, settings: settings as ScanSettings }, extracted.fileEvidence);
+    await saveAccountReport(report, request.user?.id);
+    response.json(report);
   } catch (error) {
     response.status(400).json({ error: error instanceof Error ? error.message : "Не вдалося виконати файлову перевірку." });
   }
@@ -432,57 +456,11 @@ app.post("/api/scan-file", fileLimiter, upload.single("file"), async (request, r
 
 app.post("/api/scan-file/jobs", fileLimiter, upload.single("file"), async (request, response) => {
   try {
-    if (!request.file) {
-      response.status(400).json({ error: "Додайте файл для перевірки." });
-      return;
-    }
+    if (!request.file) { response.status(400).json({ error: "Додайте файл для перевірки." }); return; }
     const extracted = await extractTextFromUpload(request.file);
     const rawSettings = typeof request.body.settings === "string" ? JSON.parse(request.body.settings) : request.body.settings;
-    const settings = ScanSettingsSchema.parse(rawSettings) as ScanSettings;
-    const parsed = { text: extracted.text, fileName: extracted.fileName, settings };
-    const userId = request.user?.id;
-
-    const textHash = crypto.createHash("sha256").update(parsed.text).digest("hex");
-    const reportKey = `${textHash}:${settings.sensitivity}`;
-    const cached = await reportCache.get(reportKey);
-    
-    if (cached) {
-      if (userId) await saveUserReport(userId, cached.id);
-      response.json({ jobId: cached.id, status: "completed", result: cached });
-      return;
-    }
-
-    const jobId = crypto.randomUUID();
-
-    if (process.env.VERCEL === "1") {
-      const report = await runScan(parsed, extracted.fileEvidence);
-      await saveReport(report.id, report);
-      if (userId) await saveUserReport(userId, report.id);
-      response.json({ jobId: jobId, status: "completed", result: report });
-      return;
-    }
-
-    await scanJobCache.set(jobId, { id: jobId, status: "pending", createdAt: new Date().toISOString() });
-
-    Promise.resolve().then(async () => {
-      try {
-        await scanJobCache.set(jobId, { id: jobId, status: "processing", createdAt: new Date().toISOString() });
-        const report = await runScan(parsed, extracted.fileEvidence, (checked, total) => {
-          scanJobCache.set(jobId, { id: jobId, status: "processing", progress: { chunksChecked: checked, totalChunks: total }, createdAt: new Date().toISOString() }).catch(() => {});
-        });
-        
-        await saveReport(report.id, report);
-        await reportCache.set(reportKey, report);
-        if (userId) await saveUserReport(userId, report.id);
-        
-        await scanJobCache.set(jobId, { id: jobId, status: "completed", result: report, createdAt: new Date().toISOString() }, 1000 * 60 * 30);
-      } catch (error) {
-        logger.error(error);
-        await scanJobCache.set(jobId, { id: jobId, status: "error", error: error instanceof Error ? error.message : "Помилка при перевірці", createdAt: new Date().toISOString() }, 1000 * 60 * 10);
-      }
-    });
-
-    response.json({ jobId });
+    const settings = sanitizeSettings(ScanSettingsSchema.parse(rawSettings));
+    await submitScan(request, response, { text: extracted.text, fileName: extracted.fileName, settings }, extracted.fileEvidence);
   } catch (error) {
     response.status(400).json({ error: error instanceof Error ? error.message : "Не вдалося запустити файлову перевірку." });
   }
@@ -491,6 +469,7 @@ app.post("/api/scan-file/jobs", fileLimiter, upload.single("file"), async (reque
 app.post("/api/ai-opinion", scanLimiter, async (request, response) => {
   try {
     const body = LlmOpinionRequestSchema.parse(request.body);
+    if (!await canUpdateOpinion(request, response, body.reportId)) return;
     const text = prepareDocumentText(body.text).text;
     const wordCount = countWords(text);
     if (wordCount < 25) {
@@ -509,7 +488,7 @@ app.post("/api/ai-opinion", scanLimiter, async (request, response) => {
       return;
     }
 
-    await persistLlmOpinion(body.reportId, opinion);
+    await persistLlmOpinion(body.reportId, opinion, request.user?.id);
     response.json(opinion);
   } catch (error) {
     response.status(502).json({ error: error instanceof Error ? error.message : "AI-думка недоступна." });
@@ -534,6 +513,7 @@ app.post("/api/ai-opinion-file", fileLimiter, upload.single("file"), async (requ
     const localSignals = typeof request.body.localSignals === "string" ? JSON.parse(request.body.localSignals) : [];
     const rawExcerpts = typeof request.body.suspiciousExcerpts === "string" ? JSON.parse(request.body.suspiciousExcerpts) : [];
     const reportId = typeof request.body.reportId === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(request.body.reportId) ? request.body.reportId : undefined;
+    if (!await canUpdateOpinion(request, response, reportId)) return;
     const opinion = await analyzeWithLlmProviders(text, {
       probability: Number(request.body.localProbability) || 0,
       signals: Array.isArray(localSignals) ? localSignals : [],
@@ -545,7 +525,7 @@ app.post("/api/ai-opinion-file", fileLimiter, upload.single("file"), async (requ
       return;
     }
 
-    await persistLlmOpinion(reportId, opinion);
+    await persistLlmOpinion(reportId, opinion, request.user?.id);
     response.json(opinion);
   } catch (error) {
     response.status(502).json({ error: error instanceof Error ? error.message : "AI-думка для файлу недоступна." });

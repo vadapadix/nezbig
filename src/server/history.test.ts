@@ -90,9 +90,10 @@ describe("Multi-Tier History Storage (db.ts)", () => {
     ];
 
     const synced = await syncUserReports(testUserId, clientItems);
-    expect(synced.some((s) => s.id === "client-rep-1")).toBe(true);
+    const imported = synced.find(s => s.fileName === "synced.docx")!;
+    expect(imported.id).not.toBe("client-rep-1");
 
-    const fullReport = await getReport("client-rep-1");
+    const fullReport = await getReport(imported.id);
     expect(fullReport).not.toBeNull();
     expect(fullReport?.fileName).toBe("synced.docx");
   });
@@ -141,20 +142,22 @@ describe("History REST API Endpoints (/api/history)", () => {
       .set("Authorization", `Bearer ${token}`);
 
     expect(listRes.status).toBe(200);
-    expect(listRes.body.some((item: any) => item.id === "api-sync-rep-1")).toBe(true);
+    const importedId = syncRes.body.items.find((item: any) => item.fileName === "thesis.docx").id;
+    expect(importedId).not.toBe("api-sync-rep-1");
+    expect(listRes.body.some((item: any) => item.id === importedId)).toBe(true);
 
     // 3. GET /api/history/:id
     const reportRes = await request(app)
-      .get("/api/history/api-sync-rep-1")
+      .get(`/api/history/${importedId}`)
       .set("Authorization", `Bearer ${token}`);
 
     expect(reportRes.status).toBe(200);
-    expect(reportRes.body.id).toBe("api-sync-rep-1");
+    expect(reportRes.body.id).toBe(importedId);
     expect(reportRes.body.fileName).toBe("thesis.docx");
 
     // 4. DELETE /api/history/:id
     const deleteRes = await request(app)
-      .delete("/api/history/api-sync-rep-1")
+      .delete(`/api/history/${importedId}`)
       .set("Authorization", `Bearer ${token}`);
 
     expect(deleteRes.status).toBe(200);
@@ -164,7 +167,8 @@ describe("History REST API Endpoints (/api/history)", () => {
       .get("/api/history")
       .set("Authorization", `Bearer ${token}`);
 
-    expect(afterDeleteRes.body.some((item: any) => item.id === "api-sync-rep-1")).toBe(false);
+    expect(afterDeleteRes.body.some((item: any) => item.id === importedId)).toBe(false);
+    expect(await getReport(importedId)).toBeNull();
 
     // 5. DELETE /api/history (Clear all)
     const clearRes = await request(app)

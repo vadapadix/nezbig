@@ -18,7 +18,8 @@ export function chunkText(text, chunkWords, overlapWords, maxChunks = Number.POS
         chunks.push({
             index: chunks.length,
             text: slice.join(" "),
-            wordCount: slice.length
+            wordCount: slice.length,
+            startWord: start
         });
         if (start + safeChunkWords >= words.length)
             break;

@@ -2,7 +2,7 @@ import { Router } from "express";
 import type { Request, Response } from "express";
 import {
   getUserReports,
-  getReport,
+  getOwnedReport,
   deleteUserReport,
   clearUserHistory,
   syncUserReports,
@@ -28,6 +28,7 @@ router.get("/", async (req: Request, res: Response) => {
 // ─── GET /api/history/:id: Get full report by ID ─────────────
 router.get("/:id", async (req: Request, res: Response) => {
   try {
+    if (!req.user) { res.status(401).json({ error: "Необхідна авторизація." }); return; }
     const rawId = req.params.id;
     const reportId = Array.isArray(rawId) ? rawId[0] : rawId;
     if (!reportId) {
@@ -35,7 +36,7 @@ router.get("/:id", async (req: Request, res: Response) => {
       return;
     }
 
-    const report = await getReport(reportId);
+    const report = await getOwnedReport(req.user.id, reportId);
     if (!report) {
       res.status(404).json({ error: "Звіт не знайдено." });
       return;

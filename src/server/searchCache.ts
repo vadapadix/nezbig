@@ -3,6 +3,7 @@ import { kv } from "@vercel/kv";
 type CacheEntry<T> = {
   expiresAt: number;
   value: T;
+  timer?: ReturnType<typeof setTimeout>;
 };
 
 export class MemoryTtlCache<T> {
@@ -21,16 +22,29 @@ export class MemoryTtlCache<T> {
     return this.getLiveEntry(key) !== undefined;
   }
 
+  deleteMatching(predicate: (key: string, value: T) => boolean): void {
+    for (const [key, entry] of this.entries) {
+      if (predicate(key, entry.value)) this.remove(key);
+    }
+  }
+
   set(key: string, value: T, customTtlMs?: number): void {
+    this.remove(key);
     if (this.entries.size >= this.maxEntries) {
       const firstKey = this.entries.keys().next().value as string | undefined;
-      if (firstKey) this.entries.delete(firstKey);
+      if (firstKey) this.remove(firstKey);
     }
 
-    this.entries.set(key, {
-      expiresAt: Date.now() + (customTtlMs ?? this.ttlMs),
-      value
-    });
+    const ttl = customTtlMs ?? this.ttlMs;
+    const timer = setTimeout(() => this.remove(key), ttl);
+    timer.unref?.();
+    this.entries.set(key, { expiresAt: Date.now() + ttl, value, timer });
+  }
+
+  private remove(key: string): void {
+    const entry = this.entries.get(key);
+    if (entry?.timer) clearTimeout(entry.timer);
+    this.entries.delete(key);
   }
 
   private getLiveEntry(key: string): CacheEntry<T> | undefined {
@@ -38,7 +52,7 @@ export class MemoryTtlCache<T> {
     if (!entry) return undefined;
 
     if (entry.expiresAt < Date.now()) {
-      this.entries.delete(key);
+      this.remove(key);
       return undefined;
     }
 

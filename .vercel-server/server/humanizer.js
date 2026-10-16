@@ -720,12 +720,12 @@ export function humanizeText(input, mode = "academic") {
         .join("\n\n");
     // Calculate AI Risk Score After
     const afterDetection = detectAiSignals(revised);
-    const aiScoreAfter = Math.min(aiScoreBefore, Math.round(afterDetection.probability));
+    const aiScoreAfter = Math.round(afterDetection.probability);
     const notes = [
         `Режим олюднення: ${mode === "academic" ? "Академічний" : mode === "natural" ? "Природний" : "Лаконічний"}.`,
         "Форматування абзаців, лапок, тире та спеціальних термінів збережено.",
-        "Факти, цитати та посилання на першоджерела перевірено на збереження точності.",
-        "Застосовано метрики емпіричних досліджень: розрив тріадичних переліків, темпоритм (burstiness) та де-номіналізація."
+        "Перевірте факти, цитати та посилання після автоматичного стильового редагування.",
+        "Бали до та після обчислені тим самим локальним евристичним детектором і не доводять авторство або якість тексту."
     ];
     const vagueAttributions = original.match(/(?<![\p{L}\p{N}_])(?:експерти вважають|дослідження показують|багато джерел|experts argue|observers note|studies show|research suggests)(?![\p{L}\p{N}_])/giu) ?? [];
     if (vagueAttributions.length > 0) {

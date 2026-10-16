@@ -48,15 +48,10 @@ export async function rerankCandidates(query: string, candidates: SearchCandidat
 }
 
 export function calculateConfirmedPlagiarismScore(matches: PlagiarismMatch[]): number {
-  const confirmed = matches.filter((match) => match.confidence === "page").slice(0, 8);
+  const confirmed = matches.filter((match) => match.confidence === "page");
   if (confirmed.length === 0) return 0;
 
-  const weighted = confirmed.reduce((sum, match, index) => {
-    const weight = Math.max(0.35, 1 - index * 0.08);
-    return sum + match.score * weight;
-  }, 0);
-  const totalWeight = confirmed.reduce((sum, _match, index) => sum + Math.max(0.35, 1 - index * 0.08), 0);
-  return clampScore(weighted / totalWeight);
+  return clampScore(Math.max(...confirmed.map(match => match.score)));
 }
 
 function summarizeAi(aiProbability: number, verdict: AiVerdict): string {
@@ -95,5 +90,5 @@ export function summarizeReport(
 
   const top = confirmed[0];
   const leadNote = leads > 0 ? ` Ще ${leads} пошукових підказок потребують підтвердження.` : "";
-  return `Найсильніший підтверджений збіг: ${top.score}% з "${top.title}". Загальний ризик плагіату: ${plagiarismScore}%. ${aiSummary}${leadNote}`;
+  return `Найсильніший підтверджений збіг: ${top.score}% з "${top.title}". Сила збігів: ${plagiarismScore}/100; це не частка запозичень у документі. ${aiSummary}${leadNote}`;
 }

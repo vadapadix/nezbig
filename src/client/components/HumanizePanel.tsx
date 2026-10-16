@@ -80,14 +80,14 @@ export function HumanizePanel({
         {humanized.aiScoreBefore !== undefined && humanized.aiScoreAfter !== undefined && (
           <div className="flex items-center gap-4 bg-surface-container-high/80 border border-emerald-glow/30 rounded-xl p-4 shrink-0 shadow-lg">
             <div className="flex flex-col items-center">
-              <span className="text-label-sm text-on-surface-variant">{lang === "uk" ? "ШІ до" : "AI Before"}</span>
+              <span className="text-label-sm text-on-surface-variant">{lang === "uk" ? "Локальний бал до" : "Local score before"}</span>
               <span className="text-body-lg font-bold text-rose-400">{humanized.aiScoreBefore}%</span>
             </div>
             <svg className="w-5 h-5 text-emerald-glow" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
             </svg>
             <div className="flex flex-col items-center">
-              <span className="text-label-sm text-on-surface-variant">{lang === "uk" ? "ШІ після" : "AI After"}</span>
+              <span className="text-label-sm text-on-surface-variant">{lang === "uk" ? "Локальний бал після" : "Local score after"}</span>
               <span className="text-headline-sm font-bold text-emerald-glow">{humanized.aiScoreAfter}%</span>
             </div>
             {aiDrop !== null && aiDrop > 0 && (
@@ -100,6 +100,9 @@ export function HumanizePanel({
       </div>
 
       {/* Output Content */}
+      <p className="text-body-sm text-on-surface-variant">
+        {lang === "uk" ? "Автоматичні стильові заміни потребують перевірки змісту. Зміна бала того самого детектора не доводить авторство чи якість і не гарантує проходження інших перевірок." : "Review the meaning after automatic style replacements. A change in the same detector’s score does not prove authorship or quality and does not guarantee passing other checks."}
+      </p>
       <div className="bg-surface-container-low/80 border border-white/5 rounded-xl p-6 md:p-8 text-body-lg text-white leading-relaxed max-h-[500px] overflow-y-auto custom-scrollbar">
         <div
           className="rich-output [&_p]:mb-4 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:text-xl [&_h2]:font-bold [&_h3]:text-lg [&_h3]:font-bold"

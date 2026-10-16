@@ -29,8 +29,6 @@ export interface DriveReportFile {
 }
 
 let cachedClientId: string | null = null;
-let cachedAccessToken: string | null = null;
-let tokenExpiresAt = 0;
 
 /**
  * Retrieves the Google Client ID from backend config or environment.

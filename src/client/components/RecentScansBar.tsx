@@ -1,3 +1,4 @@
+import { localHistoryKey } from "../utils/localHistory";
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
@@ -26,7 +27,7 @@ export function RecentScansBar({ currentReportId, onSelectReport }: RecentScansB
 
   const loadItems = useCallback(() => {
     try {
-      const raw = localStorage.getItem("nezbig_local_history");
+      const raw = localStorage.getItem(localHistoryKey());
       if (raw) {
         const parsed = JSON.parse(raw) as StoredScanItem[];
         setItems(Array.isArray(parsed) ? parsed : []);
@@ -43,7 +44,7 @@ export function RecentScansBar({ currentReportId, onSelectReport }: RecentScansB
 
     // Listen to storage events and custom history update events
     const handleStorage = (e: StorageEvent) => {
-      if (e.key === "nezbig_local_history") loadItems();
+      if (e.key === localHistoryKey()) loadItems();
     };
     const handleHistoryUpdated = () => {
       loadItems();
@@ -55,42 +56,33 @@ export function RecentScansBar({ currentReportId, onSelectReport }: RecentScansB
       window.removeEventListener("storage", handleStorage);
       window.removeEventListener("nezbig_history_updated", handleHistoryUpdated);
     };
-  }, [loadItems]);
+  }, [loadItems, isLoggedIn]);
+
+  const deleteFromServer = async (id?: string) => {
+    if (!isLoggedIn) return;
+    const res = await fetch(id ? `/api/history/${encodeURIComponent(id)}` : "/api/history", { method: "DELETE", credentials: "include" });
+    if (!res.ok) throw new Error(lang === "uk" ? "Не вдалося видалити серверні дані. Спробуйте ще раз." : "Server deletion failed. Please retry.");
+  };
 
   const handleClearAll = async () => {
-    if (window.confirm(lang === "uk" ? "Очистити історію всіх попередніх сканів?" : "Clear all previous scans history?")) {
-      localStorage.removeItem("nezbig_local_history");
+    if (!window.confirm(lang === "uk" ? "Видалити історію та повні збережені звіти?" : "Delete history and saved reports?")) return;
+    try {
+      await deleteFromServer();
+      localStorage.removeItem(localHistoryKey());
       setItems([]);
-
-      if (isLoggedIn) {
-        try {
-          const token = localStorage.getItem("nezbig_auth_token");
-          const headers: Record<string, string> = {};
-          if (token) headers["Authorization"] = `Bearer ${token}`;
-          await fetch("/api/history", { method: "DELETE", headers, credentials: "include" });
-        } catch {
-          // ignore
-        }
-      }
-    }
+      window.dispatchEvent(new Event("nezbig_history_updated"));
+    } catch (error) { window.alert(error instanceof Error ? error.message : String(error)); }
   };
 
   const handleRemoveOne = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     try {
-      const filtered = items.filter((item) => item.id !== id);
-      localStorage.setItem("nezbig_local_history", JSON.stringify(filtered));
+      await deleteFromServer(id);
+      const filtered = items.filter(item => item.id !== id);
+      localStorage.setItem(localHistoryKey(), JSON.stringify(filtered));
       setItems(filtered);
-
-      if (isLoggedIn) {
-        const token = localStorage.getItem("nezbig_auth_token");
-        const headers: Record<string, string> = {};
-        if (token) headers["Authorization"] = `Bearer ${token}`;
-        await fetch(`/api/history/${id}`, { method: "DELETE", headers, credentials: "include" });
-      }
-    } catch {
-      // ignore
-    }
+      window.dispatchEvent(new Event("nezbig_history_updated"));
+    } catch (error) { window.alert(error instanceof Error ? error.message : String(error)); }
   };
 
   const handleItemClick = async (item: StoredScanItem) => {

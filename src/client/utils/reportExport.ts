@@ -90,7 +90,7 @@ export function generateReportCanvas(report: ScanReport, lang: Language = getFal
   // Top header brand
   context.fillStyle = accentEmerald;
   context.font = "800 18px 'Actay Wide', Actay, sans-serif";
-  context.fillText(lang === "uk" ? "НЕЗБІГ 2.0  •  ОФІЦІЙНИЙ ЗВІТ ОРИГІНАЛЬНОСТІ" : "NEZBIG 2.0  •  OFFICIAL ORIGINALITY REPORT", 60, 60);
+  context.fillText(lang === "uk" ? "НЕЗБІГ 2.0  •  ЗВІТ АНАЛІЗУ ТЕКСТУ" : "NEZBIG 2.0  •  TEXT ANALYSIS REPORT", 60, 60);
 
   // Date
   context.font = "500 18px Actay, sans-serif";
@@ -115,7 +115,7 @@ export function generateReportCanvas(report: ScanReport, lang: Language = getFal
   let y = Math.max(210, titleY + 40);
   const cardWidth = 250;
   const cards = [
-    [lang === "uk" ? "Плагіат" : "Plagiarism", `${report.plagiarismScore}%`, `${riskLabel(report.plagiarismScore, lang)} ${lang === "uk" ? "ризик" : "risk"}`],
+    [lang === "uk" ? "Сила збігів" : "Match strength", `${report.plagiarismScore}/100`, report.matchedTextPercent === undefined ? (lang === "uk" ? "Покриття не обчислено" : "Coverage unavailable") : `${report.matchedTextPercent}% ${lang === "uk" ? "дослівного покриття" : "verbatim coverage"}`],
     [lang === "uk" ? "ШІ-аналіз" : "AI Detection", report.aiVerdict === "insufficient" ? "—" : `${report.aiProbability}%`, aiVerdictLabel(report.aiVerdict, lang)],
     [
       lang === "uk" ? "AI-думка" : "AI Opinion",

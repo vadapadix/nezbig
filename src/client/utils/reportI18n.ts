@@ -164,6 +164,8 @@ export function translateReportSummary(summary: string, lang: Language): string 
   if (lang === "uk") return summary;
 
   let text = summary;
+  text = text.replace(/Найсильніший підтверджений збіг:\s*(\d+)% з "([^"]+)"\./, 'Strongest verified match: $1% with "$2".');
+  text = text.replace(/Сила збігів:\s*(\d+)\/100; це не частка запозичень у документі\./, 'Match strength: $1/100; this is not the proportion of borrowed text in the document.');
 
   // Common summary templates
   text = text.replace(

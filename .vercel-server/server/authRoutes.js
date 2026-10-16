@@ -1,10 +1,21 @@
 import { Router } from "express";
+import { z } from "zod";
+import { rateLimit } from "express-rate-limit";
+import { beginGoogleOAuth, consumeGoogleOAuth } from "./security.js";
 import { createUser, findUserByEmail, findUserByGoogleId, findUserById, updateUser, verifyPassword, generateToken, setAuthCookie, clearAuthCookie, getUserReports, } from "./auth.js";
 const router = Router();
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, message: { error: "Забагато спроб входу. Спробуйте пізніше." } });
+const credentials = z.object({ email: z.string().trim().email().max(254).transform(v => v.toLowerCase()), password: z.string().min(6).max(72) });
+router.post(["/login", "/register"], authLimiter);
 // ─── Register ────────────────────────────────────────────
 router.post("/register", async (req, res) => {
     try {
-        const { name, email, password } = req.body;
+        const parsed = credentials.extend({ name: z.string().trim().min(1).max(100) }).safeParse(req.body);
+        if (!parsed.success) {
+            res.status(400).json({ error: "Перевірте ім’я, email та пароль (6–72 символи)." });
+            return;
+        }
+        const { name, email, password } = parsed.data;
         if (!name || !email || !password) {
             res.status(400).json({ error: "Ім'я, email та пароль обов'язкові." });
             return;
@@ -22,7 +33,6 @@ router.post("/register", async (req, res) => {
         const token = generateToken(user);
         setAuthCookie(res, token);
         res.json({
-            token,
             user: { id: user.id, name: user.name, email: user.email, avatarUrl: user.avatarUrl },
         });
     }
@@ -33,7 +43,12 @@ router.post("/register", async (req, res) => {
 // ─── Login ───────────────────────────────────────────────
 router.post("/login", async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const parsed = credentials.safeParse(req.body);
+        if (!parsed.success) {
+            res.status(400).json({ error: "Перевірте email та пароль." });
+            return;
+        }
+        const { email, password } = parsed.data;
         if (!email || !password) {
             res.status(400).json({ error: "Email та пароль обов'язкові." });
             return;
@@ -43,7 +58,7 @@ router.post("/login", async (req, res) => {
             res.status(401).json({ error: "Невірний email або пароль." });
             return;
         }
-        const valid = await verifyPassword(password, user.passwordHash);
+        const valid = await verifyPassword(user, password);
         if (!valid) {
             res.status(401).json({ error: "Невірний email або пароль." });
             return;
@@ -51,7 +66,6 @@ router.post("/login", async (req, res) => {
         const token = generateToken(user);
         setAuthCookie(res, token);
         res.json({
-            token,
             user: { id: user.id, name: user.name, email: user.email, avatarUrl: user.avatarUrl },
         });
     }
@@ -119,39 +133,65 @@ router.get("/google/url", (req, res) => {
         res.status(400).json({ error: "Google OAuth не налаштовано (відсутній GOOGLE_CLIENT_ID у .env)." });
         return;
     }
-    const clientOrigin = req.query.origin || req.headers.referer?.replace(/\/$/, "") || "http://127.0.0.1:4173";
-    const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${req.protocol}://${req.get("host")}/api/auth/google/callback`;
+    if (!process.env.GOOGLE_REDIRECT_URI) {
+        res.status(400).json({ error: "Google redirect URI не налаштовано." });
+        return;
+    }
+    let oauthState;
+    try {
+        oauthState = beginGoogleOAuth(req, res);
+    }
+    catch {
+        res.status(400).json({ error: "Недозволена адреса повернення." });
+        return;
+    }
+    const redirectUri = process.env.GOOGLE_REDIRECT_URI;
     const scope = encodeURIComponent("openid email profile");
-    const state = encodeURIComponent(clientOrigin);
+    const state = encodeURIComponent(oauthState);
     const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${scope}&state=${state}&access_type=offline&prompt=select_account`;
     res.json({ url });
 });
 // ─── Google OAuth: Direct Redirect ──────────────────────
 router.get("/google", (req, res) => {
     const clientId = process.env.GOOGLE_CLIENT_ID;
-    const clientOrigin = req.query.origin || req.headers.referer?.replace(/\/$/, "") || "http://127.0.0.1:4173";
     if (!clientId) {
-        res.redirect(`${clientOrigin}/?auth_error=google_not_configured`);
+        res.status(400).json({ error: "Google OAuth не налаштовано." });
         return;
     }
-    const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${req.protocol}://${req.get("host")}/api/auth/google/callback`;
+    if (!process.env.GOOGLE_REDIRECT_URI) {
+        res.status(400).json({ error: "Google redirect URI не налаштовано." });
+        return;
+    }
+    let oauthState;
+    try {
+        oauthState = beginGoogleOAuth(req, res);
+    }
+    catch {
+        res.status(400).json({ error: "Недозволена адреса повернення." });
+        return;
+    }
+    const redirectUri = process.env.GOOGLE_REDIRECT_URI;
     const scope = encodeURIComponent("openid email profile");
-    const state = encodeURIComponent(clientOrigin);
+    const state = encodeURIComponent(oauthState);
     const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${scope}&state=${state}&access_type=offline&prompt=select_account`;
     res.redirect(url);
 });
 // ─── Google OAuth: Callback ──────────────────────────────
 router.get("/google/callback", async (req, res) => {
     const code = req.query.code;
-    const state = req.query.state || "http://127.0.0.1:4173";
+    const state = consumeGoogleOAuth(req, res);
+    if (!state) {
+        res.status(400).json({ error: "Сесію Google-входу не підтверджено. Почніть вхід повторно." });
+        return;
+    }
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    if (!code || !clientId || !clientSecret) {
+    if (!code || !clientId || !clientSecret || !process.env.GOOGLE_REDIRECT_URI) {
         res.redirect(`${state}/?auth_error=google_missing_credentials`);
         return;
     }
     try {
-        const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${req.protocol}://${req.get("host")}/api/auth/google/callback`;
+        const redirectUri = process.env.GOOGLE_REDIRECT_URI;
         // Exchange code for tokens
         const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
             method: "POST",
@@ -175,7 +215,7 @@ router.get("/google/callback", async (req, res) => {
             headers: { Authorization: `Bearer ${tokenData.access_token}` },
         });
         const googleUser = (await userInfoRes.json());
-        if (!googleUser.id || !googleUser.email) {
+        if (!userInfoRes.ok || !googleUser.id || !googleUser.email || googleUser.verified_email !== true) {
             res.redirect(`${state}/?auth_error=google_userinfo_failed`);
             return;
         }
@@ -207,8 +247,8 @@ router.get("/google/callback", async (req, res) => {
         }
         const token = generateToken(user);
         setAuthCookie(res, token);
-        // Redirect back to frontend with token for local fallback
-        res.redirect(`${state}/?auth_success=1&token=${encodeURIComponent(token)}`);
+        // Keep credentials out of URLs, browser history, analytics and referrer headers.
+        res.redirect(`${state}/?auth_success=1`);
     }
     catch (error) {
         console.error("Google OAuth error:", error);

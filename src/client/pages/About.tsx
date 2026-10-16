@@ -15,7 +15,7 @@ export default function About() {
         <p className="text-body-lg text-on-surface-variant mb-6 leading-relaxed">
           {lang === "uk"
             ? "НЕЗБІГ 2.0 створений для того, щоб надати кожному доступний інструмент для чесної та ефективної перевірки тексту на плагіат та ознаки штучного інтелекту. Ми віримо, що кожен автор заслуговує на можливість створювати унікальний контент, а викладачі та редактори — на надійний спосіб перевірки оригінальності."
-            : "NEZBIG 2.0 is designed to provide everyone with an accessible, high-precision tool for plagiarism checking, AI text detection, and style humanization. We believe every writer, student, and researcher deserves reliable tools to verify academic integrity and enhance writing quality."}
+            : "NEZBIG 2.0 helps writers review open-web text matches, heuristic AI signals and automatic style suggestions. Results support human review and do not establish authorship or academic integrity."}
         </p>
         
         <h2 className="text-headline-lg font-headline-lg text-emerald-glow mb-4 mt-8 font-bold">
@@ -27,16 +27,16 @@ export default function About() {
             {lang === "uk" ? "сканування відкритих вебджерел та міжнародних наукових баз (Crossref DOI, OpenAlex, Вікіпедія)." : "scanning across open web indices and global academic registries (Crossref DOI, OpenAlex, Wikipedia)."}
           </li>
           <li>
-            <strong className="text-white">{lang === "uk" ? "Науковий AI-детектор:" : "Scientific AI Detection:"}</strong>{" "}
-            {lang === "uk" ? "стилометричний аналіз темпоритму, закону Ципфа та виявлення патернів ChatGPT, Claude, Gemini, DeepSeek." : "NLP stylometric evaluation of burstiness, Zipf deviation, and pattern recognition for ChatGPT, Claude, Gemini, and DeepSeek."}
+            <strong className="text-white">{lang === "uk" ? "Евристичний AI-аналіз:" : "Heuristic AI Analysis:"}</strong>{" "}
+            {lang === "uk" ? "аналіз стилометричних ознак із зазначенням надійності. Він не визначає конкретну модель чи авторство; якість на реальних роботах потребує окремої валідації." : "stylometric signals with reliability information. It does not identify a specific model or establish authorship; performance on real documents requires separate validation."}
           </li>
           <li>
-            <strong className="text-white">{lang === "uk" ? "Конфіденційність без збереження:" : "Zero-Retention Privacy:"}</strong>{" "}
-            {lang === "uk" ? "ваші тексти обробляються в пам'яті й ніколи не передаються стороннім базам даних." : "documents are processed in memory and never stored or used to train AI models."}
+            <strong className="text-white">{lang === "uk" ? "Приватна історія:" : "Private History:"}</strong>{" "}
+            {lang === "uk" ? "звіти облікового запису доступні лише власнику та видаляються з історії разом із серверними копіями. Вебпошук і AI-думка використовують зовнішніх провайдерів; подробиці наведені в політиці конфіденційності." : "account reports are owner-only and deleting history also deletes server report copies. Web search and AI opinion use external providers; see the privacy policy for details."}
           </li>
           <li>
             <strong className="text-white">{lang === "uk" ? "Олюднювач тексту:" : "AI Text Humanizer:"}</strong>{" "}
-            {lang === "uk" ? "інтелектуальне переписування тексту з режимами (академічний, природний, лаконічний)." : "intelligent rewriting engine with Academic, Natural, and Concise stylistic modes."}
+            {lang === "uk" ? "автоматичні стильові заміни за правилами у трьох режимах. Зміст і точність результату потрібно перевірити вручну." : "rule-based style replacements in three modes. Review the resulting meaning and accuracy manually."}
           </li>
         </ul>
       </div>

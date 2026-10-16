@@ -11,3 +11,5 @@ __pycache__/
 *.pyc
 docs/page*.png
 docs/test_out.docx
+
+.vercel
