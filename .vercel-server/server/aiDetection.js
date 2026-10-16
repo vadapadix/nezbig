@@ -34,7 +34,7 @@ const EN_TRANSITIONS = new Set(["therefore", "however", "moreover", "furthermore
 const UA_TRANSITIONS = new Set(["важливо", "отже", "проте", "однак", "таким", "загалом", "водночас", "натомість", "по-перше", "по-друге", "насамкінець", "зокрема"]);
 const TRANSITIONS = new Set([...EN_TRANSITIONS, ...UA_TRANSITIONS]);
 const EN_HEDGES = new Set(["may", "might", "could", "typically", "often", "arguably", "potentially"]);
-const UA_HEDGES = new Set("може ймовірно зазвичай часто можливо потенційно як правило".split(" "));
+const UA_HEDGES = new Set("може ймовірно зазвичай часто можливо потенційно".split(" "));
 const HEDGES = new Set([...EN_HEDGES, ...UA_HEDGES]);
 const AI_PATTERN_GROUPS = [
     {
@@ -88,7 +88,7 @@ const AI_PATTERN_GROUPS = [
         category: "pattern",
         weight: 1.5,
         patterns: [
-            /(?:як штучний інтелект|я не можу|моя база знань|до моменту мого останнього оновлення|as an ai|as an artificial intelligence|i cannot|i don'?t have access|my knowledge cutoff)/gi,
+            /(?:як штучний інтелект|моя база знань|до моменту мого останнього оновлення|as an ai|as an artificial intelligence|my knowledge cutoff)/gi,
             /(?:важливо пам'ятати|важливо зазначити|однак варто пам'ятати|необхідно враховувати|слід зауважити|it is important to remember|it is crucial to note)/gi,
             /(?:в епоху цифрових технологій|у сучасному світі|стрімкий розвиток|безперечно|підсумовуючи|бути свідченням|беззаперечно|яскравий приклад)/gi,
             /(?:розглянемо детальніше|нижче наведено основні|підсумуємо викладене|враховуючи вищезазначене|узагальнюючи викладений матеріал|важливо звернути увагу|узагальнюючи вищесказане)/gi,
@@ -268,7 +268,7 @@ function analyzeSinglePass(text) {
     const punctuationScore = clampScore(sentences.length >= 6 && punctuationTypes.size <= 1 ? 25 : 0);
     const corroboratedFloor = repeatedNgrams.score > 60 ? repeatedNgrams.score * 0.6 : 0;
     const patternBased = AI_PATTERN_GROUPS.map((group) => {
-        const matches = group.patterns.flatMap((pattern) => countRegexMatches(normalized, pattern));
+        const matches = group.patterns.flatMap((pattern) => countRegexMatches(normalized, new RegExp(`(?<![\\p{L}\\p{N}_])(?:${pattern.source})(?![\\p{L}\\p{N}_])`, "giu")));
         const density = matches.length / Math.max(1, wordCount / 100);
         const score = clampScore(Math.min(1, density / 2.0) * 100);
         return {
@@ -399,11 +399,20 @@ function analyzeSinglePass(text) {
         },
         ...patternBased
     ];
-    const evidenceSignals = signalDrafts.filter((signal) => signal.score >= 30);
-    const weakEvidenceSignals = signalDrafts.filter((signal) => signal.score >= 12);
-    const statisticalChannel = strongestChannelScore(signalDrafts, "statistical");
-    const patternChannel = strongestChannelScore(signalDrafts, "pattern");
-    const structureChannel = strongestChannelScore(signalDrafts, "structure");
+    // Genre and punctuation are descriptive context, never authorship evidence.
+    const contextualLabels = new Set(["Одноманітна пунктуація", "Безособовий стиль", "Шаблон академічної генерації"]);
+    for (const signal of signalDrafts) {
+        if (!contextualLabels.has(signal.label))
+            continue;
+        signal.category = "safeguard";
+        signal.detail = "Особливість оформлення або академічного жанру. Не підвищує й не знижує ШІ-оцінку та не доводить авторство.";
+    }
+    const scoringSignals = signalDrafts.filter(signal => signal.category !== "safeguard");
+    const evidenceSignals = scoringSignals.filter((signal) => signal.score >= 30);
+    const weakEvidenceSignals = scoringSignals.filter((signal) => signal.score >= 12);
+    const statisticalChannel = strongestChannelScore(scoringSignals, "statistical");
+    const patternChannel = strongestChannelScore(scoringSignals, "pattern");
+    const structureChannel = strongestChannelScore(scoringSignals, "structure");
     const activeChannels = [statisticalChannel, patternChannel, structureChannel].filter((score) => score >= 14).length;
     const weightedRaw = statisticalChannel * AI_SCORING_WEIGHTS.statistical + patternChannel * AI_SCORING_WEIGHTS.pattern + structureChannel * AI_SCORING_WEIGHTS.structure;
     const corroboration = activeChannels >= 3 ? 1.1 : activeChannels === 2 ? 1 : 0.78;
@@ -411,13 +420,14 @@ function analyzeSinglePass(text) {
     let rawProbability = weightedRaw * corroboration * lengthAdjust;
     rawProbability += Math.max(0, evidenceSignals.length - 1) * 4;
     rawProbability += Math.max(0, weakEvidenceSignals.length - 3) * 1.5;
-    const promptLeak = signalDrafts.find((signal) => signal.label === "Prompt-leak та ШІ-відмови")?.score ?? 0;
+    // Ordinary refusals and stock transitions are not explicit model self-identification.
+    const promptLeak = /(?<![\p{L}\p{N}_])(?:як (?:штучний інтелект|мовна модель)|as an (?:ai|artificial intelligence)|my knowledge cutoff)(?![\p{L}\p{N}_])/iu.test(normalized);
     const strongAverage = evidenceSignals
         .map((signal) => signal.score)
         .sort((left, right) => right - left)
         .slice(0, 3)
         .reduce((sum, score, _index, scores) => sum + score / Math.max(1, scores.length), 0);
-    const evidenceFloor = promptLeak >= 40 ? 45 : evidenceSignals.length >= 3 ? Math.max(22, strongAverage * 0.5) : weakEvidenceSignals.length >= 5 ? 8 : weakEvidenceSignals.length >= 2 ? 3 : 0;
+    const evidenceFloor = promptLeak ? 45 : evidenceSignals.length >= 3 ? Math.max(22, strongAverage * 0.5) : weakEvidenceSignals.length >= 5 ? 8 : weakEvidenceSignals.length >= 2 ? 3 : 0;
     const probability = clampScore(placeholderText
         ? Math.min(10, weightedRaw)
         : Math.max(rawProbability, corroboratedFloor, evidenceFloor));

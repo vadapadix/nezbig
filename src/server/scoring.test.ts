@@ -191,10 +191,10 @@ describe("detectAiSignals", () => {
     const punctuationSignal = result.signals.find((signal) => signal.label === "Одноманітна пунктуація");
 
     expect(punctuationSignal?.score).toBeLessThanOrEqual(28);
-    expect(punctuationSignal?.detail).toMatch(/подвійні дефіси/i);
+    expect(punctuationSignal?.category).toBe("safeguard");
   });
 
-  it("raises risk for templated AI-style coursework prose", () => {
+  it("does not force an elevated verdict from standard coursework phrasing", () => {
     const result = detectAiSignals(`
       ВСТУП. Актуальність обраної теми зумовлена необхідністю комплексного дослідження сучасних підходів до організації інформаційних процесів.
       Метою роботи є теоретичне обґрунтування та практичний аналіз особливостей функціонування відповідної системи.
@@ -206,8 +206,8 @@ describe("detectAiSignals", () => {
       ВИСНОВКИ. Отримані результати дозволяють зробити висновок про доцільність застосування системного підходу.
     `);
 
-    expect(result.probability).toBeGreaterThan(45);
-    expect(result.signals.some((signal) => /академічної генерації|Безособова/.test(signal.label))).toBe(true);
+    expect(result.probability).toBeLessThan(45);
+    expect(result.signals.find(signal => signal.label === "Шаблон академічної генерації")?.category).toBe("safeguard");
   });
 
   it("keeps localized AI-style sections visible inside a long mixed document", () => {
@@ -357,7 +357,7 @@ describe("detectAiSignals", () => {
     const result = detectAiSignals(
       Array.from({ length: 8 }, () => "Я описую власне спостереження, ми перевіряємо наш журнал, а мені доводиться пояснювати кожне виправлення окремо.").join(" ")
     );
-    const safeguard = result.signals.find((signal) => signal.category === "safeguard");
+    const safeguard = result.signals.find((signal) => signal.label === "Запобіжники від false positive");
 
     expect(safeguard?.evidence?.join(" ")).toMatch(/авторської позиції/i);
   });

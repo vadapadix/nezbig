@@ -104,7 +104,7 @@ async function submitScan(req: Request, res: Response, input: ScanRequest, evide
   const principal = scanPrincipal(req, res);
   const userId = req.user?.id;
   const settings = sanitizeSettings(input.settings);
-  const key = reportCacheKey(principal, { text: input.text, fileName: input.fileName || "Вставлений текст", settings, evidence: evidence ?? null, version: 3 });
+  const key = reportCacheKey(principal, { text: input.text, fileName: input.fileName || "Вставлений текст", settings, evidence: evidence ?? null, version: 4 });
   const candidate = reportCache.get(key);
   const cached = candidate && (!userId || await getOwnedReport(userId, candidate.id)) ? candidate : undefined;
   if (cached) {

@@ -1,10 +1,12 @@
 import { prepareAiAnalysisText } from "./aiTextPreprocess.js";
 export const MAX_ANALYSIS_CHARS = 6000;
 export const AUTHORSHIP_NEUTRALITY_PROMPT = "The presence or absence of citations, URLs, bibliography, tables, figures, or domain terminology is neutral for authorship. AI can generate citations and humans can write without sources. Never raise or lower the authorship score because these are present or missing. Evaluate only the supplied prose and concrete linguistic evidence. The local score is an uncalibrated heuristic, not ground truth. Do not claim that any stylistic feature proves human or AI authorship; state uncertainty and limitations.";
+const GENRE_NEUTRALITY_PROMPT = "Headings, lists, numeric facts, first-person pronouns, passive or impersonal academic voice, standard research aims, simple punctuation, spelling mistakes and ordinary refusals such as 'I cannot' are not authorship evidence. Do not infer human authorship from errors or emotional phrasing, or AI authorship from polished grammar or their absence. Short or unsupported-language samples require uncertainty, not a confident verdict. Never treat multiple correlated rhythm or vocabulary measurements as independent corroboration.";
 const HEAD_CHARS = 2800;
 const TAIL_CHARS = 1400;
 const MAX_SUSPICIOUS_EXCERPTS = 3;
-export const JSON_SHAPE_PROMPT = `Return JSON with this exact shape:
+export const JSON_SHAPE_PROMPT = `${GENRE_NEUTRALITY_PROMPT}
+Return JSON with this exact shape:
 {
   "probability": 0-100,
   "verdict": "обережний висновок українською мовою (1-2 речення: які мовні ознаки виявлено та чому вони не доводять авторство; наявність або відсутність джерел не є доказом)",
