@@ -127,6 +127,7 @@ export type AiLanguageCoverage = {
 };
 
 export type AiContentExclusions = {
+  structuralWords?: number;
   analyzedWords: number;
   codeWords: number;
   quotedWords: number;

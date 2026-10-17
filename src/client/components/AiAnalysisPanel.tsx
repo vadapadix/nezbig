@@ -29,6 +29,7 @@ export function AiAnalysisPanel({ report }: { report: ScanReport }) {
             <div><dt>{lang === "uk" ? "Мова" : "Language"}</dt><dd>{languageLabel(report.aiLanguage.code, lang)}</dd></div>
             <div><dt>{lang === "uk" ? "Слів для аналізу" : "Words analyzed"}</dt><dd>{formatNumber(report.aiExclusions.analyzedWords, lang)}</dd></div>
             <div><dt>{lang === "uk" ? "Окремих фрагментів" : "Individual segments"}</dt><dd>{report.aiReliability.segmentCount}</dd></div>
+            <div><dt>{lang === "uk" ? "Зміст і структуровані таблиці виключено" : "Contents and structured table words excluded"}</dt><dd>{formatNumber(report.aiExclusions.structuralWords ?? 0, lang)}</dd></div>
             <div><dt>{lang === "uk" ? "Цитати, джерела й код виключено" : "Quoted, reference and code words excluded"}</dt><dd>{formatNumber(report.aiExclusions.quotedWords + report.aiExclusions.referenceWords + report.aiExclusions.codeWords, lang)}</dd></div>
           </dl>
         </section>

@@ -23,7 +23,10 @@ describe("authentication hardening", () => {
     const agent = request.agent(app);
     expect((await agent.post("/api/auth/login").send({ email, password: "wrong-password" })).status).toBe(401);
     expect((await agent.post("/api/auth/login").send({ email, password: "password123" })).status).toBe(200);
-    expect((await agent.get("/api/auth/me")).body.user.email).toBe(email);
+    const restored = await agent.get("/api/auth/me");
+    expect(restored.body.user.email).toBe(email);
+    expect(String(restored.headers["set-cookie"])).toMatch(/Max-Age=2592000/);
+    expect(String(restored.headers["set-cookie"])).toMatch(/Expires=.*HttpOnly/);
   });
 
   it("rejects malformed credentials", async () => {
@@ -37,6 +40,7 @@ describe("authentication hardening", () => {
     const response = { cookie: vi.fn() };
     setAuthCookie(response as unknown as import("express").Response, "example");
     expect(response.cookie.mock.calls[0]![2]).toMatchObject({ secure: true, httpOnly: true, sameSite: "lax" });
+    expect(response.cookie.mock.calls[0]![2]).toMatchObject({ maxAge: 30 * 24 * 60 * 60 * 1000, path: "/" });
   });
 
   it("rejects untrusted OAuth origins and callbacks without matching state", async () => {

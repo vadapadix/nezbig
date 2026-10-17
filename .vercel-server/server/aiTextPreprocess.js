@@ -1,6 +1,7 @@
 import { countWords } from "./chunking.js";
 import { filterProseText, normalizeProseLayout } from "./proseFilter.js";
 import { findBibliographyStart } from "./documentPreprocess.js";
+import { removeStructuralAiContent } from "./aiStructuralContent.js";
 // Citation metadata is neutral: adding a link must not change the style score.
 export function stripInlineCitationMetadata(text) {
     return text
@@ -43,7 +44,8 @@ function stripLongQuotations(text) {
 export function prepareAiAnalysisText(rawText) {
     const withoutReferences = stripReferenceTail(rawText);
     const withoutQuotes = stripLongQuotations(withoutReferences.text);
-    const prose = filterProseText(withoutQuotes.text);
+    const structural = removeStructuralAiContent(withoutQuotes.text);
+    const prose = filterProseText(structural.text);
     const text = normalizeProseLayout(stripInlineCitationMetadata(prose.text));
     return {
         text,
@@ -51,7 +53,8 @@ export function prepareAiAnalysisText(rawText) {
             analyzedWords: countWords(text),
             codeWords: prose.removedCodeWords,
             quotedWords: withoutQuotes.removedWords,
-            referenceWords: withoutReferences.removedWords
+            referenceWords: withoutReferences.removedWords,
+            structuralWords: structural.removedWords
         }
     };
 }

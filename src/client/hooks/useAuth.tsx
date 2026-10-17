@@ -54,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data.user) {
         setUser(data.user);
         localStorage.setItem("nezbig_auth_user", JSON.stringify(data.user));
-      } else if (res.status === 401 || data.user === null) {
+      } else if (res.status === 401 || (res.ok && data.user === null)) {
         // Token is confirmed invalid or expired on server
         setUser(null);
         localStorage.removeItem("nezbig_auth_token");

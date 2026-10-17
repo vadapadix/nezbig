@@ -121,6 +121,9 @@ router.get("/me", async (req: Request, res: Response) => {
     return;
   }
 
+  // Refresh a validated session with a persistent cookie on same-site startup,
+  // including sessions created by an older login/callback flow.
+  setAuthCookie(res, generateToken(user));
   res.json({
     user: { id: user.id, name: user.name, email: user.email, avatarUrl: user.avatarUrl },
   });

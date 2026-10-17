@@ -34,7 +34,7 @@ const EN_TRANSITIONS = new Set(["therefore", "however", "moreover", "furthermore
 const UA_TRANSITIONS = new Set(["важливо", "отже", "проте", "однак", "таким", "загалом", "водночас", "натомість", "по-перше", "по-друге", "насамкінець", "зокрема"]);
 const TRANSITIONS = new Set([...EN_TRANSITIONS, ...UA_TRANSITIONS]);
 const EN_HEDGES = new Set(["may", "might", "could", "typically", "often", "arguably", "potentially"]);
-const UA_HEDGES = new Set("може ймовірно зазвичай часто можливо потенційно".split(" "));
+const UA_HEDGES = new Set("ймовірно зазвичай часто можливо потенційно".split(" "));
 const HEDGES = new Set([...EN_HEDGES, ...UA_HEDGES]);
 const AI_PATTERN_GROUPS = [
     {
@@ -497,7 +497,7 @@ function estimateReliability(wordCount, windowScores, evidenceSignals, language,
     else if (language.code === "mixed")
         score = Math.min(score, 58);
     const level = score >= 72 ? "high" : score >= 45 ? "medium" : "low";
-    const excludedWords = exclusions.codeWords + exclusions.quotedWords + exclusions.referenceWords;
+    const excludedWords = exclusions.codeWords + exclusions.quotedWords + exclusions.referenceWords + (exclusions.structuralWords ?? 0);
     let reason = wordCount < 80
         ? "Після вилучення коду, цитат і службових частин лишилося замало авторського тексту для стилометричного висновку."
         : language.code === "limited"
@@ -564,15 +564,16 @@ export function detectAiSignals(rawText) {
     const wordCount = tokenize(text, true).length;
     const reliability = estimateReliability(wordCount, windowScores, documentResult.signals, language, prepared.exclusions);
     const segments = suspiciousSegments(windows, windowResults);
-    const exclusionSignal = prepared.exclusions.codeWords + prepared.exclusions.quotedWords + prepared.exclusions.referenceWords > 0
+    const exclusionSignal = prepared.exclusions.codeWords + prepared.exclusions.quotedWords + prepared.exclusions.referenceWords + (prepared.exclusions.structuralWords ?? 0) > 0
         ? {
             label: "Вилучений неавторський вміст",
             score: 0,
             category: "safeguard",
-            detail: "Код, довгі цитати та бібліографічний хвіст не беруть участі в оцінці авторського стилю.",
+            detail: "Код, довгі цитати, зміст, розпізнані таблиці та бібліографія не беруть участі в оцінці авторського стилю.",
             evidence: [
                 prepared.exclusions.codeWords ? `${prepared.exclusions.codeWords} слів коду` : "",
                 prepared.exclusions.quotedWords ? `${prepared.exclusions.quotedWords} слів у довгих цитатах` : "",
+                prepared.exclusions.structuralWords ? `${prepared.exclusions.structuralWords} слів змісту або структурованих таблиць` : "",
                 prepared.exclusions.referenceWords ? `${prepared.exclusions.referenceWords} слів у списку джерел` : ""
             ].filter(Boolean)
         }

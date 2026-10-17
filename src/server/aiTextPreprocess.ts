@@ -2,6 +2,7 @@ import { countWords } from "./chunking.js";
 import { filterProseText, normalizeProseLayout } from "./proseFilter.js";
 import { findBibliographyStart } from "./documentPreprocess.js";
 import type { AiContentExclusions } from "../shared/types.js";
+import { removeStructuralAiContent } from "./aiStructuralContent.js";
 
 type PreparedAiText = {
   text: string;
@@ -54,7 +55,8 @@ function stripLongQuotations(text: string): { text: string; removedWords: number
 export function prepareAiAnalysisText(rawText: string): PreparedAiText {
   const withoutReferences = stripReferenceTail(rawText);
   const withoutQuotes = stripLongQuotations(withoutReferences.text);
-  const prose = filterProseText(withoutQuotes.text);
+  const structural = removeStructuralAiContent(withoutQuotes.text);
+  const prose = filterProseText(structural.text);
   const text = normalizeProseLayout(stripInlineCitationMetadata(prose.text));
 
   return {
@@ -63,7 +65,8 @@ export function prepareAiAnalysisText(rawText: string): PreparedAiText {
       analyzedWords: countWords(text),
       codeWords: prose.removedCodeWords,
       quotedWords: withoutQuotes.removedWords,
-      referenceWords: withoutReferences.removedWords
+      referenceWords: withoutReferences.removedWords,
+      structuralWords: structural.removedWords
     }
   };
 }

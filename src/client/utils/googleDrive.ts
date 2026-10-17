@@ -9,7 +9,7 @@ declare global {
           initTokenClient: (config: {
             client_id: string;
             scope: string;
-            callback: (response: { access_token?: string; error?: string }) => void;
+            callback: (response: { access_token?: string; error?: string; expires_in?: number | string }) => void;
             error_callback?: (error: any) => void;
           }) => {
             requestAccessToken: (overrideConfig?: { prompt?: string }) => void;
@@ -80,10 +80,12 @@ export async function loadGoogleGsiScript(): Promise<void> {
   });
 }
 
+const DRIVE_SESSION_KEY = "nezbig_drive_session";
 let driveToken: { value: string; expiresAt: number } | null = null;
 
 export function clearDriveAccessToken(): void {
   driveToken = null;
+  try { localStorage.removeItem(DRIVE_SESSION_KEY); } catch { /* Storage can be disabled. */ }
   try {
     localStorage.removeItem("nezbig_gdrive_token");
     localStorage.removeItem("nezbig_gdrive_expires_at");
@@ -91,23 +93,28 @@ export function clearDriveAccessToken(): void {
 }
 
 export function getSavedDriveAccessToken(): string | null {
-  // Remove credentials persisted by older versions; never migrate them back.
   try {
     localStorage.removeItem("nezbig_gdrive_token");
     localStorage.removeItem("nezbig_gdrive_expires_at");
-  } catch { /* Storage can be disabled. */ }
-  if (!driveToken || Date.now() >= driveToken.expiresAt - 60000) { driveToken = null; return null; }
+    if (!driveToken) {
+      const saved = JSON.parse(localStorage.getItem(DRIVE_SESSION_KEY) || "null");
+      if (saved && typeof saved.value === "string" && typeof saved.expiresAt === "number" && Number.isFinite(saved.expiresAt)) driveToken = saved;
+    }
+  } catch { /* Retain memory fallback if storage is unavailable. */ }
+  if (!driveToken || Date.now() >= driveToken.expiresAt - 60000) { clearDriveAccessToken(); return null; }
   return driveToken.value;
 }
 
 export function saveDriveAccessToken(token: string, expiresInSeconds = 3500): void {
   clearDriveAccessToken();
-  driveToken = { value: token, expiresAt: Date.now() + expiresInSeconds * 1000 };
+  const lifetime = Number.isFinite(expiresInSeconds) && expiresInSeconds > 0 ? expiresInSeconds : 3500;
+  driveToken = { value: token, expiresAt: Date.now() + lifetime * 1000 };
+  try { localStorage.setItem(DRIVE_SESSION_KEY, JSON.stringify(driveToken)); } catch { /* Memory fallback. */ }
 }
 
 /**
  * Requests an OAuth access token with drive.file scope using Google Identity Services.
- * Reuses an in-memory token in the current page if valid. Uses prompt: "" to reuse granted consent silently.
+ * Reuses the requested persisted token across reloads until Google expiry. Uses prompt: "" to reuse granted consent silently.
  */
 export async function requestDriveAccessToken(): Promise<string> {
   const existing = getSavedDriveAccessToken();
@@ -136,7 +143,7 @@ export async function requestDriveAccessToken(): Promise<string> {
             reject(new Error("Не вдалося отримати токен доступу до Google Диску"));
             return;
           }
-          saveDriveAccessToken(response.access_token, 3500);
+          saveDriveAccessToken(response.access_token, Number(response.expires_in ?? 3500));
           resolve(response.access_token);
         },
         error_callback: (err) => {

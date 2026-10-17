@@ -27,7 +27,7 @@ export function SuspiciousSegments({ segments }: SuspiciousSegmentsProps) {
           <article className="segment-card" key={`${segment.index}-${segment.startWord}`}>
             <div>
               <strong>
-                {lang === "uk" ? "Слова" : "Words"} {formatNumber(segment.startWord, lang)}–{formatNumber(segment.endWord, lang)}
+                {lang === "uk" ? "Слова проаналізованого тексту" : "Words in analyzed prose"} {formatNumber(segment.startWord, lang)}–{formatNumber(segment.endWord, lang)}
               </strong>
               <span>{segment.score}%</span>
             </div>
