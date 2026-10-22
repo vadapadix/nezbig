@@ -1,5 +1,5 @@
-import { app } from "./app.js";
-import { redis } from "./db.js";
+import { app } from "./presentation/http/app.js";
+import { redis } from "./infrastructure/persistence/redisClient.js";
 
 const port = Number(process.env.PORT ?? 8787);
 const host = process.env.HOST ?? "0.0.0.0";

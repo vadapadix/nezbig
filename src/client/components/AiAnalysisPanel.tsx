@@ -1,5 +1,5 @@
 import { useId } from "react";
-import type { ScanReport } from "../../shared/types";
+import type { ScanReport } from "../../shared/types/index";
 import { SignalCard } from "./SignalCard";
 import { useLanguage } from "../context/LanguageContext";
 import { reliabilityLabel, languageLabel, formatNumber, aiVerdictLabel } from "../utils/reportLabels";

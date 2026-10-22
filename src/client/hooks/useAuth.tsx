@@ -1,25 +1,8 @@
+import type { AuthUser, AuthContextType } from "../types/useAuth.types";
+export type { AuthUser, AuthContextType } from "../types/useAuth.types";
 import { clearDriveAccessToken } from "../utils/googleDrive";
 import { localHistoryKey, GUEST_HISTORY_KEY } from "../utils/localHistory";
 import { useState, useEffect, useCallback, useRef, createContext, useContext, type ReactNode } from "react";
-
-export interface AuthUser {
-  id: string;
-  name: string;
-  email: string;
-  avatarUrl?: string;
-}
-
-interface AuthContextType {
-  user: AuthUser | null;
-  loading: boolean;
-  isLoggedIn: boolean;
-  login: (email: string, password: string) => Promise<{ error?: string }>;
-  register: (name: string, email: string, password: string) => Promise<{ error?: string }>;
-  logout: () => Promise<void>;
-  loginWithGoogle: () => void;
-  refresh: () => Promise<void>;
-  syncHistory: () => Promise<void>;
-}
 
 const AuthContext = createContext<AuthContextType | null>(null);
 

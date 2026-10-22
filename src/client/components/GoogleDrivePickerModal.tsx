@@ -1,13 +1,9 @@
+import type { GoogleDrivePickerModalProps } from "../types/GoogleDrivePickerModal.types";
+export type { GoogleDrivePickerModalProps } from "../types/GoogleDrivePickerModal.types";
 import { useState, useEffect } from "react";
-import type { ScanReport } from "../../shared/types";
+
 import { listReportsFromGoogleDrive, loadReportFromGoogleDrive, type DriveReportFile } from "../utils/googleDrive";
 import { useLanguage } from "../context/LanguageContext";
-
-interface GoogleDrivePickerModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSelectReport: (report: ScanReport) => void;
-}
 
 export function GoogleDrivePickerModal({ isOpen, onClose, onSelectReport }: GoogleDrivePickerModalProps) {
   const { lang } = useLanguage();

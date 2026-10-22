@@ -1,10 +1,6 @@
+import type { AdsterraBannerProps } from "../types/AdsterraBanner.types";
+export type { AdsterraBannerProps } from "../types/AdsterraBanner.types";
 import { useEffect, useRef } from "react";
-
-interface AdsterraBannerProps {
-  containerId: string;
-  scriptSrc: string;
-  className?: string;
-}
 
 export function AdsterraBanner({ containerId, scriptSrc, className = "" }: AdsterraBannerProps) {
   const containerRef = useRef<HTMLDivElement>(null);

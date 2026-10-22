@@ -1,13 +1,7 @@
+import type { LoadingPanelProps } from "../types/LoadingPanel.types";
+export type { LoadingPanelProps } from "../types/LoadingPanel.types";
 import { BrandLogo } from "./BrandLogo";
 import { useLanguage } from "../context/LanguageContext";
-
-interface LoadingPanelProps {
-  busy: boolean;
-  llmBusy: boolean;
-  estimatedSeconds: string;
-  progress?: { checked: number; total: number } | null;
-  onCancel?: () => void;
-}
 
 export function LoadingPanel({ busy, llmBusy, estimatedSeconds, progress, onCancel }: LoadingPanelProps) {
   const { lang } = useLanguage();

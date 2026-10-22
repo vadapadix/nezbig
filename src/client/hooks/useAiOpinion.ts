@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import type { ScanReport, LlmOpinion } from "../../shared/types";
+import type { ScanReport, LlmOpinion } from "../../shared/types/index";
 import { summarizeAiError } from "../utils/reportLabels";
 
 export function useAiOpinion(setReport: React.Dispatch<React.SetStateAction<ScanReport | null>>) {

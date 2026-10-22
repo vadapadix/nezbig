@@ -1,13 +1,10 @@
+import type { ExportToolbarProps } from "../types/ExportToolbar.types";
+export type { ExportToolbarProps } from "../types/ExportToolbar.types";
 import { useState } from "react";
-import type { ScanReport } from "../../shared/types";
+
 import { downloadReportPdf, downloadReportPng } from "../utils/reportExport";
 import { saveReportToGoogleDrive } from "../utils/googleDrive";
 import { useLanguage } from "../context/LanguageContext";
-
-interface ExportToolbarProps {
-  report: ScanReport;
-  onMessage?: (msg: string, type?: "success" | "error" | "info") => void;
-}
 
 export function ExportToolbar({ report, onMessage }: ExportToolbarProps) {
   const { lang } = useLanguage();

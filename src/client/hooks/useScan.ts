@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from "react";
-import type { ScanReport, ScanSettings } from "../../shared/types";
+import type { ScanReport, ScanSettings } from "../../shared/types/index";
 
 export function useScan() {
   const [report, setReport] = useState<ScanReport | null>(null);

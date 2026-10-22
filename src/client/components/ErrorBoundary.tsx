@@ -1,14 +1,6 @@
-import { Component, type ReactNode } from "react";
-
-interface Props {
-  children: ReactNode;
-  fallback?: ReactNode;
-}
-
-interface State {
-  hasError: boolean;
-  error?: Error;
-}
+import type { Props, State } from "../types/ErrorBoundary.types";
+export type { Props, State } from "../types/ErrorBoundary.types";
+import { Component } from "react";
 
 export class ErrorBoundary extends Component<Props, State> {
   state: State = { hasError: false };

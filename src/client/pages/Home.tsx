@@ -11,7 +11,7 @@ import { useAuth } from "../hooks/useAuth";
 import { useLanguage } from "../context/LanguageContext";
 import { recommendSettings, estimateScanSeconds, formatDuration, defaultSettings } from "../utils/scanSettings";
 import { htmlFromPlainText } from "../richText";
-import type { ScanReport } from "../../shared/types";
+import type { ScanReport } from "../../shared/types/index";
 import { parseNezbigReport } from "../utils/nezbigFile";
 import { LoadingPanel } from "../components/LoadingPanel";
 import { RecentScansBar } from "../components/RecentScansBar";

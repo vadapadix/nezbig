@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { copyRichTextForWord } from "../wordClipboard";
 import { downloadWordDocument, revisedDocxFileName } from "../wordDocument";
 import { htmlFromPlainText, sanitizeRichHtml } from "../richText";
-import type { HumanizeResult } from "../../shared/types";
+import type { HumanizeResult } from "../../shared/types/index";
 
 export function useWordExport(onMessage: (msg: string) => void) {
   const [wordDownloadBusy, setWordDownloadBusy] = useState(false);

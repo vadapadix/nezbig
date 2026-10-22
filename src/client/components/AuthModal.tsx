@@ -1,11 +1,8 @@
+import type { AuthModalProps } from "../types/AuthModal.types";
+export type { AuthModalProps } from "../types/AuthModal.types";
 import { useState, useEffect } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { useLanguage } from "../context/LanguageContext";
-
-interface AuthModalProps {
-  open: boolean;
-  onClose: () => void;
-}
 
 export function AuthModal({ open, onClose }: AuthModalProps) {
   const { login, register, loginWithGoogle } = useAuth();

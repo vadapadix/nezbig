@@ -1,4 +1,6 @@
-import type { ScanReport } from "../../shared/types";
+import type { DriveReportFile } from "../types/googleDrive.types";
+export type { DriveReportFile } from "../types/googleDrive.types";
+import type { ScanReport } from "../../shared/types/index";
 import { serializeNezbigReport, parseNezbigReport } from "./nezbigFile";
 
 declare global {
@@ -18,14 +20,6 @@ declare global {
       };
     };
   }
-}
-
-export interface DriveReportFile {
-  id: string;
-  name: string;
-  modifiedTime?: string;
-  size?: string;
-  webViewLink?: string;
 }
 
 let cachedClientId: string | null = null;

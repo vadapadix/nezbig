@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, type ClipboardEvent } from "react";
 import { insertRichHtmlAtSelection } from "../richPaste";
 import { htmlFromPlainText, plainTextFromRichHtml, sanitizeRichHtml } from "../richText";
-import type { UploadedText } from "../../shared/types";
+import type { UploadedText } from "../../shared/types/index";
 
 function getLang(): "uk" | "en" {
   if (typeof localStorage !== "undefined") {

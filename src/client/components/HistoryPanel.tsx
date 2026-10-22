@@ -1,8 +1,6 @@
+import type { Props } from "../types/HistoryPanel.types";
+export type { Props } from "../types/HistoryPanel.types";
 import { useHistory } from "../hooks/useHistory";
-
-interface Props {
-  onSelect: (id: string) => void;
-}
 
 export function HistoryPanel({ onSelect }: Props) {
   const { items, loading, error, refresh } = useHistory();

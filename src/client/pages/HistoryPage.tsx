@@ -1,3 +1,5 @@
+import type { HistoryItem } from "../types/HistoryPage.types";
+export type { HistoryItem } from "../types/HistoryPage.types";
 import { localHistoryKey } from "../utils/localHistory";
 import { useState, useEffect, useRef, useCallback, Suspense, lazy } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
@@ -7,18 +9,9 @@ import { AuthModal } from "../components/AuthModal";
 import { GoogleDrivePickerModal } from "../components/GoogleDrivePickerModal";
 import { parseNezbigReport } from "../utils/nezbigFile";
 import { useAiOpinion } from "../hooks/useAiOpinion";
-import type { ScanReport } from "../../shared/types";
+import type { ScanReport } from "../../shared/types/index";
 
 const ReportView = lazy(() => import("../components/ReportView").then(m => ({ default: m.ReportView })));
-
-interface HistoryItem {
-  id: string;
-  fileName: string;
-  checkedAt: string;
-  plagiarismScore: number;
-  wordCount?: number;
-  aiProbability?: number;
-}
 
 export default function HistoryPage() {
   const { id } = useParams<{ id?: string }>();

@@ -1,4 +1,4 @@
-import type { ScanReport } from "../../shared/types";
+import type { ScanReport } from "../../shared/types/index";
 import { ProviderIcon } from "./ProviderIcon";
 import { useLanguage, type Language } from "../context/LanguageContext";
 

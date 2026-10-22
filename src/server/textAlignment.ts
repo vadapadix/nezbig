@@ -1,10 +1,7 @@
+import type { SourceToken } from "./types/textAlignment.types.js";
+export type { SourceToken } from "./types/textAlignment.types.js";
 const TOKEN_PATTERN = /\s+|[\p{L}\p{M}\p{N}]+(?:['’.-][\p{L}\p{M}\p{N}]+)*|[^\s]/gu;
 const MAX_ALIGNMENT_CELLS = 4_000_000;
-
-type SourceToken = {
-  value: string;
-  partIndex: number;
-};
 
 function tokenizeParts(parts: string[]): SourceToken[] {
   return parts.flatMap((part, partIndex) => (part.match(TOKEN_PATTERN) ?? []).map((value) => ({ value, partIndex })));

@@ -1,13 +1,8 @@
 import { jsPDF } from "jspdf";
-import type { ScanReport } from "../../shared/types";
+import type { ScanReport } from "../../shared/types/index";
 import type { Language } from "../context/LanguageContext";
 import { riskLabel, aiVerdictLabel, reportSummaryText, formatNumber, formatAiOpinionVerdict } from "./reportLabels";
-import {
-  translateReportSummary,
-  translateScanNote,
-  translateSignalLabel,
-  translateSignalDetail,
-} from "./reportI18n";
+import { translateReportSummary, translateScanNote, translateSignalLabel, translateSignalDetail } from "./reportI18n";
 
 function getFallbackLang(): Language {
   if (typeof localStorage !== "undefined") {

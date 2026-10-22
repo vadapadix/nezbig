@@ -1,19 +1,8 @@
-import type { ScanSettings } from "../../shared/types";
+import type { ScanSettingsPanelProps } from "../types/ScanSettingsPanel.types";
+export type { ScanSettingsPanelProps } from "../types/ScanSettingsPanel.types";
+
 import { scanModes, recommendSettings, formatDuration } from "../utils/scanSettings";
 import { formatNumber } from "../utils/reportLabels";
-
-interface ScanSettingsPanelProps {
-  settings: ScanSettings;
-  wordCount: number;
-  estimatedScanSeconds: number;
-  canScan: boolean;
-  busy: boolean;
-  canHumanize: boolean;
-  humanizerBusy: boolean;
-  message: string;
-  onSettingsChange: (settings: ScanSettings) => void;
-  onHumanize: () => void;
-}
 
 export function ScanSettingsPanel({
   settings,

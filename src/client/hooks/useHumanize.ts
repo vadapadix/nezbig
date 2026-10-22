@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import type { HumanizeMode, HumanizeResult } from "../../shared/types";
+import type { HumanizeMode, HumanizeResult } from "../../shared/types/index";
 
 export function useHumanize() {
   const [humanizerBusy, setHumanizerBusy] = useState(false);

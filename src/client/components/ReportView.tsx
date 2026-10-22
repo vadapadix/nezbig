@@ -1,6 +1,8 @@
+import type { ReportViewProps, ReportTab } from "../types/ReportView.types";
+export type { ReportViewProps, ReportTab } from "../types/ReportView.types";
 import { useId, useState, type KeyboardEvent } from "react";
 import { useSearchParams } from "react-router-dom";
-import type { ScanReport } from "../../shared/types";
+
 import { ExportToolbar } from "./ExportToolbar";
 import { AiAnalysisPanel } from "./AiAnalysisPanel";
 import { SuspiciousSegments } from "./SuspiciousSegments";
@@ -10,19 +12,9 @@ import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../hooks/useAuth";
 import { formatNumber, formatAiOpinionVerdict } from "../utils/reportLabels";
 import { translateScanNote, translateSignalLabel, translateSignalDetail, translateEvidenceItem } from "../utils/reportI18n";
-import "./report.css";
+import "../styles/report.css";
 
-interface ReportViewProps {
-  report: ScanReport;
-  llmBusy: boolean;
-  reportRef: React.RefObject<HTMLElement | null>;
-  onRetryOpinion?: () => void;
-  onBackToEditor?: () => void;
-  onMessage?: (msg: string, type?: "success" | "error" | "info") => void;
-}
-
-const tabKeys = ["sources", "ai", "technical"] as const;
-type ReportTab = typeof tabKeys[number];
+export const tabKeys = ["sources", "ai", "technical"] as const;
 
 export function ReportView({ report, llmBusy, reportRef, onRetryOpinion, onBackToEditor, onMessage }: ReportViewProps) {
   const { lang, t } = useLanguage();

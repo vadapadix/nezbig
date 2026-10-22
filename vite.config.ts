@@ -40,7 +40,8 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
-    setupFiles: ["src/client/testSetup.ts", "src/server/testStorageSetup.ts"],
-    exclude: ["node_modules", "tests/**"]
+    setupFiles: ["tests/setup/client.ts", "tests/setup/server.ts"],
+    include: ["tests/unit/**/*.test.{ts,tsx}"],
+    exclude: ["node_modules", "tests/e2e/**"]
   }
 });

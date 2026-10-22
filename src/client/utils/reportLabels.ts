@@ -1,4 +1,4 @@
-import type { LlmOpinion, ScanReport } from "../../shared/types";
+import type { LlmOpinion, ScanReport } from "../../shared/types/index";
 
 export function formatNumber(value: number, lang: "uk" | "en" = "uk"): string {
   return new Intl.NumberFormat(lang === "uk" ? "uk-UA" : "en-US").format(value);

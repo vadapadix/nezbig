@@ -7,7 +7,7 @@ import { useLanguage } from "../context/LanguageContext";
 import { HumanizePanel } from "../components/HumanizePanel";
 import { BrandLogo } from "../components/BrandLogo";
 import { useNavigate } from "react-router-dom";
-import type { HumanizeMode } from "../../shared/types";
+import type { HumanizeMode } from "../../shared/types/index";
 
 export default function HumanizePage({ showToast }: { showToast: (msg: string, type?: "success" | "error" | "info") => void }) {
   const { t, lang } = useLanguage();

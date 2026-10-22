@@ -1,12 +1,7 @@
+import type { DiffPart } from "../types/DiffPanel.types";
+export type { DiffPart } from "../types/DiffPanel.types";
 import { useState } from "react";
 import { useLanguage } from "../context/LanguageContext";
-
-export interface DiffPart {
-  count?: number;
-  value: string;
-  added?: boolean;
-  removed?: boolean;
-}
 
 export function DiffPanel() {
   const { lang } = useLanguage();

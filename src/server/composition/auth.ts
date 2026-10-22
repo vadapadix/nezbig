@@ -1,0 +1,9 @@
+import { PersistentUserRepository } from "../infrastructure/persistence/UserRepository.js";
+import { BcryptPasswordHasher } from "../infrastructure/auth/PasswordHasher.js";
+import { TokenService } from "../infrastructure/auth/TokenService.js";
+import { AuthenticationService } from "../application/auth/AuthenticationService.js";
+import { SessionCookie } from "../presentation/http/auth/SessionCookie.js";
+export const users = new PersistentUserRepository();
+export const tokens = new TokenService();
+export const sessionCookie = new SessionCookie();
+export const authenticationService = new AuthenticationService(users, new BcryptPasswordHasher());

@@ -1,0 +1,78 @@
+import { describe, expect, it } from "vitest";
+import { filterProseText } from "../../../src/server/domain/analysis/proseFilter.js";
+
+describe("filterProseText", () => {
+  it("removes fenced and line-based code while keeping prose", () => {
+    const result = filterProseText(`
+      У цьому розділі описано архітектуру застосунку та логіку перевірки.
+
+      \`\`\`ts
+      export function sum(a: number, b: number) {
+        return a + b;
+      }
+      \`\`\`
+
+      Подальший аналіз стосується користувацького сценарію та обмежень методу.
+      const ignored = true;
+      if (ignored) {
+        console.log("skip");
+      }
+    `);
+
+    expect(result.text).toContain("архітектуру застосунку");
+    expect(result.text).toContain("користувацького сценарію");
+    expect(result.text).not.toContain("export function");
+    expect(result.text).not.toContain("console.log");
+    expect(result.removedCodeWords).toBeGreaterThan(5);
+  });
+
+  it("removes VBA-style code residue from prose extraction", () => {
+    const result = filterProseText(`
+      У навчальній версії передбачено авторизацію користувача та перевірку ролей.
+      End Sub Private Sub Login_Click() Public Function ValidateUser() End Function
+      Подальший опис стосується структури бази даних та сценаріїв роботи системи.
+    `);
+
+    expect(result.text.toLowerCase()).not.toContain("end sub");
+    expect(result.text.toLowerCase()).not.toContain("private sub");
+    expect(result.text.toLowerCase()).not.toContain("public function");
+    expect(result.text).toContain("авторизацію користувача");
+    expect(result.text).toContain("структури бази даних");
+  });
+
+  it("preserves ordinary academic phrases that contain programming keywords", () => {
+    const result = filterProseText(
+      `function of education is broader than assessment.
+class of models describes a type of analysis used in social research.
+The type of analysis remains part of the academic explanation. A real call like calculateScore(value) should be omitted.`
+    );
+
+    expect(result.text).toContain("function of education");
+    expect(result.text).toContain("class of models");
+    expect(result.text).toContain("type of analysis");
+    expect(result.text).not.toContain("calculateScore(value)");
+  });
+
+  it("removes a single high-confidence code line instead of leaking punctuation into prose", () => {
+    const result = filterProseText(`
+      Перший абзац описує методику спостереження та перевірки результатів.
+      const result = calculateScore(input);
+      Другий абзац пояснює обмеження вибірки та спосіб ручної перевірки.
+    `);
+
+    expect(result.text).toContain("Перший абзац");
+    expect(result.text).toContain("Другий абзац");
+    expect(result.text).not.toContain("calculateScore");
+    expect(result.text).not.toContain(";");
+    expect(result.removedCodeBlocks).toBe(1);
+  });
+
+  it("keeps academic parentheticals while removing actual function calls", () => {
+    const result = filterProseText("The study included participants (n=42), used data from study (2021), and compared the method (qualitative) with calculateScore(value).");
+
+    expect(result.text).toContain("participants (n=42)");
+    expect(result.text).toContain("study (2021)");
+    expect(result.text).toContain("method (qualitative)");
+    expect(result.text).not.toContain("calculateScore(value)");
+  });
+});

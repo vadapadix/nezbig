@@ -1,12 +1,6 @@
+import type { Language, LanguageContextType, TranslationKey } from "../types/LanguageContext.types";
+export type { Language, LanguageContextType, TranslationKey } from "../types/LanguageContext.types";
 import React, { createContext, useContext, useState } from "react";
-
-export type Language = "uk" | "en";
-
-interface LanguageContextType {
-  lang: Language;
-  setLang: (lang: Language) => void;
-  t: (key: TranslationKey) => string;
-}
 
 export const translations = {
   uk: {
@@ -162,8 +156,6 @@ export const translations = {
     copyright: "© 2026 NEZBIG 2.0. Original thoughts. Zero matches."
   }
 } as const;
-
-export type TranslationKey = keyof typeof translations.uk;
 
 const LanguageContext = createContext<LanguageContextType>({
   lang: "en",

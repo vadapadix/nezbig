@@ -1,4 +1,4 @@
-import type { ScanReport } from "../../shared/types";
+import type { ScanReport } from "../../shared/types/index";
 import { useLanguage } from "../context/LanguageContext";
 import { translateSignalLabel, translateSignalDetail, translateEvidenceItem } from "../utils/reportI18n";
 

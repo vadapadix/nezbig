@@ -1,4 +1,4 @@
-import type { ScanSettings } from "../../shared/types";
+import type { ScanSettings } from "../../shared/types/index";
 
 export const defaultSettings: ScanSettings = {
   maxChunks: 14,

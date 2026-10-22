@@ -1,6 +1,6 @@
+import type { WordCopyMode } from "./types/wordClipboard.types";
+export type { WordCopyMode } from "./types/wordClipboard.types";
 import { createWordClipboardHtml } from "./wordDocument";
-
-export type WordCopyMode = "rich" | "plain";
 
 function copyFormattedSelection(html: string): boolean {
   if (!document.body || typeof document.execCommand !== "function") return false;

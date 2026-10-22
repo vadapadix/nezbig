@@ -1,7 +1,7 @@
 import { readFileSync } from "fs";
 import { join } from "path";
-import { detectAiSignals } from "../src/server/aiDetection.js";
-import type { AiVerdict } from "../src/shared/types.js";
+import { detectAiSignals } from "../src/server/domain/analysis/aiDetection.js";
+import type { AiVerdict } from "../src/shared/types/index.js";
 
 const DOC_SEPARATOR = /\r?\n===DOC===\r?\n/;
 const FIXTURE_DIR = join(process.cwd(), "tests", "fixtures", "ai-corpus");

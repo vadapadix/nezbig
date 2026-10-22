@@ -1,11 +1,6 @@
+import type { BrandLogoProps } from "../types/BrandLogo.types";
+export type { BrandLogoProps } from "../types/BrandLogo.types";
 import React from "react";
-
-type BrandLogoProps = {
-  spinning?: boolean;
-  className?: string;
-  width?: number | string;
-  height?: number | string;
-};
 
 export const BrandLogo: React.FC<BrandLogoProps> = ({ spinning = false, className = "", width = 136, height = 136 }) => {
   return (

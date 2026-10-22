@@ -1,17 +1,10 @@
-import { useState, type ReactNode } from "react";
-import type { PlagiarismMatch, ScanReport } from "../../shared/types";
+import type { PlagiarismMatchesProps } from "../types/PlagiarismMatches.types";
+export type { PlagiarismMatchesProps } from "../types/PlagiarismMatches.types";
+import { useState } from "react";
+import type { PlagiarismMatch } from "../../shared/types/index";
 import { stripHtml } from "../utils/sanitizeHtml";
 import { useLanguage } from "../context/LanguageContext";
 import { formatNumber } from "../utils/reportLabels";
-
-interface PlagiarismMatchesProps {
-  matches: ScanReport["matches"];
-  confirmedMatchCount: number;
-  leadMatchCount: number;
-  allSearchProvidersFailed: boolean;
-  diagnosticsNode?: ReactNode;
-  matchesTotal?: number;
-}
 
 function MatchCardItem({ match }: { match: PlagiarismMatch }) {
   const { lang } = useLanguage();

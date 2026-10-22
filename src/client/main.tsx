@@ -5,8 +5,8 @@ import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import App from "./App";
-import "./styles.css";
-import "./polish.css";
+import "./styles/global.css";
+import "./styles/polish.css";
 
 if (typeof window !== "undefined" && "serviceWorker" in navigator && import.meta.env.PROD) {
   import("virtual:pwa-register")

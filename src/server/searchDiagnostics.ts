@@ -1,4 +1,4 @@
-import type { SearchDiagnostics, SearchProviderDiagnostic } from "../shared/types.js";
+import type { SearchDiagnostics, SearchProviderDiagnostic } from "../shared/types/index.js";
 
 export function emptySearchDiagnostics(): SearchDiagnostics {
   return {

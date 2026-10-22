@@ -1,13 +1,8 @@
+import type { Draft } from "../types/useDraft.types";
+export type { Draft } from "../types/useDraft.types";
 import { useEffect, useRef, useState, useCallback } from "react";
 
 const DRAFT_KEY = "nezbig:draft";
-
-interface Draft {
-  text: string;
-  html: string;
-  fileName: string;
-  savedAt: string;
-}
 
 export function useDraft(text: string, html: string, fileName: string, onRestore: (d: Draft) => void) {
   const [draftSaved, setDraftSaved] = useState(false);

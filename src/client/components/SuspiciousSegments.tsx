@@ -1,11 +1,9 @@
-import type { AiSuspiciousSegment } from "../../shared/types";
+import type { SuspiciousSegmentsProps } from "../types/SuspiciousSegments.types";
+export type { SuspiciousSegmentsProps } from "../types/SuspiciousSegments.types";
+
 import { formatNumber } from "../utils/reportLabels";
 import { useLanguage } from "../context/LanguageContext";
 import { translateEvidenceItem } from "../utils/reportI18n";
-
-interface SuspiciousSegmentsProps {
-  segments: AiSuspiciousSegment[];
-}
 
 export function SuspiciousSegments({ segments }: SuspiciousSegmentsProps) {
   const { lang } = useLanguage();

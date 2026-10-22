@@ -1,17 +1,10 @@
+import type { HumanizePanelProps } from "../types/HumanizePanel.types";
+export type { HumanizePanelProps } from "../types/HumanizePanel.types";
 import { useState } from "react";
-import type { HumanizeResult } from "../../shared/types";
+
 import { htmlFromPlainText, sanitizeRichHtml } from "../richText";
 import { formatNumber } from "../utils/reportLabels";
 import { useLanguage } from "../context/LanguageContext";
-
-interface HumanizePanelProps {
-  humanized: HumanizeResult;
-  wordDownloadBusy: boolean;
-  selectedFile: File | null;
-  onMoveToChecker: () => void;
-  onCopyFormatted: () => void;
-  onDownloadForWord: () => void;
-}
 
 function getCategoryBadge(category?: string, lang?: string) {
   switch (category) {

@@ -1,11 +1,6 @@
+import type { HistoryItem } from "../types/useHistory.types";
+export type { HistoryItem } from "../types/useHistory.types";
 import { useState, useEffect, useCallback } from "react";
-
-export interface HistoryItem {
-  id: string;
-  fileName: string;
-  checkedAt: string;
-  plagiarismScore: number;
-}
 
 export function useHistory() {
   const [items, setItems] = useState<HistoryItem[]>([]);

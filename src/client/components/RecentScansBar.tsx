@@ -1,24 +1,11 @@
+import type { StoredScanItem, RecentScansBarProps } from "../types/RecentScansBar.types";
+export type { StoredScanItem, RecentScansBarProps } from "../types/RecentScansBar.types";
 import { localHistoryKey } from "../utils/localHistory";
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../hooks/useAuth";
-import type { ScanReport } from "../../shared/types";
-
-export interface StoredScanItem {
-  id: string;
-  fileName: string;
-  checkedAt: string;
-  plagiarismScore: number;
-  wordCount?: number;
-  aiProbability?: number;
-  fullReport?: ScanReport;
-}
-
-interface RecentScansBarProps {
-  currentReportId?: string | null;
-  onSelectReport: (report: ScanReport) => void;
-}
+import type { ScanReport } from "../../shared/types/index";
 
 export function RecentScansBar({ currentReportId, onSelectReport }: RecentScansBarProps) {
   const { lang } = useLanguage();
