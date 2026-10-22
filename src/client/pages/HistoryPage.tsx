@@ -1,3 +1,4 @@
+import { historyMetrics } from "../../shared/historyMetrics";
 import { apiFetch } from "../utils/apiClient";
 import type { HistoryItem } from "../types/HistoryPage.types";
 export type { HistoryItem } from "../types/HistoryPage.types";
@@ -84,7 +85,8 @@ export default function HistoryPage() {
         for (const item of [...serverItems, ...localItems]) {
           if (item?.id && !seen.has(item.id)) {
             seen.add(item.id);
-            merged.push(item);
+            const local = localItems.find((candidate) => candidate.id === item.id);
+            merged.push({ ...item, fullReport: item.fullReport ?? local?.fullReport });
           }
         }
         setItems(merged);
@@ -367,7 +369,10 @@ export default function HistoryPage() {
         <div className="flex flex-col gap-3">
           {items.map((item) => {
             const date = new Date(item.checkedAt);
-            const scoreColor = item.plagiarismScore > 50 ? "text-error" : item.plagiarismScore > 20 ? "text-yellow-400" : "text-emerald-glow";
+            const metrics = historyMetrics(item);
+            const coverageText =
+              metrics.coverage === undefined ? "—" : new Intl.NumberFormat(lang === "uk" ? "uk-UA" : "en-US", { maximumFractionDigits: 1 }).format(metrics.coverage) + "%";
+            const scoreColor = (metrics.coverage ?? 0) > 50 ? "text-error" : (metrics.coverage ?? 0) > 20 ? "text-yellow-400" : "text-emerald-glow";
 
             return (
               <div
@@ -389,13 +394,13 @@ export default function HistoryPage() {
                 </div>
                 <div className="flex items-center gap-4 sm:gap-6 shrink-0">
                   <div className="text-right">
-                    <p className="text-label-sm text-on-surface-variant">{t("plagiarism")}</p>
-                    <p className={`text-body-lg font-bold ${scoreColor}`}>{item.plagiarismScore}%</p>
+                    <p className="text-label-sm text-on-surface-variant">{lang === "uk" ? "Збіги" : "Matches"}</p>
+                    <p className={`text-body-lg font-bold ${scoreColor}`}>{coverageText}</p>
                   </div>
-                  {item.aiProbability !== undefined && (
+                  {metrics.ai !== undefined && (
                     <div className="text-right hidden sm:block">
                       <p className="text-label-sm text-on-surface-variant">AI</p>
-                      <p className="text-body-lg font-bold text-white">{item.aiProbability}%</p>
+                      <p className="text-body-lg font-bold text-white">{metrics.ai}%</p>
                     </div>
                   )}
                   <button

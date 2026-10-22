@@ -29,6 +29,15 @@ function mockReport(id: string, fileName = "test.docx"): ScanReport {
 describe("Multi-Tier History Storage (db.ts)", () => {
   const testUserId = "user-test-db-123";
 
+  it("returns document coverage independently of strongest match and ignores stale summaries", async () => {
+    const report = { ...mockReport("metrics-report"), plagiarismScore: 26, matchedTextPercent: 0, aiProbability: 4 };
+    await reports.saveReport(report.id, report, testUserId);
+    await reports.saveUserReport(testUserId, report.id, { fileName: "stale", checkedAt: report.checkedAt, plagiarismScore: 99, aiProbability: 99 });
+    const item = (await reports.getUserReports(testUserId)).find((item) => item.id === report.id);
+    expect(item).toMatchObject({ plagiarismScore: 26, matchedTextPercent: 0, aiProbability: 4 });
+    await reports.deleteUserReport(testUserId, report.id);
+  });
+
   it("saves and retrieves full report", async () => {
     const report = mockReport("rep-101", "document.docx");
     await reports.saveReport("rep-101", report);

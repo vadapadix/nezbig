@@ -1,6 +1,2 @@
-export interface HistoryItem {
-  id: string;
-  fileName: string;
-  checkedAt: string;
-  plagiarismScore: number;
-}
+import type { UserScanHistoryItem } from "../../shared/types/index";
+export type HistoryItem = UserScanHistoryItem;

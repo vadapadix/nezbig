@@ -1,4 +1,5 @@
 import type { ReportViewProps, ReportTab } from "../types/ReportView.types";
+import { isSearchUnavailable } from "../../shared/historyMetrics";
 export type { ReportViewProps, ReportTab } from "../types/ReportView.types";
 import { useId, useState, type KeyboardEvent } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -27,11 +28,9 @@ export function ReportView({ report, llmBusy, reportRef, onRetryOpinion, onBackT
   const confirmed = report.matches.filter((match) => match.confidence === "page");
   const leads = report.matches.length - confirmed.length;
   const providers = report.searchDiagnostics?.providers ?? [];
-  const attempts = providers.reduce((sum, provider) => sum + provider.attempted, 0);
   const succeeded = providers.reduce((sum, provider) => sum + provider.succeeded, 0);
   const failed = providers.reduce((sum, provider) => sum + provider.failed, 0);
-  const circuitOpen = providers.some((provider) => /повторних помилок/i.test(provider.skippedReason ?? ""));
-  const searchUnavailable = succeeded === 0 && (attempts > 0 || circuitOpen);
+  const searchUnavailable = isSearchUnavailable(report);
   const partialSearch = succeeded > 0 && failed > 0;
   const coverageAvailable = !searchUnavailable && report.matchedTextPercent !== undefined;
   const percent = coverageAvailable ? new Intl.NumberFormat(lang === "uk" ? "uk-UA" : "en-US", { maximumFractionDigits: 1 }).format(report.matchedTextPercent!) : "—";

@@ -1,14 +1,5 @@
-import type { ScanReport } from "../../shared/types/index";
-
-export interface StoredScanItem {
-  id: string;
-  fileName: string;
-  checkedAt: string;
-  plagiarismScore: number;
-  wordCount?: number;
-  aiProbability?: number;
-  fullReport?: ScanReport;
-}
+import type { UserScanHistoryItem, ScanReport } from "../../shared/types/index";
+export type StoredScanItem = UserScanHistoryItem;
 
 export interface RecentScansBarProps {
   currentReportId?: string | null;

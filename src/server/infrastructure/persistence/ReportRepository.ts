@@ -1,3 +1,4 @@
+import { historyItemFromReport } from "../../../shared/historyMetrics.js";
 import type { StoredReport } from "../../types/ReportRepository.types.js";
 export type { StoredReport } from "../../types/ReportRepository.types.js";
 import fs from "fs";
@@ -156,20 +157,17 @@ export class ReportRepository {
       const items: UserScanHistoryItem[] = [];
       for (const id of ids) {
         const report = (await this.getReport(id)) as StoredReport | null;
-        if (report && (!report.ownerId || report.ownerId === userId))
-          items.push({
-            id,
-            fileName: report.fileName,
-            checkedAt: report.checkedAt,
-            plagiarismScore: report.plagiarismScore,
-            wordCount: report.wordCount,
-            aiProbability: report.aiProbability
-          });
+        if (report && (!report.ownerId || report.ownerId === userId)) items.push(historyItemFromReport(report));
       }
       return items;
     }
     const filePath = path.join(getFileStorageDir(), "user-history", `${userId}.json`);
-    return (readJsonFile<UserScanHistoryItem[]>(filePath) || []).slice(0, limit);
+    return Promise.all(
+      (readJsonFile<UserScanHistoryItem[]>(filePath) || []).slice(0, limit).map(async (item) => {
+        const report = await this.getOwnedReport(userId, item.id);
+        return report ? historyItemFromReport(report) : item;
+      })
+    );
   }
 
   async saveUserReport(userId: string, reportId: string, summary?: Partial<UserScanHistoryItem>): Promise<void> {
@@ -184,12 +182,15 @@ export class ReportRepository {
     const current = await this.getUserReports(userId, 100);
 
     let newItem: UserScanHistoryItem;
-    if (summary?.fileName && summary.checkedAt && summary.plagiarismScore !== undefined) {
+    if (stored) {
+      newItem = historyItemFromReport(stored);
+    } else if (summary?.fileName && summary.checkedAt && summary.plagiarismScore !== undefined) {
       newItem = {
         id: reportId,
         fileName: summary.fileName,
         checkedAt: summary.checkedAt,
         plagiarismScore: summary.plagiarismScore,
+        matchedTextPercent: summary.matchedTextPercent,
         wordCount: summary.wordCount,
         aiProbability: summary.aiProbability
       };
@@ -200,6 +201,7 @@ export class ReportRepository {
         fileName: report?.fileName || "Документ",
         checkedAt: report?.checkedAt || new Date().toISOString(),
         plagiarismScore: report?.plagiarismScore ?? 0,
+        matchedTextPercent: report ? historyItemFromReport(report).matchedTextPercent : undefined,
         wordCount: report?.wordCount,
         aiProbability: report?.aiProbability
       };
@@ -288,7 +290,7 @@ export class ReportRepository {
       if (!item || typeof item.id !== "string") continue;
       const owned = await this.getOwnedReport(userId, item.id);
       if (owned) {
-        safeItems.push({ ...item, fullReport: undefined });
+        safeItems.push(historyItemFromReport(owned));
         continue;
       }
       // A client-supplied ID is never authority to claim or overwrite a server report.
@@ -297,12 +299,7 @@ export class ReportRepository {
       const report = { ...item.fullReport, id };
       await this.saveReport(id, report, userId);
       safeItems.push({
-        id,
-        fileName: report.fileName,
-        checkedAt: report.checkedAt,
-        plagiarismScore: report.plagiarismScore,
-        wordCount: report.wordCount,
-        aiProbability: report.aiProbability,
+        ...historyItemFromReport(report),
         fullReport: report
       });
     }
@@ -319,6 +316,7 @@ export class ReportRepository {
           fileName: item.fileName,
           checkedAt: item.checkedAt || new Date().toISOString(),
           plagiarismScore: item.plagiarismScore ?? 0,
+          matchedTextPercent: item.matchedTextPercent,
           wordCount: item.wordCount,
           aiProbability: item.aiProbability
         });

@@ -1,3 +1,4 @@
+import { historyMetrics } from "../../shared/historyMetrics";
 import { apiFetch } from "../utils/apiClient";
 import type { StoredScanItem, RecentScansBarProps } from "../types/RecentScansBar.types";
 export type { StoredScanItem, RecentScansBarProps } from "../types/RecentScansBar.types";
@@ -141,15 +142,17 @@ export function RecentScansBar({ currentReportId, onSelectReport }: RecentScansB
       <div className="flex items-center gap-3 overflow-x-auto pb-1 custom-scrollbar scroll-smooth">
         {items.map((item) => {
           const isActive = currentReportId === item.id;
+          const metrics = historyMetrics(item);
+          const coverageText =
+            metrics.coverage === undefined ? "—" : new Intl.NumberFormat(lang === "uk" ? "uk-UA" : "en-US", { maximumFractionDigits: 1 }).format(metrics.coverage) + "%";
           const plagColor =
-            item.plagiarismScore > 40
+            (metrics.coverage ?? 0) > 40
               ? "bg-rose-500/20 text-rose-300 border-rose-500/30"
-              : item.plagiarismScore > 15
+              : (metrics.coverage ?? 0) > 15
                 ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
                 : "bg-emerald-500/20 text-emerald-300 border-emerald-500/30";
 
-          const aiColor =
-            item.aiProbability !== undefined && item.aiProbability > 50 ? "bg-rose-500/20 text-rose-300 border-rose-500/30" : "bg-cyan-500/20 text-cyan-300 border-cyan-500/30";
+          const aiColor = metrics.ai !== undefined && metrics.ai > 50 ? "bg-rose-500/20 text-rose-300 border-rose-500/30" : "bg-cyan-500/20 text-cyan-300 border-cyan-500/30";
 
           return (
             <div
@@ -184,13 +187,16 @@ export function RecentScansBar({ currentReportId, onSelectReport }: RecentScansB
               </div>
 
               <div className="flex items-center gap-1.5 shrink-0 pl-1">
-                <span className={`px-1.5 py-0.5 rounded text-[11px] font-mono font-bold border ${plagColor}`} title={lang === "uk" ? "Плагіат" : "Plagiarism"}>
-                  {item.plagiarismScore}%
+                <span
+                  className={`px-1.5 py-0.5 rounded text-[11px] font-mono font-bold border ${plagColor}`}
+                  title={lang === "uk" ? "Частка підтверджених дослівних збігів" : "Confirmed verbatim coverage"}
+                >
+                  {lang === "uk" ? "Збіги" : "Matches"} {coverageText}
                 </span>
 
-                {item.aiProbability !== undefined && (
+                {metrics.ai !== undefined && (
                   <span className={`px-1.5 py-0.5 rounded text-[11px] font-mono font-bold border ${aiColor}`} title={lang === "uk" ? "ШІ-ризик" : "AI Risk"}>
-                    {item.aiProbability}%
+                    {lang === "uk" ? "ШІ" : "AI"} {metrics.ai}%
                   </span>
                 )}
               </div>

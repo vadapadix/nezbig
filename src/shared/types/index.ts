@@ -205,6 +205,7 @@ export type UserScanHistoryItem = {
   fileName: string;
   checkedAt: string;
   plagiarismScore: number;
+  matchedTextPercent?: number;
   wordCount?: number;
   aiProbability?: number;
   fullReport?: ScanReport;

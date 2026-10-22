@@ -1,3 +1,4 @@
+import { historyItemFromReport } from "../../shared/historyMetrics";
 import { localHistoryKey } from "../utils/localHistory";
 import { useMemo, useState, useRef, useEffect, useCallback, Suspense, lazy } from "react";
 import { useSearchParams, useLocation } from "react-router-dom";
@@ -112,12 +113,7 @@ export default function Home({ showToast }: { showToast: (msg: string, type?: "s
       const stored = JSON.parse(localStorage.getItem(localHistoryKey()) || "[]");
       const filtered = stored.filter((item: any) => item.id !== report.id);
       filtered.unshift({
-        id: report.id,
-        fileName: report.fileName,
-        checkedAt: report.checkedAt,
-        plagiarismScore: report.plagiarismScore,
-        wordCount: report.wordCount,
-        aiProbability: report.aiProbability,
+        ...historyItemFromReport(report),
         fullReport: report
       });
       localStorage.setItem(localHistoryKey(), JSON.stringify(filtered.slice(0, 50)));
