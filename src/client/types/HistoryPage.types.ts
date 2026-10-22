@@ -1,5 +1,3 @@
-
-
 export interface HistoryItem {
   id: string;
   fileName: string;

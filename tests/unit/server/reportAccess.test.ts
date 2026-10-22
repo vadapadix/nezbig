@@ -9,14 +9,44 @@ import { reportCacheKey, reportCache, scanJobCache } from "../../../src/server/i
 import type { ScanReport } from "../../../src/shared/types/index.js";
 
 vi.mock("../../../src/server/infrastructure/search/webSearch.js", () => ({
-  searchWebCandidatesDetailed: vi.fn(async () => ({ candidates: [], diagnostics: { providers: [{ provider: "mock", attempted: 1, succeeded: 1, failed: 0, timedOut: 0, results: 0 }], pages: { attempted: 0, verified: 0, unavailable: 0, cacheHits: 0, negativeCacheHits: 0 } } })),
-  hydrateSearchCandidatesDetailed: vi.fn(async () => ({ candidates: [], diagnostics: { providers: [], pages: { attempted: 0, verified: 0, unavailable: 0, cacheHits: 0, negativeCacheHits: 0 } } }))
+  searchWebCandidatesDetailed: vi.fn(async () => ({
+    candidates: [],
+    diagnostics: {
+      providers: [{ provider: "mock", attempted: 1, succeeded: 1, failed: 0, timedOut: 0, results: 0 }],
+      pages: { attempted: 0, verified: 0, unavailable: 0, cacheHits: 0, negativeCacheHits: 0 }
+    }
+  })),
+  hydrateSearchCandidatesDetailed: vi.fn(async () => ({
+    candidates: [],
+    diagnostics: { providers: [], pages: { attempted: 0, verified: 0, unavailable: 0, cacheHits: 0, negativeCacheHits: 0 } }
+  }))
 }));
 
-function token(id: string) { return tokens.generate({ id, email: `${id}@example.com`, name: id }); }
-const text = "This document contains enough separate words for a reliable local analysis of original writing with multiple different sentences and a careful explanation of methods used in research.";
+function token(id: string) {
+  return tokens.generate({ id, email: `${id}@example.com`, name: id });
+}
+const text =
+  "This document contains enough separate words for a reliable local analysis of original writing with multiple different sentences and a careful explanation of methods used in research.";
 function report(id = crypto.randomUUID()): ScanReport {
-  return { id, fileName: "private.docx", checkedAt: new Date().toISOString(), wordCount: 100, chunksChecked: 1, plagiarismScore: 0, aiProbability: 5, aiVerdict: "low", aiReliability: { level: "low", score: 30, segmentCount: 1, segmentSpread: 0, reason: "short" }, aiLanguage: { code: "en", supportedPercent: 100, reason: "" }, aiExclusions: { analyzedWords: 100, codeWords: 0, quotedWords: 0, referenceWords: 0 }, aiSuspiciousSegments: [], aiProvider: "local", matches: [], aiSignals: [], summary: "private", sourceText: "private source" };
+  return {
+    id,
+    fileName: "private.docx",
+    checkedAt: new Date().toISOString(),
+    wordCount: 100,
+    chunksChecked: 1,
+    plagiarismScore: 0,
+    aiProbability: 5,
+    aiVerdict: "low",
+    aiReliability: { level: "low", score: 30, segmentCount: 1, segmentSpread: 0, reason: "short" },
+    aiLanguage: { code: "en", supportedPercent: 100, reason: "" },
+    aiExclusions: { analyzedWords: 100, codeWords: 0, quotedWords: 0, referenceWords: 0 },
+    aiSuspiciousSegments: [],
+    aiProvider: "local",
+    matches: [],
+    aiSignals: [],
+    summary: "private",
+    sourceText: "private source"
+  };
 }
 
 describe("private reports", () => {
@@ -73,17 +103,14 @@ describe("private reports", () => {
     const second = report();
     await Promise.all([reports.saveReport(first.id, first, "concurrent-owner"), reports.saveReport(second.id, second, "concurrent-owner")]);
     await Promise.all([reports.saveUserReport("concurrent-owner", first.id), reports.saveUserReport("concurrent-owner", second.id)]);
-    expect((await reports.getUserReports("concurrent-owner")).map(item => item.id).sort()).toEqual([first.id, second.id].sort());
+    expect((await reports.getUserReports("concurrent-owner")).map((item) => item.id).sort()).toEqual([first.id, second.id].sort());
   });
 
   it("does not resurrect a report when an AI response arrives after deletion", async () => {
     const item = report();
     await reports.saveReport(item.id, item, "late-ai-owner");
     await reports.saveUserReport("late-ai-owner", item.id);
-    await Promise.all([
-      reports.deleteUserReport("late-ai-owner", item.id),
-      reports.updateOwnedReport("late-ai-owner", item.id, { aiOpinionProbability: 90 })
-    ]);
+    await Promise.all([reports.deleteUserReport("late-ai-owner", item.id), reports.updateOwnedReport("late-ai-owner", item.id, { aiOpinionProbability: 90 })]);
     expect(await reports.getReport(item.id)).toBeNull();
   });
 });
@@ -95,7 +122,7 @@ describe("job and cache isolation", () => {
     expect(start.status).toBe(200);
     let status = await agent.get(`/api/scan-status/${start.body.jobId}`);
     for (let i = 0; i < 20 && status.body.status !== "completed"; i++) {
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
       status = await agent.get(`/api/scan-status/${start.body.jobId}`);
     }
     expect(status.body.status).toBe("completed");
@@ -133,7 +160,7 @@ describe("job and cache isolation", () => {
     const first = await agent.post("/api/scan/jobs").send({ text, fileName: "first.docx" });
     let status = await agent.get(`/api/scan-status/${first.body.jobId}`);
     for (let i = 0; i < 20 && status.body.status !== "completed"; i++) {
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
       status = await agent.get(`/api/scan-status/${first.body.jobId}`);
     }
     const repeat = await agent.post("/api/scan/jobs").send({ text, fileName: "first.docx" });
@@ -143,7 +170,7 @@ describe("job and cache isolation", () => {
     expect(changed.body.status).not.toBe("completed");
     let changedStatus = await agent.get(`/api/scan-status/${changed.body.jobId}`);
     for (let i = 0; i < 20 && changedStatus.body.status !== "completed"; i++) {
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
       changedStatus = await agent.get(`/api/scan-status/${changed.body.jobId}`);
     }
     expect(changedStatus.body.result.fileName).toBe("second.docx");

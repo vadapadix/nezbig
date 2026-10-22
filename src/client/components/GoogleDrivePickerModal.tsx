@@ -31,7 +31,7 @@ export function GoogleDrivePickerModal({ isOpen, onClose, onSelectReport }: Goog
       })
       .catch((err) => {
         if (isMounted) {
-          setError(err instanceof Error ? err.message : (lang === "uk" ? "Не вдалося отримати файли з Google Диску" : "Failed to load files from Google Drive"));
+          setError(err instanceof Error ? err.message : lang === "uk" ? "Не вдалося отримати файли з Google Диску" : "Failed to load files from Google Drive");
         }
       })
       .finally(() => {
@@ -53,7 +53,7 @@ export function GoogleDrivePickerModal({ isOpen, onClose, onSelectReport }: Goog
       onSelectReport(report);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : (lang === "uk" ? "Помилка при завантаженні звіту" : "Failed to open report"));
+      setError(err instanceof Error ? err.message : lang === "uk" ? "Помилка при завантаженні звіту" : "Failed to open report");
     } finally {
       setLoadingFileId(null);
     }
@@ -64,7 +64,7 @@ export function GoogleDrivePickerModal({ isOpen, onClose, onSelectReport }: Goog
     try {
       return new Intl.DateTimeFormat(lang === "uk" ? "uk-UA" : "en-US", {
         dateStyle: "medium",
-        timeStyle: "short",
+        timeStyle: "short"
       }).format(new Date(isoStr));
     } catch {
       return isoStr;
@@ -84,7 +84,7 @@ export function GoogleDrivePickerModal({ isOpen, onClose, onSelectReport }: Goog
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-[#4285F4]/10 text-[#4285F4] flex items-center justify-center shrink-0 border border-[#4285F4]/20">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4 0-2.05 1.53-3.76 3.56-3.97l1.07-.11.5-.95C8.08 7.14 9.94 6 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5 1.53.11c1.56.1 2.78 1.41 2.78 2.96 0 1.65-1.35 3-3 3z"/>
+                <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4 0-2.05 1.53-3.76 3.56-3.97l1.07-.11.5-.95C8.08 7.14 9.94 6 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5 1.53.11c1.56.1 2.78 1.41 2.78 2.96 0 1.65-1.35 3-3 3z" />
               </svg>
             </div>
             <div>
@@ -92,9 +92,7 @@ export function GoogleDrivePickerModal({ isOpen, onClose, onSelectReport }: Goog
                 {lang === "uk" ? "Звіти з Google Диску" : "Google Drive Reports"}
               </h3>
               <p className="text-xs text-on-surface-variant">
-                {lang === "uk"
-                  ? "Збережені файли у форматі .nezbig з вашого хмарного сховища"
-                  : "Saved .nezbig files from your personal cloud storage"}
+                {lang === "uk" ? "Збережені файли у форматі .nezbig з вашого хмарного сховища" : "Saved .nezbig files from your personal cloud storage"}
               </p>
             </div>
           </div>
@@ -120,18 +118,14 @@ export function GoogleDrivePickerModal({ isOpen, onClose, onSelectReport }: Goog
           {loading ? (
             <div className="py-12 flex flex-col items-center justify-center gap-3 text-on-surface-variant">
               <span className="material-symbols-outlined text-3xl animate-spin text-emerald-glow">progress_activity</span>
-              <p className="text-sm">
-                {lang === "uk" ? "Завантаження списку звітів з Google Диску…" : "Fetching reports from Google Drive…"}
-              </p>
+              <p className="text-sm">{lang === "uk" ? "Завантаження списку звітів з Google Диску…" : "Fetching reports from Google Drive…"}</p>
             </div>
           ) : files.length === 0 ? (
             <div className="py-12 flex flex-col items-center justify-center gap-3 text-center px-4">
               <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-on-surface-variant/40">
                 <span className="material-symbols-outlined text-3xl">folder_off</span>
               </div>
-              <h4 className="text-sm font-semibold text-white">
-                {lang === "uk" ? "Звітів не знайдено" : "No saved reports found"}
-              </h4>
+              <h4 className="text-sm font-semibold text-white">{lang === "uk" ? "Звітів не знайдено" : "No saved reports found"}</h4>
               <p className="text-xs text-on-surface-variant max-w-md">
                 {lang === "uk"
                   ? "На вашому Google Диску поки немає збережених звітів Незбіг. Перевірте будь-який документ і натисніть «Google Диск» у верхньому меню звіту, щоб зберегти його туди."
@@ -191,11 +185,7 @@ export function GoogleDrivePickerModal({ isOpen, onClose, onSelectReport }: Goog
         {/* Footer */}
         <div className="px-6 py-3.5 border-t border-white/10 bg-surface-container-high/40 flex justify-between items-center text-xs text-on-surface-variant">
           <span>{lang === "uk" ? "Захищено дозволом drive.file" : "Protected by drive.file permission"}</span>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-1.5 rounded-xl border border-white/10 hover:bg-white/5 text-white transition-colors cursor-pointer"
-          >
+          <button type="button" onClick={onClose} className="px-4 py-1.5 rounded-xl border border-white/10 hover:bg-white/5 text-white transition-colors cursor-pointer">
             {lang === "uk" ? "Закрити" : "Close"}
           </button>
         </div>

@@ -37,7 +37,9 @@ export function findBibliographyStart(text: string): number {
     if (position < minPos) continue;
     const before = text.slice(text.lastIndexOf("\n", position - 1) + 1, position);
     const after = text.slice(position + match[0].length);
-    const restOfHeadingLine = text.slice(position, text.indexOf("\n", position) < 0 ? text.length : text.indexOf("\n", position)).replace(new RegExp(BIBLIOGRAPHY_PATTERNS[0]!.source, "iu"), "");
+    const restOfHeadingLine = text
+      .slice(position, text.indexOf("\n", position) < 0 ? text.length : text.indexOf("\n", position))
+      .replace(new RegExp(BIBLIOGRAPHY_PATTERNS[0]!.source, "iu"), "");
     const standaloneHeading = before.trim() === "" && restOfHeadingLine.trim() === "";
     // Flattened PDF text needs numbered references and dates, not just a keyword.
     const structuredTail = /^\s*\d{1,3}[.)]\s/u.test(after) && (after.match(/(?:^|\s)\d{1,3}[.)]\s+[\p{L}]/gu)?.length ?? 0) >= 2 && /\b(?:19|20)\d{2}\b/u.test(after);
@@ -92,4 +94,3 @@ export function prepareDocumentText(rawText: string): PreparedDocument {
     notes
   };
 }
-

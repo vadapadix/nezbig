@@ -1,3 +1,4 @@
+import { apiFetch } from "../utils/apiClient";
 import type { StoredScanItem, RecentScansBarProps } from "../types/RecentScansBar.types";
 export type { StoredScanItem, RecentScansBarProps } from "../types/RecentScansBar.types";
 import { localHistoryKey } from "../utils/localHistory";
@@ -47,7 +48,7 @@ export function RecentScansBar({ currentReportId, onSelectReport }: RecentScansB
 
   const deleteFromServer = async (id?: string) => {
     if (!isLoggedIn) return;
-    const res = await fetch(id ? `/api/history/${encodeURIComponent(id)}` : "/api/history", { method: "DELETE", credentials: "include" });
+    const res = await apiFetch(id ? `/api/history/${encodeURIComponent(id)}` : "/api/history", { method: "DELETE", credentials: "include" });
     if (!res.ok) throw new Error(lang === "uk" ? "Не вдалося видалити серверні дані. Спробуйте ще раз." : "Server deletion failed. Please retry.");
   };
 
@@ -58,18 +59,22 @@ export function RecentScansBar({ currentReportId, onSelectReport }: RecentScansB
       localStorage.removeItem(localHistoryKey());
       setItems([]);
       window.dispatchEvent(new Event("nezbig_history_updated"));
-    } catch (error) { window.alert(error instanceof Error ? error.message : String(error)); }
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : String(error));
+    }
   };
 
   const handleRemoveOne = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     try {
       await deleteFromServer(id);
-      const filtered = items.filter(item => item.id !== id);
+      const filtered = items.filter((item) => item.id !== id);
       localStorage.setItem(localHistoryKey(), JSON.stringify(filtered));
       setItems(filtered);
       window.dispatchEvent(new Event("nezbig_history_updated"));
-    } catch (error) { window.alert(error instanceof Error ? error.message : String(error)); }
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : String(error));
+    }
   };
 
   const handleItemClick = async (item: StoredScanItem) => {
@@ -82,7 +87,7 @@ export function RecentScansBar({ currentReportId, onSelectReport }: RecentScansB
       const token = localStorage.getItem("nezbig_auth_token");
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
-      const res = await fetch(`/api/history/${item.id}`, { headers, credentials: "include" });
+      const res = await apiFetch(`/api/history/${item.id}`, { headers, credentials: "include" });
       if (res.ok) {
         const report = (await res.json()) as ScanReport;
         onSelectReport(report);
@@ -95,16 +100,15 @@ export function RecentScansBar({ currentReportId, onSelectReport }: RecentScansB
   if (items.length === 0) return null;
 
   return (
-    <section className="w-full bg-surface-container-high/70 backdrop-blur-md border border-white/10 rounded-2xl p-4 flex flex-col gap-3 shadow-lg transition-all animate-fadeIn" aria-label="Recent scans">
+    <section
+      className="w-full bg-surface-container-high/70 backdrop-blur-md border border-white/10 rounded-2xl p-4 flex flex-col gap-3 shadow-lg transition-all animate-fadeIn"
+      aria-label="Recent scans"
+    >
       <div className="flex items-center justify-between gap-4 px-1">
         <div className="flex items-center gap-2 text-white">
           <span className="material-symbols-outlined text-emerald-glow text-xl">history</span>
-          <h3 className="font-headline-sm text-sm font-semibold tracking-wide uppercase text-white/90">
-            {lang === "uk" ? "Попередні скани" : "Recent Scans"}
-          </h3>
-          <span className="px-2 py-0.5 rounded-full bg-white/10 text-xs font-mono text-on-surface-variant">
-            {items.length}
-          </span>
+          <h3 className="font-headline-sm text-sm font-semibold tracking-wide uppercase text-white/90">{lang === "uk" ? "Попередні скани" : "Recent Scans"}</h3>
+          <span className="px-2 py-0.5 rounded-full bg-white/10 text-xs font-mono text-on-surface-variant">{items.length}</span>
           {isLoggedIn && (
             <span
               className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-glow/15 border border-emerald-glow/30 text-[11px] font-mono text-emerald-glow"
@@ -117,10 +121,7 @@ export function RecentScansBar({ currentReportId, onSelectReport }: RecentScansB
         </div>
 
         <div className="flex items-center gap-3 text-xs">
-          <Link
-            to="/history"
-            className="text-emerald-glow hover:underline flex items-center gap-1 font-medium transition-colors"
-          >
+          <Link to="/history" className="text-emerald-glow hover:underline flex items-center gap-1 font-medium transition-colors">
             <span>{lang === "uk" ? "Вся історія" : "View All"}</span>
             <span className="material-symbols-outlined text-sm">arrow_forward</span>
           </Link>
@@ -148,9 +149,7 @@ export function RecentScansBar({ currentReportId, onSelectReport }: RecentScansB
                 : "bg-emerald-500/20 text-emerald-300 border-emerald-500/30";
 
           const aiColor =
-            item.aiProbability !== undefined && item.aiProbability > 50
-              ? "bg-rose-500/20 text-rose-300 border-rose-500/30"
-              : "bg-cyan-500/20 text-cyan-300 border-cyan-500/30";
+            item.aiProbability !== undefined && item.aiProbability > 50 ? "bg-rose-500/20 text-rose-300 border-rose-500/30" : "bg-cyan-500/20 text-cyan-300 border-cyan-500/30";
 
           return (
             <div
@@ -170,37 +169,27 @@ export function RecentScansBar({ currentReportId, onSelectReport }: RecentScansB
                   : "bg-surface-container/80 hover:bg-surface-container border-white/10 hover:border-emerald-glow/40 text-white/90"
               }`}
             >
-              <span className="material-symbols-outlined text-xl text-emerald-glow/80 shrink-0">
-                description
-              </span>
+              <span className="material-symbols-outlined text-xl text-emerald-glow/80 shrink-0">description</span>
 
               <div className="flex flex-col min-w-0 max-w-[180px] sm:max-w-[220px]">
-                <span className="text-xs font-medium text-white truncate group-hover:text-emerald-glow transition-colors">
-                  {item.fileName}
-                </span>
+                <span className="text-xs font-medium text-white truncate group-hover:text-emerald-glow transition-colors">{item.fileName}</span>
                 <span className="text-[10px] text-on-surface-variant font-mono truncate">
                   {new Intl.DateTimeFormat(lang === "uk" ? "uk-UA" : "en-US", {
                     month: "short",
                     day: "numeric",
                     hour: "2-digit",
-                    minute: "2-digit",
+                    minute: "2-digit"
                   }).format(new Date(item.checkedAt))}
                 </span>
               </div>
 
               <div className="flex items-center gap-1.5 shrink-0 pl-1">
-                <span
-                  className={`px-1.5 py-0.5 rounded text-[11px] font-mono font-bold border ${plagColor}`}
-                  title={lang === "uk" ? "Плагіат" : "Plagiarism"}
-                >
+                <span className={`px-1.5 py-0.5 rounded text-[11px] font-mono font-bold border ${plagColor}`} title={lang === "uk" ? "Плагіат" : "Plagiarism"}>
                   {item.plagiarismScore}%
                 </span>
 
                 {item.aiProbability !== undefined && (
-                  <span
-                    className={`px-1.5 py-0.5 rounded text-[11px] font-mono font-bold border ${aiColor}`}
-                    title={lang === "uk" ? "ШІ-ризик" : "AI Risk"}
-                  >
+                  <span className={`px-1.5 py-0.5 rounded text-[11px] font-mono font-bold border ${aiColor}`} title={lang === "uk" ? "ШІ-ризик" : "AI Risk"}>
                     {item.aiProbability}%
                   </span>
                 )}

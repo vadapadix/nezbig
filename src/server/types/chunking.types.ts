@@ -1,5 +1,3 @@
-
-
 export type TextChunk = {
   index: number;
   text: string;

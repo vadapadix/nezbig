@@ -57,7 +57,7 @@ export class MemoryTtlCache<T> {
 }
 
 export class DistributedCache<T> {
-  private readonly memoryCache: MemoryTtlCache<T>;
+  private readonly memoryCache: MemoryTtlCache<T | null>;
   private readonly isKvEnabled: boolean;
 
   constructor(
@@ -65,7 +65,7 @@ export class DistributedCache<T> {
     private readonly ttlMs: number,
     maxMemoryEntries = 300
   ) {
-    this.memoryCache = new MemoryTtlCache<T>(ttlMs, maxMemoryEntries);
+    this.memoryCache = new MemoryTtlCache<T | null>(ttlMs, maxMemoryEntries);
     this.isKvEnabled = !!process.env.KV_REST_API_URL && !!process.env.KV_REST_API_TOKEN;
   }
 
@@ -80,7 +80,7 @@ export class DistributedCache<T> {
         // Let's just wrap it.
         const wrapped = await kv.get<{ value: T | null }>(`${this.prefix}:${key}`);
         if (wrapped !== null) {
-          this.memoryCache.set(key, wrapped.value as any);
+          this.memoryCache.set(key, wrapped.value);
           return wrapped.value;
         }
       } catch (error) {
@@ -94,7 +94,7 @@ export class DistributedCache<T> {
     const ttl = customTtlMs ?? this.ttlMs;
     // We can update MemoryTtlCache to accept ttl or just create a new entry with explicit expiration.
     // For now, memoryCache.set uses this.ttlMs internally. Let's modify MemoryTtlCache to accept customTtlMs.
-    this.memoryCache.set(key, value as any, customTtlMs);
+    this.memoryCache.set(key, value, customTtlMs);
 
     if (this.isKvEnabled) {
       try {

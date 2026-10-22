@@ -1,7 +1,6 @@
 import type { TextChunk } from "../../types/chunking.types.js";
 export type { TextChunk } from "../../types/chunking.types.js";
 
-
 const WORD_PATTERN = /\S+/g;
 
 export function countWords(text: string): number {

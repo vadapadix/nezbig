@@ -13,3 +13,5 @@ docs/page*.png
 docs/test_out.docx
 
 .vercel
+
+.vercel-server/

@@ -2371,3 +2371,6 @@ progress::-moz-progress-bar {
 
 
 .rich-editor * { color: inherit !important; background-color: transparent !important; }
+
+.brand-logo-spinning { animation: spin 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+@media (prefers-reduced-motion: reduce) { .brand-logo-spinning { animation: none; } }

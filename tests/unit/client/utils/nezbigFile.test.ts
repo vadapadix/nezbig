@@ -24,8 +24,8 @@ const mockReport: ScanReport = {
       fullTextRank: 1,
       longestRun: 7,
       confidence: "page",
-      excerpt: "Приклад тексту користувача",
-    },
+      excerpt: "Приклад тексту користувача"
+    }
   ],
   aiProbability: 8,
   aiVerdict: "low",
@@ -35,7 +35,7 @@ const mockReport: ScanReport = {
   aiSuspiciousSegments: [],
   aiProvider: "local",
   aiSignals: [],
-  scanNotes: ["Тестова перевірка"],
+  scanNotes: ["Тестова перевірка"]
 };
 
 describe("nezbigFile utility", () => {

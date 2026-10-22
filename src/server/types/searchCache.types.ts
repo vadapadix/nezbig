@@ -1,5 +1,3 @@
-
-
 export type CacheEntry<T> = {
   expiresAt: number;
   value: T;

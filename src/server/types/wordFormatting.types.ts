@@ -1,5 +1,3 @@
-
-
 export type WordElement = {
   type?: string;
   children?: WordElement[];

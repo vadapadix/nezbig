@@ -1,3 +1,4 @@
+import { apiFetch } from "./apiClient";
 import type { DriveReportFile } from "../types/googleDrive.types";
 export type { DriveReportFile } from "../types/googleDrive.types";
 import type { ScanReport } from "../../shared/types/index";
@@ -30,7 +31,7 @@ let cachedClientId: string | null = null;
 export async function getGoogleClientId(): Promise<string> {
   if (cachedClientId) return cachedClientId;
   try {
-    const res = await fetch("/api/auth/google/config");
+    const res = await apiFetch("/api/auth/google/config");
     if (res.ok) {
       const data = await res.json();
       if (data.clientId) {
@@ -79,11 +80,17 @@ let driveToken: { value: string; expiresAt: number } | null = null;
 
 export function clearDriveAccessToken(): void {
   driveToken = null;
-  try { localStorage.removeItem(DRIVE_SESSION_KEY); } catch { /* Storage can be disabled. */ }
+  try {
+    localStorage.removeItem(DRIVE_SESSION_KEY);
+  } catch {
+    /* Storage can be disabled. */
+  }
   try {
     localStorage.removeItem("nezbig_gdrive_token");
     localStorage.removeItem("nezbig_gdrive_expires_at");
-  } catch { /* Storage can be disabled. */ }
+  } catch {
+    /* Storage can be disabled. */
+  }
 }
 
 export function getSavedDriveAccessToken(): string | null {
@@ -94,8 +101,13 @@ export function getSavedDriveAccessToken(): string | null {
       const saved = JSON.parse(localStorage.getItem(DRIVE_SESSION_KEY) || "null");
       if (saved && typeof saved.value === "string" && typeof saved.expiresAt === "number" && Number.isFinite(saved.expiresAt)) driveToken = saved;
     }
-  } catch { /* Retain memory fallback if storage is unavailable. */ }
-  if (!driveToken || Date.now() >= driveToken.expiresAt - 60000) { clearDriveAccessToken(); return null; }
+  } catch {
+    /* Retain memory fallback if storage is unavailable. */
+  }
+  if (!driveToken || Date.now() >= driveToken.expiresAt - 60000) {
+    clearDriveAccessToken();
+    return null;
+  }
   return driveToken.value;
 }
 
@@ -103,7 +115,11 @@ export function saveDriveAccessToken(token: string, expiresInSeconds = 3500): vo
   clearDriveAccessToken();
   const lifetime = Number.isFinite(expiresInSeconds) && expiresInSeconds > 0 ? expiresInSeconds : 3500;
   driveToken = { value: token, expiresAt: Date.now() + lifetime * 1000 };
-  try { localStorage.setItem(DRIVE_SESSION_KEY, JSON.stringify(driveToken)); } catch { /* Memory fallback. */ }
+  try {
+    localStorage.setItem(DRIVE_SESSION_KEY, JSON.stringify(driveToken));
+  } catch {
+    /* Memory fallback. */
+  }
 }
 
 /**
@@ -142,7 +158,7 @@ export async function requestDriveAccessToken(): Promise<string> {
         },
         error_callback: (err) => {
           reject(new Error(err?.message || "Помилка при запиті доступу до Google Диску"));
-        },
+        }
       });
 
       // prompt: "" requests access without forcing the consent screen again if already granted
@@ -160,7 +176,7 @@ async function getOrCreateNezbigFolder(accessToken: string): Promise<string | nu
   try {
     const query = encodeURIComponent("name = 'Незбіг' and mimeType = 'application/vnd.google-apps.folder' and trashed = false");
     const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: { Authorization: `Bearer ${accessToken}` }
     });
     if (searchRes.ok) {
       const data = await searchRes.json();
@@ -174,13 +190,13 @@ async function getOrCreateNezbigFolder(accessToken: string): Promise<string | nu
       method: "POST",
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
         name: "Незбіг",
         mimeType: "application/vnd.google-apps.folder",
-        description: "Папка зі збереженими звітами сервісу Незбіг",
-      }),
+        description: "Папка зі збереженими звітами сервісу Незбіг"
+      })
     });
 
     if (createRes.ok) {
@@ -211,7 +227,7 @@ export async function saveReportToGoogleDrive(report: ScanReport): Promise<{
   const metadata: Record<string, any> = {
     name: fileName,
     mimeType: "application/json",
-    description: `Звіт перевірки Nezbig (${report.plagiarismScore}% плагіату, ${report.aiProbability}% AI). Можна відкрити в nezbig.vercel.app`,
+    description: `Звіт перевірки Nezbig (${report.plagiarismScore}% плагіату, ${report.aiProbability}% AI). Можна відкрити в nezbig.vercel.app`
   };
   if (folderId) {
     metadata.parents = [folderId];
@@ -230,17 +246,14 @@ export async function saveReportToGoogleDrive(report: ScanReport): Promise<{
     rawJson +
     closeDelim;
 
-  const uploadRes = await fetch(
-    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": `multipart/related; boundary=${boundary}`,
-      },
-      body: multipartBody,
-    }
-  );
+  const uploadRes = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": `multipart/related; boundary=${boundary}`
+    },
+    body: multipartBody
+  });
 
   if (!uploadRes.ok) {
     const errorData = await uploadRes.json().catch(() => ({}));
@@ -252,7 +265,7 @@ export async function saveReportToGoogleDrive(report: ScanReport): Promise<{
   return {
     fileId: result.id,
     fileName: result.name,
-    webViewLink: result.webViewLink,
+    webViewLink: result.webViewLink
   };
 }
 
@@ -262,12 +275,9 @@ export async function saveReportToGoogleDrive(report: ScanReport): Promise<{
 export async function listReportsFromGoogleDrive(): Promise<DriveReportFile[]> {
   const accessToken = await requestDriveAccessToken();
   const query = encodeURIComponent("trashed = false and (name contains '.nezbig' or name contains '_report.json')");
-  const res = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name,modifiedTime,size,webViewLink)&orderBy=modifiedTime desc&pageSize=30`,
-    {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    }
-  );
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name,modifiedTime,size,webViewLink)&orderBy=modifiedTime desc&pageSize=30`, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
@@ -284,7 +294,7 @@ export async function listReportsFromGoogleDrive(): Promise<DriveReportFile[]> {
 export async function loadReportFromGoogleDrive(fileId: string): Promise<ScanReport> {
   const accessToken = await requestDriveAccessToken();
   const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers: { Authorization: `Bearer ${accessToken}` }
   });
 
   if (!res.ok) {

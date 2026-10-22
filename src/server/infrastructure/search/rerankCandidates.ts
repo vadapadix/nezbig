@@ -40,4 +40,3 @@ export async function rerankCandidates(query: string, candidates: SearchCandidat
     return candidates;
   }
 }
-

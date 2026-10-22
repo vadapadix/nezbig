@@ -51,7 +51,7 @@ humanizationRouter.post("/api/diff", scanLimiter, async (request, response) => {
       response.status(400).json({ error: "Очікуються рядки original та modified." });
       return;
     }
-    
+
     // Захист від надто великих текстів, що можуть повісити diff (до ~50k символів)
     if (original.length > 50000 || modified.length > 50000) {
       response.status(400).json({ error: "Текст занадто великий для швидкого порівняння (ліміт 50 000 символів)." });
@@ -94,4 +94,3 @@ humanizationRouter.post("/api/export-docx", fileLimiter, upload.single("file"), 
     response.status(400).json({ error: error instanceof Error ? error.message : "Не вдалося зібрати відредагований DOCX." });
   }
 });
-

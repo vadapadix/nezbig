@@ -17,6 +17,12 @@ vi.mock("../../../src/server/application/scanning/scoring.js", async (importOrig
 });
 
 describe("API Integration Tests", () => {
+  it("rejects an invalid supplied session and expires its cookie", async () => {
+    const response = await request(app).get("/api/auth/me").set("Cookie", "nezbig_token=invalid");
+    expect(response.status).toBe(401);
+    expect(response.body.code).toBe("SESSION_INVALID");
+    expect(response.headers["set-cookie"]).toBeDefined();
+  });
   it("GET /api/health should return ok", async () => {
     const res = await request(app).get("/api/health");
     expect(res.status).toBe(200);

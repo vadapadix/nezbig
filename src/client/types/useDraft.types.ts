@@ -1,5 +1,3 @@
-
-
 export interface Draft {
   text: string;
   html: string;

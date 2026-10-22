@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import request from "supertest";
 import { app } from "../../../src/server/presentation/http/app.js";
 import { reports } from "../../../src/server/composition/reports.js";
-import { authenticationService, tokens, users } from "../../../src/server/composition/auth.js";
+import { authenticationService, tokens } from "../../../src/server/composition/auth.js";
 import type { ScanReport, UserScanHistoryItem } from "../../../src/shared/types/index.js";
 
 function mockReport(id: string, fileName = "test.docx"): ScanReport {
@@ -22,7 +22,7 @@ function mockReport(id: string, fileName = "test.docx"): ScanReport {
     aiProvider: "local",
     matches: [],
     aiSignals: [],
-    summary: "Mock report summary",
+    summary: "Mock report summary"
   };
 }
 
@@ -77,12 +77,12 @@ describe("Multi-Tier History Storage (db.ts)", () => {
         checkedAt: new Date().toISOString(),
         plagiarismScore: 18,
         wordCount: 300,
-        fullReport: clientReport,
-      },
+        fullReport: clientReport
+      }
     ];
 
     const synced = await reports.syncUserReports(testUserId, clientItems);
-    const imported = synced.find(s => s.fileName === "synced.docx")!;
+    const imported = synced.find((s) => s.fileName === "synced.docx")!;
     expect(imported.id).not.toBe("client-rep-1");
 
     const fullReport = await reports.getReport(imported.id);
@@ -102,7 +102,7 @@ describe("History REST API Endpoints (/api/history)", () => {
     const user = await authenticationService.register({
       name: "History User",
       email: `hist-${Date.now()}@example.com`,
-      password: "password123",
+      password: "password123"
     });
     const token = tokens.generate(user);
 
@@ -119,9 +119,9 @@ describe("History REST API Endpoints (/api/history)", () => {
             checkedAt: new Date().toISOString(),
             plagiarismScore: 8,
             wordCount: 500,
-            fullReport: testReport,
-          },
-        ],
+            fullReport: testReport
+          }
+        ]
       });
 
     expect(syncRes.status).toBe(200);
@@ -129,9 +129,7 @@ describe("History REST API Endpoints (/api/history)", () => {
     expect(syncRes.body.items.length).toBeGreaterThanOrEqual(1);
 
     // 2. GET /api/history
-    const listRes = await request(app)
-      .get("/api/history")
-      .set("Authorization", `Bearer ${token}`);
+    const listRes = await request(app).get("/api/history").set("Authorization", `Bearer ${token}`);
 
     expect(listRes.status).toBe(200);
     const importedId = syncRes.body.items.find((item: any) => item.fileName === "thesis.docx").id;
@@ -139,40 +137,30 @@ describe("History REST API Endpoints (/api/history)", () => {
     expect(listRes.body.some((item: any) => item.id === importedId)).toBe(true);
 
     // 3. GET /api/history/:id
-    const reportRes = await request(app)
-      .get(`/api/history/${importedId}`)
-      .set("Authorization", `Bearer ${token}`);
+    const reportRes = await request(app).get(`/api/history/${importedId}`).set("Authorization", `Bearer ${token}`);
 
     expect(reportRes.status).toBe(200);
     expect(reportRes.body.id).toBe(importedId);
     expect(reportRes.body.fileName).toBe("thesis.docx");
 
     // 4. DELETE /api/history/:id
-    const deleteRes = await request(app)
-      .delete(`/api/history/${importedId}`)
-      .set("Authorization", `Bearer ${token}`);
+    const deleteRes = await request(app).delete(`/api/history/${importedId}`).set("Authorization", `Bearer ${token}`);
 
     expect(deleteRes.status).toBe(200);
     expect(deleteRes.body.ok).toBe(true);
 
-    const afterDeleteRes = await request(app)
-      .get("/api/history")
-      .set("Authorization", `Bearer ${token}`);
+    const afterDeleteRes = await request(app).get("/api/history").set("Authorization", `Bearer ${token}`);
 
     expect(afterDeleteRes.body.some((item: any) => item.id === importedId)).toBe(false);
     expect(await reports.getReport(importedId)).toBeNull();
 
     // 5. DELETE /api/history (Clear all)
-    const clearRes = await request(app)
-      .delete("/api/history")
-      .set("Authorization", `Bearer ${token}`);
+    const clearRes = await request(app).delete("/api/history").set("Authorization", `Bearer ${token}`);
 
     expect(clearRes.status).toBe(200);
     expect(clearRes.body.ok).toBe(true);
 
-    const emptyRes = await request(app)
-      .get("/api/history")
-      .set("Authorization", `Bearer ${token}`);
+    const emptyRes = await request(app).get("/api/history").set("Authorization", `Bearer ${token}`);
 
     expect(emptyRes.body.length).toBe(0);
   });

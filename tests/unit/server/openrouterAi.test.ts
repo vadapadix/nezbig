@@ -62,10 +62,7 @@ describe("analyzeWithOpenRouter", () => {
   });
 
   it("retries without json mode when json mode is rejected", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(orError("provider returned error: response_format is not supported"))
-      .mockResolvedValueOnce(orPayload('{"probability": 31}'));
+    const fetchMock = vi.fn().mockResolvedValueOnce(orError("provider returned error: response_format is not supported")).mockResolvedValueOnce(orPayload('{"probability": 31}'));
     vi.stubGlobal("fetch", fetchMock);
 
     const result = await analyzeWithOpenRouter("Текст для аналізу.", localAi);
@@ -77,10 +74,7 @@ describe("analyzeWithOpenRouter", () => {
   });
 
   it("moves to the next model on non-json failures", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(orError("model-a is overloaded"))
-      .mockResolvedValueOnce(orPayload('{"probability": 8}'));
+    const fetchMock = vi.fn().mockResolvedValueOnce(orError("model-a is overloaded")).mockResolvedValueOnce(orPayload('{"probability": 8}'));
     vi.stubGlobal("fetch", fetchMock);
 
     const result = await analyzeWithOpenRouter("Текст для аналізу.", localAi);
@@ -90,10 +84,7 @@ describe("analyzeWithOpenRouter", () => {
   });
 
   it("tries the next model when content is not valid JSON", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(orPayload("Вибачте, але я не можу відповісти JSON-ом."))
-      .mockResolvedValueOnce(orPayload('{"probability": 15}'));
+    const fetchMock = vi.fn().mockResolvedValueOnce(orPayload("Вибачте, але я не можу відповісти JSON-ом.")).mockResolvedValueOnce(orPayload('{"probability": 15}'));
     vi.stubGlobal("fetch", fetchMock);
 
     const result = await analyzeWithOpenRouter("Текст для аналізу.", localAi);

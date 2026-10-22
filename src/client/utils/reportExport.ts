@@ -110,12 +110,24 @@ export function generateReportCanvas(report: ScanReport, lang: Language = getFal
   let y = Math.max(210, titleY + 40);
   const cardWidth = 250;
   const cards = [
-    [lang === "uk" ? "Сила збігів" : "Match strength", `${report.plagiarismScore}/100`, report.matchedTextPercent === undefined ? (lang === "uk" ? "Покриття не обчислено" : "Coverage unavailable") : `${report.matchedTextPercent}% ${lang === "uk" ? "дослівного покриття" : "verbatim coverage"}`],
+    [
+      lang === "uk" ? "Сила збігів" : "Match strength",
+      `${report.plagiarismScore}/100`,
+      report.matchedTextPercent === undefined
+        ? lang === "uk"
+          ? "Покриття не обчислено"
+          : "Coverage unavailable"
+        : `${report.matchedTextPercent}% ${lang === "uk" ? "дослівного покриття" : "verbatim coverage"}`
+    ],
     [lang === "uk" ? "ШІ-аналіз" : "AI Detection", report.aiVerdict === "insufficient" ? "—" : `${report.aiProbability}%`, aiVerdictLabel(report.aiVerdict, lang)],
     [
       lang === "uk" ? "AI-думка" : "AI Opinion",
       report.aiOpinionProbability !== undefined ? `${report.aiOpinionProbability}%` : "—",
-      report.aiOpinionProbability !== undefined ? `${riskLabel(report.aiOpinionProbability, lang)} ${lang === "uk" ? "рівень" : "level"}` : (lang === "uk" ? "модель не задіяна" : "no model query")
+      report.aiOpinionProbability !== undefined
+        ? `${riskLabel(report.aiOpinionProbability, lang)} ${lang === "uk" ? "рівень" : "level"}`
+        : lang === "uk"
+          ? "модель не задіяна"
+          : "no model query"
     ],
     [lang === "uk" ? "Фрагменти" : "Chunks", formatNumber(report.chunksChecked, lang), `${formatNumber(report.wordCount, lang)} ${lang === "uk" ? "слів" : "words"}`]
   ];
@@ -207,16 +219,15 @@ export function generateReportCanvas(report: ScanReport, lang: Language = getFal
 
   const matches = report.matches.slice(0, 5);
   if (matches.length === 0) {
-    y = wrapCanvasText(
-      context,
-      lang === "uk"
-        ? "Сильних збігів у відкритих наукових базах та вебджерелах не знайдено."
-        : "No significant matches found in open web or academic registries.",
-      60,
-      y,
-      1080,
-      28
-    ) + 20;
+    y =
+      wrapCanvasText(
+        context,
+        lang === "uk" ? "Сильних збігів у відкритих наукових базах та вебджерелах не знайдено." : "No significant matches found in open web or academic registries.",
+        60,
+        y,
+        1080,
+        28
+      ) + 20;
   } else {
     for (const match of matches) {
       context.fillStyle = printBlack;
@@ -225,17 +236,9 @@ export function generateReportCanvas(report: ScanReport, lang: Language = getFal
 
       context.fillStyle = printGray;
       context.font = "400 17px Actay, sans-serif";
-      const evidenceLabel = match.confidence === "page"
-        ? (lang === "uk" ? "текст підтверджено джерелом" : "full text verified")
-        : (lang === "uk" ? "пошуковий уривок" : "search snippet");
-      y = wrapCanvasText(
-        context,
-        `${match.url}  •  ${match.provider}  •  ${evidenceLabel}`,
-        80,
-        y + 4,
-        1050,
-        24
-      );
+      const evidenceLabel =
+        match.confidence === "page" ? (lang === "uk" ? "текст підтверджено джерелом" : "full text verified") : lang === "uk" ? "пошуковий уривок" : "search snippet";
+      y = wrapCanvasText(context, `${match.url}  •  ${match.provider}  •  ${evidenceLabel}`, 80, y + 4, 1050, 24);
       if (match.confidence === "page" && match.submittedEvidence) {
         context.fillStyle = printDark;
         y = wrapCanvasText(context, `${lang === "uk" ? "Спільний уривок:" : "Matching excerpt:"} «${match.submittedEvidence}»`, 80, y + 4, 1050, 24);
@@ -293,14 +296,16 @@ export function generateReportCanvas(report: ScanReport, lang: Language = getFal
 
 export async function downloadReportPng(report: ScanReport, lang: Language = getFallbackLang()): Promise<void> {
   const canvas = generateReportCanvas(report, lang);
-  const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error(lang === "uk" ? "Не вдалося створити PNG-звіт." : "Could not create the PNG report.")), "image/png"));
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    const safeName = report.fileName.replace(/[^a-z0-9а-яіїєґ]/gi, "_");
-    link.download = `nezbig-report-${safeName}.png`;
-    link.click();
-    URL.revokeObjectURL(url);
+  const blob = await new Promise<Blob>((resolve, reject) =>
+    canvas.toBlob((value) => (value ? resolve(value) : reject(new Error(lang === "uk" ? "Не вдалося створити PNG-звіт." : "Could not create the PNG report."))), "image/png")
+  );
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  const safeName = report.fileName.replace(/[^a-z0-9а-яіїєґ]/gi, "_");
+  link.download = `nezbig-report-${safeName}.png`;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 /**
@@ -348,11 +353,7 @@ export function downloadReportPdf(report: ScanReport, lang: Language = getFallba
     const sy = page * pageHeightRaw;
     const sHeight = Math.min(pageHeightRaw, totalHeightRaw - sy);
 
-    pageCtx.drawImage(
-      fullCanvas,
-      0, sy, fullCanvas.width, sHeight,
-      0, 0, fullCanvas.width, sHeight
-    );
+    pageCtx.drawImage(fullCanvas, 0, sy, fullCanvas.width, sHeight, 0, 0, fullCanvas.width, sHeight);
 
     // Fast native JPEG stream compression (takes ~15ms vs 15000ms PNG inflate)
     const pageJpegData = pageCanvas.toDataURL("image/jpeg", 0.92);

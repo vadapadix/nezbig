@@ -99,8 +99,7 @@ const RULES: Rule[] = [
     label: "Спрощено штучні вступні узагальнення",
     detail: "Прибрано клішовані вступні звороти про 'сучасний світ' та 'цифрову епоху'.",
     category: "style",
-    pattern:
-      /(?<![\p{L}\p{N}_])(?:у сучасному світі,?\s*|в епоху цифрових технологій,?\s*|у контексті сьогодення,?\s*|в умовах стрімкого розвитку,?\s*)(?![\p{L}\p{N}_])/giu,
+    pattern: /(?<![\p{L}\p{N}_])(?:у сучасному світі,?\s*|в епоху цифрових технологій,?\s*|у контексті сьогодення,?\s*|в умовах стрімкого розвитку,?\s*)(?![\p{L}\p{N}_])/giu,
     replacement: "Сьогодні "
   },
 
@@ -157,8 +156,7 @@ const RULES: Rule[] = [
     label: "Спрощено важкі дієслівні словосполучення",
     detail: "Замінено канцелярські дієслівні конструкції на прості прямі дієслова.",
     category: "vocabulary",
-    pattern:
-      /(?<![\p{L}\p{N}_])(?:здійснює вплив на|здійснює аналіз|проводить дослідження|забезпечує можливість|сприяє підвищенню)(?![\p{L}\p{N}_])/giu,
+    pattern: /(?<![\p{L}\p{N}_])(?:здійснює вплив на|здійснює аналіз|проводить дослідження|забезпечує можливість|сприяє підвищенню)(?![\p{L}\p{N}_])/giu,
     replacement: (match) => {
       const map: Record<string, string> = {
         "здійснює вплив на": "впливає на",
@@ -368,13 +366,10 @@ function smoothTriadicStructures(text: string, _mode: HumanizeMode): { text: str
   );
 
   // Match English triadic listing: "word1, word2, and word3"
-  revised = revised.replace(
-    /\b([a-zA-Z0-9'-]+),\s+([a-zA-Z0-9'-]+),?\s+(and)\s+([a-zA-Z0-9'-]+)\b/gi,
-    (_match, w1: string, w2: string, _conj: string, w4: string) => {
-      count += 1;
-      return `${w1} and ${w2}, as well as ${w4}`;
-    }
-  );
+  revised = revised.replace(/\b([a-zA-Z0-9'-]+),\s+([a-zA-Z0-9'-]+),?\s+(and)\s+([a-zA-Z0-9'-]+)\b/gi, (_match, w1: string, w2: string, _conj: string, w4: string) => {
+    count += 1;
+    return `${w1} and ${w2}, as well as ${w4}`;
+  });
 
   return { text: revised, count };
 }
@@ -388,40 +383,28 @@ function softenDialecticalHedging(text: string): { text: string; count: number }
   let revised = text;
 
   // Ukrainian "з одного боку ..., з іншого боку ..."
-  revised = revised.replace(
-    /(?<![\p{L}\p{N}_])з одного боку,?\s*([^.!?]{10,140}?)(?:,\s*)з іншого боку,?\s*/giu,
-    (_match, clause: string) => {
-      count += 1;
-      return `Поряд із тим, що ${clause.trim()}, водночас `;
-    }
-  );
+  revised = revised.replace(/(?<![\p{L}\p{N}_])з одного боку,?\s*([^.!?]{10,140}?)(?:,\s*)з іншого боку,?\s*/giu, (_match, clause: string) => {
+    count += 1;
+    return `Поряд із тим, що ${clause.trim()}, водночас `;
+  });
 
   // English "on the one hand ..., on the other hand ..."
-  revised = revised.replace(
-    /\bon the one hand,?\s*([^.!?]{10,140}?)(?:,\s*)on the other hand,?\s*/gi,
-    (_match, clause: string) => {
-      count += 1;
-      return `While ${clause.trim()}, at the same time `;
-    }
-  );
+  revised = revised.replace(/\bon the one hand,?\s*([^.!?]{10,140}?)(?:,\s*)on the other hand,?\s*/gi, (_match, clause: string) => {
+    count += 1;
+    return `While ${clause.trim()}, at the same time `;
+  });
 
   // Double-hedging: "хоча ..., проте/однак ..."
-  revised = revised.replace(
-    /(?<![\p{L}\p{N}_])хоча\s+([^,.!?]{5,80}?),\s*(?:проте|однак)\s+/giu,
-    (_match, clause: string) => {
-      count += 1;
-      return `хоча ${clause.trim()}, `;
-    }
-  );
+  revised = revised.replace(/(?<![\p{L}\p{N}_])хоча\s+([^,.!?]{5,80}?),\s*(?:проте|однак)\s+/giu, (_match, clause: string) => {
+    count += 1;
+    return `хоча ${clause.trim()}, `;
+  });
 
   // "попри ..., проте/однак ..."
-  revised = revised.replace(
-    /(?<![\p{L}\p{N}_])попри\s+([^,.!?]{5,80}?),\s*(?:проте|однак|разом з тим)\s+/giu,
-    (_match, clause: string) => {
-      count += 1;
-      return `попри ${clause.trim()}, `;
-    }
-  );
+  revised = revised.replace(/(?<![\p{L}\p{N}_])попри\s+([^,.!?]{5,80}?),\s*(?:проте|однак|разом з тим)\s+/giu, (_match, clause: string) => {
+    count += 1;
+    return `попри ${clause.trim()}, `;
+  });
 
   return { text: revised, count };
 }
@@ -730,13 +713,10 @@ export function humanizeText(input: string, mode: HumanizeMode = "academic"): Hu
   ];
 
   const vagueAttributions =
-    original.match(
-      /(?<![\p{L}\p{N}_])(?:експерти вважають|дослідження показують|багато джерел|experts argue|observers note|studies show|research suggests)(?![\p{L}\p{N}_])/giu
-    ) ?? [];
+    original.match(/(?<![\p{L}\p{N}_])(?:експерти вважають|дослідження показують|багато джерел|experts argue|observers note|studies show|research suggests)(?![\p{L}\p{N}_])/giu) ??
+    [];
   if (vagueAttributions.length > 0) {
-    notes.unshift(
-      `Знайдено ${vagueAttributions.length} узагальнених посилань. Рекомендується додати конкретні джерела або імена авторів для підвищення академічної ваги.`
-    );
+    notes.unshift(`Знайдено ${vagueAttributions.length} узагальнених посилань. Рекомендується додати конкретні джерела або імена авторів для підвищення академічної ваги.`);
   }
 
   if (changes.length === 0) {

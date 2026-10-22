@@ -42,7 +42,7 @@ function buildMessages(text: string, localAi: LocalAiResult): OpenRouterMessage[
 ${JSON_SHAPE_PROMPT}
 
 Local heuristic probability: ${localAi.probability}%
-Local heuristic signals: ${JSON.stringify(localAi.signals.filter(signal => signal.category !== "safeguard").slice(0, 8))}
+Local heuristic signals: ${JSON.stringify(localAi.signals.filter((signal) => signal.category !== "safeguard").slice(0, 8))}
 
 Text sample:
 ${sample}`
@@ -116,7 +116,9 @@ export async function analyzeWithOpenRouter(text: string, localAi: LocalAiResult
 
     let content = payload.choices?.[0]?.message?.content?.trim();
     if (!content) {
-      const rawReasoning = (payload.choices?.[0]?.message as Record<string, unknown> | undefined)?.reasoning ?? (payload.choices?.[0]?.message as Record<string, unknown> | undefined)?.reasoning_content;
+      const rawReasoning =
+        (payload.choices?.[0]?.message as Record<string, unknown> | undefined)?.reasoning ??
+        (payload.choices?.[0]?.message as Record<string, unknown> | undefined)?.reasoning_content;
       if (typeof rawReasoning === "string" && rawReasoning.includes("{")) {
         content = rawReasoning;
       }
@@ -127,7 +129,9 @@ export async function analyzeWithOpenRouter(text: string, localAi: LocalAiResult
         const plainPayload = await send(model, false);
         content = plainPayload.choices?.[0]?.message?.content?.trim();
         if (!content) {
-          const plainReasoning = (plainPayload.choices?.[0]?.message as Record<string, unknown> | undefined)?.reasoning ?? (plainPayload.choices?.[0]?.message as Record<string, unknown> | undefined)?.reasoning_content;
+          const plainReasoning =
+            (plainPayload.choices?.[0]?.message as Record<string, unknown> | undefined)?.reasoning ??
+            (plainPayload.choices?.[0]?.message as Record<string, unknown> | undefined)?.reasoning_content;
           if (typeof plainReasoning === "string" && plainReasoning.includes("{")) {
             content = plainReasoning;
           }

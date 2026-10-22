@@ -1,5 +1,5 @@
 import type { AiContentExclusions, AiLanguageCoverage, AiReliability, AiSignal, AiSuspiciousSegment, AiVerdict } from "../../shared/types/index.js";
-import type { suspiciousSegments } from "../domain/analysis/aiDetection.js";
+
 
 export type SignalDraft = AiSignal & {
   weight: number;

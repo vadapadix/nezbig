@@ -12,7 +12,7 @@
     "start": "node --experimental-specifier-resolution=node .vercel-server/server/index.js",
     "test": "vitest run --configLoader runner",
     "preview": "vite preview --host 127.0.0.1 --configLoader runner",
-    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "lint": "eslint \"src/**/*.{ts,tsx}\" \"tests/unit/**/*.{ts,tsx}\"",
     "calibrate": "tsx scripts/calibrate.ts",
     "format": "prettier --write \"src/**/*.{ts,tsx}\""
   },

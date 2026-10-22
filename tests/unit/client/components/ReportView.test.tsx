@@ -9,25 +9,67 @@ vi.mock("../../../../src/client/hooks/useAuth", () => ({ useAuth: () => ({ isLog
 vi.mock("../../../../src/client/components/ExportToolbar", () => ({ ExportToolbar: () => <button>PDF</button> }));
 
 const match = (confidence: "page" | "snippet", title: string): PlagiarismMatch => ({
-  confidence, title, url: `https://example.com/${title}`, provider: "Test", snippet: "Source context", chunkIndex: 0,
-  score: 80, overlapPercent: 60, ngramOverlapPercent: 40, hashOverlapPercent: 50, fullTextRank: 30, longestRun: 12, excerpt: "text",
+  confidence,
+  title,
+  url: `https://example.com/${title}`,
+  provider: "Test",
+  snippet: "Source context",
+  chunkIndex: 0,
+  score: 80,
+  overlapPercent: 60,
+  ngramOverlapPercent: 40,
+  hashOverlapPercent: 50,
+  fullTextRank: 30,
+  longestRun: 12,
+  excerpt: "text",
   submittedEvidence: "This is the shared passage in the submitted document."
 });
 const baseReport = (changes: Partial<ScanReport> = {}): ScanReport => ({
-  id: "report-one", fileName: "Дослідження.docx", checkedAt: "2026-10-16T09:00:00Z", wordCount: 1000, chunksChecked: 8,
-  plagiarismScore: 80, matchedWords: 20, matchedTextPercent: 2, aiProbability: 25, aiVerdict: "uncertain",
+  id: "report-one",
+  fileName: "Дослідження.docx",
+  checkedAt: "2026-10-16T09:00:00Z",
+  wordCount: 1000,
+  chunksChecked: 8,
+  plagiarismScore: 80,
+  matchedWords: 20,
+  matchedTextPercent: 2,
+  aiProbability: 25,
+  aiVerdict: "uncertain",
   aiReliability: { level: "low", score: 30, segmentCount: 2, segmentSpread: 12, reason: "Limited evidence" },
   aiLanguage: { code: "uk", supportedPercent: 100, reason: "" },
   aiExclusions: { analyzedWords: 1000, quotedWords: 0, codeWords: 0, referenceWords: 0 },
-  aiProvider: "local", aiSignals: [], aiSuspiciousSegments: [], matches: [match("page", "Verified"), match("snippet", "Lead")], summary: "summary",
-  searchDiagnostics: { providers: [{ provider: "Test", attempted: 1, succeeded: 1, failed: 0, timedOut: 0, results: 2 }], pages: { attempted: 1, verified: 1, unavailable: 0, cacheHits: 0, negativeCacheHits: 0 } }, ...changes
+  aiProvider: "local",
+  aiSignals: [],
+  aiSuspiciousSegments: [],
+  matches: [match("page", "Verified"), match("snippet", "Lead")],
+  summary: "summary",
+  searchDiagnostics: {
+    providers: [{ provider: "Test", attempted: 1, succeeded: 1, failed: 0, timedOut: 0, results: 2 }],
+    pages: { attempted: 1, verified: 1, unavailable: 0, cacheHits: 0, negativeCacheHits: 0 }
+  },
+  ...changes
 });
-function LocationProbe() { return <span data-testid="location">{useLocation().search}</span>; }
-function show(report = baseReport(), options: { busy?: boolean; path?: string; retry?: () => void; message?: (text: string, type?: "success" | "error" | "info") => void } = {}) {
-  return render(<MemoryRouter initialEntries={[options.path || "/"]}><LanguageProvider><ReportView report={report} llmBusy={options.busy || false} reportRef={{ current: null }} onRetryOpinion={options.retry} onMessage={options.message} /><LocationProbe /></LanguageProvider></MemoryRouter>);
+function LocationProbe() {
+  return <span data-testid="location">{useLocation().search}</span>;
 }
-beforeEach(() => { localStorage.setItem("nezbig_lang", "uk"); });
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); localStorage.clear(); });
+function show(report = baseReport(), options: { busy?: boolean; path?: string; retry?: () => void; message?: (text: string, type?: "success" | "error" | "info") => void } = {}) {
+  return render(
+    <MemoryRouter initialEntries={[options.path || "/"]}>
+      <LanguageProvider>
+        <ReportView report={report} llmBusy={options.busy || false} reportRef={{ current: null }} onRetryOpinion={options.retry} onMessage={options.message} />
+        <LocationProbe />
+      </LanguageProvider>
+    </MemoryRouter>
+  );
+}
+beforeEach(() => {
+  localStorage.setItem("nezbig_lang", "uk");
+});
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+  localStorage.clear();
+});
 
 describe("results report", () => {
   it("starts with six source cards and exposes additional matches and server omissions", () => {

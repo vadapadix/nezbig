@@ -12,7 +12,7 @@ export const translations = {
     signIn: "Увійти",
     signOut: "Вийти",
     account: "Акаунт",
-    
+
     // Editor & Scan
     editorPlaceholder: "Вставте або почніть вводити текст для перевірки (щонайменше 25 слів)...",
     runScan: "Запустити перевірку",
@@ -33,7 +33,7 @@ export const translations = {
     estTime: "Орієнтовно",
     overlap: "Перекриття",
     addTextFirst: "після додавання тексту",
-    
+
     // Humanizer
     humanizeTitle: "Олюднення тексту",
     humanizeSubtitle: "Усунення шаблонів ШІ, регулювання темпоритму та збагачення лексики",
@@ -180,11 +180,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return translations[lang][key] || translations.en[key] || key;
   };
 
-  return (
-    <LanguageContext.Provider value={{ lang, setLang, t }}>
-      {children}
-    </LanguageContext.Provider>
-  );
+  return <LanguageContext.Provider value={{ lang, setLang, t }}>{children}</LanguageContext.Provider>;
 };
 
 export const useLanguage = () => useContext(LanguageContext);

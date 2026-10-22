@@ -1,3 +1,4 @@
+import { apiFetch } from "../utils/apiClient";
 import { useState, useEffect } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { BrandLogo } from "./BrandLogo";
@@ -8,14 +9,14 @@ import { AuthModal } from "./AuthModal";
 export function Layout() {
   const { user, isLoggedIn, logout } = useAuth();
   const { lang, setLang, t } = useLanguage();
-  
+
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
   const [feedbackSent, setFeedbackSent] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  
+
   const navigate = useNavigate();
 
   // Close user menu when clicking outside
@@ -46,10 +47,10 @@ export function Layout() {
     if (!feedbackText.trim()) return;
     setSubmittingFeedback(true);
     try {
-      await fetch("/api/feedback", {
+      await apiFetch("/api/feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: feedbackText, page: window.location.pathname }),
+        body: JSON.stringify({ text: feedbackText, page: window.location.pathname })
       });
       setFeedbackSent(true);
       setTimeout(() => {
@@ -89,10 +90,25 @@ export function Layout() {
           </div>
           {/* Navigation Links */}
           <div className="hidden md:flex items-center gap-8">
-            <NavLink to="/" end className={({ isActive }) => isActive ? "nav-link nav-link--active text-emerald-glow font-bold text-body-md transition-colors duration-300 hover:bg-white/5 rounded px-1" : "nav-link text-on-surface-variant hover:text-white transition-colors duration-300 text-body-md hover:bg-white/5 rounded px-1"}>
+            <NavLink
+              to="/"
+              end
+              className={({ isActive }) =>
+                isActive
+                  ? "nav-link nav-link--active text-emerald-glow font-bold text-body-md transition-colors duration-300 hover:bg-white/5 rounded px-1"
+                  : "nav-link text-on-surface-variant hover:text-white transition-colors duration-300 text-body-md hover:bg-white/5 rounded px-1"
+              }
+            >
               {t("navHome")}
             </NavLink>
-            <NavLink to="/humanize" className={({ isActive }) => isActive ? "nav-link nav-link--active text-emerald-glow font-bold text-body-md transition-colors duration-300 hover:bg-white/5 rounded px-1" : "nav-link text-on-surface-variant hover:text-white transition-colors duration-300 text-body-md hover:bg-white/5 rounded px-1"}>
+            <NavLink
+              to="/humanize"
+              className={({ isActive }) =>
+                isActive
+                  ? "nav-link nav-link--active text-emerald-glow font-bold text-body-md transition-colors duration-300 hover:bg-white/5 rounded px-1"
+                  : "nav-link text-on-surface-variant hover:text-white transition-colors duration-300 text-body-md hover:bg-white/5 rounded px-1"
+              }
+            >
               {t("navHumanize")}
             </NavLink>
           </div>
@@ -122,7 +138,7 @@ export function Layout() {
             )}
 
             <div className="relative" data-user-menu>
-              <button 
+              <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
                 className="relative rounded-full overflow-hidden w-10 h-10 border border-white/20 hover:border-emerald-glow transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-glow/50 bg-surface-container flex items-center justify-center cursor-pointer"
               >
@@ -142,12 +158,24 @@ export function Layout() {
                         <p className="text-body-md text-white font-medium truncate">{user?.name}</p>
                         <p className="text-label-sm text-on-surface-variant truncate">{user?.email}</p>
                       </div>
-                      <button onClick={() => { setShowUserMenu(false); navigate("/history"); }} className="w-full text-left px-4 py-2.5 text-body-md text-on-surface-variant hover:text-white hover:bg-white/5 transition-colors flex items-center gap-2.5 cursor-pointer">
+                      <button
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          navigate("/history");
+                        }}
+                        className="w-full text-left px-4 py-2.5 text-body-md text-on-surface-variant hover:text-white hover:bg-white/5 transition-colors flex items-center gap-2.5 cursor-pointer"
+                      >
                         <span className="material-symbols-outlined text-[20px] text-emerald-glow">history</span>
                         {t("navHistory")}
                       </button>
                       <div className="border-t border-white/5 mt-1 pt-1">
-                        <button onClick={async () => { setShowUserMenu(false); await logout(); }} className="w-full text-left px-4 py-2.5 text-body-md text-error hover:bg-error/10 transition-colors flex items-center gap-2.5 cursor-pointer">
+                        <button
+                          onClick={async () => {
+                            setShowUserMenu(false);
+                            await logout();
+                          }}
+                          className="w-full text-left px-4 py-2.5 text-body-md text-error hover:bg-error/10 transition-colors flex items-center gap-2.5 cursor-pointer"
+                        >
                           <span className="material-symbols-outlined text-[20px]">logout</span>
                           {t("signOut")}
                         </button>
@@ -155,7 +183,13 @@ export function Layout() {
                     </div>
                   ) : (
                     <div className="flex flex-col">
-                      <button onClick={() => { setShowUserMenu(false); setShowAuthModal(true); }} className="w-full text-left px-4 py-2.5 text-body-md text-emerald-glow hover:text-white hover:bg-white/5 transition-colors flex items-center gap-2.5 font-medium cursor-pointer">
+                      <button
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          setShowAuthModal(true);
+                        }}
+                        className="w-full text-left px-4 py-2.5 text-body-md text-emerald-glow hover:text-white hover:bg-white/5 transition-colors flex items-center gap-2.5 font-medium cursor-pointer"
+                      >
                         <span className="material-symbols-outlined text-[20px]">login</span>
                         {t("signIn")}
                       </button>
@@ -174,9 +208,7 @@ export function Layout() {
             end
             className={({ isActive }) =>
               `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                isActive
-                  ? "bg-emerald-glow/15 text-emerald-glow border border-emerald-glow/30 shadow-sm"
-                  : "text-on-surface-variant hover:text-white"
+                isActive ? "bg-emerald-glow/15 text-emerald-glow border border-emerald-glow/30 shadow-sm" : "text-on-surface-variant hover:text-white"
               }`
             }
           >
@@ -187,9 +219,7 @@ export function Layout() {
             to="/humanize"
             className={({ isActive }) =>
               `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                isActive
-                  ? "bg-emerald-glow/15 text-emerald-glow border border-emerald-glow/30 shadow-sm"
-                  : "text-on-surface-variant hover:text-white"
+                isActive ? "bg-emerald-glow/15 text-emerald-glow border border-emerald-glow/30 shadow-sm" : "text-on-surface-variant hover:text-white"
               }`
             }
           >
@@ -200,9 +230,7 @@ export function Layout() {
             to="/history"
             className={({ isActive }) =>
               `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                isActive
-                  ? "bg-emerald-glow/15 text-emerald-glow border border-emerald-glow/30 shadow-sm"
-                  : "text-on-surface-variant hover:text-white"
+                isActive ? "bg-emerald-glow/15 text-emerald-glow border border-emerald-glow/30 shadow-sm" : "text-on-surface-variant hover:text-white"
               }`
             }
           >
@@ -221,14 +249,24 @@ export function Layout() {
       <footer className="w-full py-8 mt-auto border-t border-white/10 relative z-10 bg-surface/80 backdrop-blur-md">
         <div className="max-w-container-max mx-auto flex flex-col md:flex-row justify-between items-center px-gutter">
           <div className="flex flex-col items-center md:items-start mb-4 md:mb-0">
-            <span className="font-headline-md text-white mb-2 font-bold">{lang === "uk" ? "НЕЗБІГ" : "NEZBIG"} <span className="text-emerald-glow">2.0</span></span>
+            <span className="font-headline-md text-white mb-2 font-bold">
+              {lang === "uk" ? "НЕЗБІГ" : "NEZBIG"} <span className="text-emerald-glow">2.0</span>
+            </span>
             <span className="font-label-sm text-label-sm text-on-surface-variant">{t("copyright")}</span>
           </div>
           <div className="flex flex-wrap gap-6 font-label-sm text-label-sm text-on-surface-variant">
-            <Link className="hover:text-emerald-glow transition-colors" to="/about">{t("aboutUs")}</Link>
-            <Link className="hover:text-emerald-glow transition-colors" to="/privacy">{t("privacy")}</Link>
-            <Link className="hover:text-emerald-glow transition-colors" to="/terms">{t("terms")}</Link>
-            <button onClick={() => setShowFeedback(true)} className="hover:text-emerald-glow transition-colors cursor-pointer text-left">{t("reportBug")}</button>
+            <Link className="hover:text-emerald-glow transition-colors" to="/about">
+              {t("aboutUs")}
+            </Link>
+            <Link className="hover:text-emerald-glow transition-colors" to="/privacy">
+              {t("privacy")}
+            </Link>
+            <Link className="hover:text-emerald-glow transition-colors" to="/terms">
+              {t("terms")}
+            </Link>
+            <button onClick={() => setShowFeedback(true)} className="hover:text-emerald-glow transition-colors cursor-pointer text-left">
+              {t("reportBug")}
+            </button>
           </div>
         </div>
       </footer>
@@ -238,25 +276,23 @@ export function Layout() {
 
       {/* Feedback Modal */}
       {showFeedback && (
-        <div 
+        <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-          onClick={(e) => { if (e.target === e.currentTarget) setShowFeedback(false); }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowFeedback(false);
+          }}
         >
           <div className="bg-surface-container-high border border-white/10 rounded-xl p-6 w-full max-w-md shadow-2xl relative fade-in">
-            <button 
-              onClick={() => setShowFeedback(false)} 
+            <button
+              onClick={() => setShowFeedback(false)}
               className="absolute top-4 right-4 text-on-surface-variant hover:text-white transition-colors cursor-pointer"
               title={lang === "uk" ? "Закрити" : "Close"}
             >
               <span className="material-symbols-outlined">close</span>
             </button>
-            <h3 className="text-headline-sm font-headline-sm text-white mb-4">
-              {lang === "uk" ? "Повідомити про помилку" : "Report an Issue"}
-            </h3>
+            <h3 className="text-headline-sm font-headline-sm text-white mb-4">{lang === "uk" ? "Повідомити про помилку" : "Report an Issue"}</h3>
             {feedbackSent ? (
-              <div className="text-emerald-glow text-center py-8 font-medium">
-                {lang === "uk" ? "Дякуємо! Ваш відгук надіслано." : "Thank you! Your feedback has been sent."}
-              </div>
+              <div className="text-emerald-glow text-center py-8 font-medium">{lang === "uk" ? "Дякуємо! Ваш відгук надіслано." : "Thank you! Your feedback has been sent."}</div>
             ) : (
               <form onSubmit={handleFeedbackSubmit} className="flex flex-col gap-4">
                 <textarea
@@ -270,8 +306,12 @@ export function Layout() {
                   <button type="button" onClick={() => setShowFeedback(false)} className="px-4 py-2 text-on-surface-variant hover:text-white transition-colors cursor-pointer">
                     {lang === "uk" ? "Скасувати" : "Cancel"}
                   </button>
-                  <button type="submit" disabled={submittingFeedback || !feedbackText.trim()} className="px-6 py-2 bg-emerald-glow text-on-primary rounded-lg font-medium hover:bg-emerald-glow/90 disabled:opacity-50 transition-colors cursor-pointer disabled:cursor-not-allowed">
-                    {submittingFeedback ? (lang === "uk" ? "Надсилання..." : "Sending...") : (lang === "uk" ? "Надіслати" : "Submit")}
+                  <button
+                    type="submit"
+                    disabled={submittingFeedback || !feedbackText.trim()}
+                    className="px-6 py-2 bg-emerald-glow text-on-primary rounded-lg font-medium hover:bg-emerald-glow/90 disabled:opacity-50 transition-colors cursor-pointer disabled:cursor-not-allowed"
+                  >
+                    {submittingFeedback ? (lang === "uk" ? "Надсилання..." : "Sending...") : lang === "uk" ? "Надіслати" : "Submit"}
                   </button>
                 </div>
               </form>

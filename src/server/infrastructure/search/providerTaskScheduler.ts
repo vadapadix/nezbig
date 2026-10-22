@@ -1,7 +1,6 @@
 import type { ProviderQueue } from "../../types/providerTaskScheduler.types.js";
 export type { ProviderQueue } from "../../types/providerTaskScheduler.types.js";
 
-
 export class ProviderTaskScheduler {
   private readonly queues = new Map<string, ProviderQueue>();
 

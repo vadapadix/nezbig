@@ -22,9 +22,13 @@ afterEach(() => {
 describe("web search diagnostics", () => {
   it("does not report failed public provider requests as successful empty searches", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("down", { status: 503 })));
-    const result = await searchWebCandidatesDetailed(`Provider health ${crypto.randomUUID()} should preserve the actual HTTP failure`, 5, false, { queryLimit: 1, hydrateLimit: 0, includeAcademic: true });
+    const result = await searchWebCandidatesDetailed(`Provider health ${crypto.randomUUID()} should preserve the actual HTTP failure`, 5, false, {
+      queryLimit: 1,
+      hydrateLimit: 0,
+      includeAcademic: true
+    });
     for (const name of ["Crossref", "Wikipedia", "OpenAlex", "Semantic Scholar"]) {
-      expect(result.diagnostics.providers.find(provider => provider.provider === name)).toMatchObject({ succeeded: 0, failed: 1, errorCode: "unavailable" });
+      expect(result.diagnostics.providers.find((provider) => provider.provider === name)).toMatchObject({ succeeded: 0, failed: 1, errorCode: "unavailable" });
     }
   });
   it.each([
@@ -33,16 +37,21 @@ describe("web search diagnostics", () => {
   ])("distinguishes Google %s from other failures", async (reason, expected) => {
     vi.stubEnv("GOOGLE_SEARCH_API_KEY", "test-key");
     vi.stubEnv("GOOGLE_SEARCH_ENGINE_ID", "test-engine");
-    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
-      const url = new URL(typeof input === "string" || input instanceof URL ? input : input.url);
-      return url.hostname === "www.googleapis.com"
-        ? new Response(JSON.stringify({ error: { errors: [{ reason }] } }), { status: 403 })
-        : new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
-    }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request) => {
+        const url = new URL(typeof input === "string" || input instanceof URL ? input : input.url);
+        return url.hostname === "www.googleapis.com"
+          ? new Response(JSON.stringify({ error: { errors: [{ reason }] } }), { status: 403 })
+          : new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
+      })
+    );
     try {
       const result = await searchWebCandidatesDetailed(`Unique Google diagnostic ${crypto.randomUUID()} text for a search`, 5, false, { queryLimit: 1, hydrateLimit: 0 });
-      expect(result.diagnostics.providers.find(provider => provider.provider === "Google")).toMatchObject({ errorCode: expected, failed: 1 });
-    } finally { vi.unstubAllEnvs(); }
+      expect(result.diagnostics.providers.find((provider) => provider.provider === "Google")).toMatchObject({ errorCode: expected, failed: 1 });
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
   it("caches unavailable pages and reports a negative-cache hit", async () => {
     const url = `https://unavailable-${crypto.randomUUID()}.example/page`;
@@ -66,12 +75,7 @@ describe("web search diagnostics", () => {
     delete process.env.GOOGLE_SEARCH_ENGINE_ID;
     delete process.env.BRAVE_SEARCH_API_KEY;
 
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response("{}", { status: 200, headers: { "content-type": "application/json" } })
-      )
-    );
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("{}", { status: 200, headers: { "content-type": "application/json" } })));
 
     try {
       const result = await searchWebCandidatesDetailed(`A distinctive ${crypto.randomUUID()} academic phrase contains enough words for one exact search request`, 5, false, {

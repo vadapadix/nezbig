@@ -1,5 +1,3 @@
-
-
 export type StylometryAnalysis = {
   zipfScore: number;
   hapaxRatio: number;

@@ -1,5 +1,3 @@
-
-
 export type NvidiaResponse = {
   choices?: Array<{
     message?: {

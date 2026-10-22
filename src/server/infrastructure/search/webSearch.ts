@@ -6,7 +6,7 @@ import { normalizeWhitespace } from "../../domain/analysis/chunking.js";
 import { ProviderCircuitBreaker } from "./providerCircuitBreaker.js";
 import { ProviderTaskScheduler } from "./providerTaskScheduler.js";
 import { DistributedCache } from "../cache/searchCache.js";
-import { emptySearchDiagnostics, mergeSearchDiagnostics } from "../../searchDiagnostics.js";
+import { emptySearchDiagnostics, mergeSearchDiagnostics } from "../../domain/analysis/searchDiagnostics.js";
 import type { SearchCandidate, SearchProviderDiagnostic } from "../../../shared/types/index.js";
 
 const SEARCH_TIMEOUT_MS = 8000;
@@ -24,11 +24,86 @@ class SearchProviderError extends Error {
 }
 
 const STOP_WORDS = new Set([
-  "та", "і", "й", "в", "у", "на", "до", "з", "із", "зі", "за", "по", "про", "як", "що", "це", "де", "чи",
-  "але", "проте", "однак", "тому", "який", "яка", "яке", "які", "яких", "яким", "якого", "якій",
-  "свій", "свого", "своїй", "свої", "цей", "ця", "це", "ці", "цих", "цим", "цього", "цій",
-  "від", "під", "над", "перед", "через", "при", "для", "без", "щоб", "якщо", "коли", "було", "були", "буде", "є",
-  "and", "or", "the", "a", "an", "in", "on", "at", "to", "for", "with", "by", "from", "of", "about", "that", "this", "is", "are", "was", "were", "be", "been"
+  "та",
+  "і",
+  "й",
+  "в",
+  "у",
+  "на",
+  "до",
+  "з",
+  "із",
+  "зі",
+  "за",
+  "по",
+  "про",
+  "як",
+  "що",
+  "це",
+  "де",
+  "чи",
+  "але",
+  "проте",
+  "однак",
+  "тому",
+  "який",
+  "яка",
+  "яке",
+  "які",
+  "яких",
+  "яким",
+  "якого",
+  "якій",
+  "свій",
+  "свого",
+  "своїй",
+  "свої",
+  "цей",
+  "ця",
+  "це",
+  "ці",
+  "цих",
+  "цим",
+  "цього",
+  "цій",
+  "від",
+  "під",
+  "над",
+  "перед",
+  "через",
+  "при",
+  "для",
+  "без",
+  "щоб",
+  "якщо",
+  "коли",
+  "було",
+  "були",
+  "буде",
+  "є",
+  "and",
+  "or",
+  "the",
+  "a",
+  "an",
+  "in",
+  "on",
+  "at",
+  "to",
+  "for",
+  "with",
+  "by",
+  "from",
+  "of",
+  "about",
+  "that",
+  "this",
+  "is",
+  "are",
+  "was",
+  "were",
+  "be",
+  "been"
 ]);
 
 function cleanPunctuationForQuery(text: string): string {
@@ -86,7 +161,15 @@ async function runProviderTask(task: ProviderTask): Promise<{ candidates: Search
       const timedOut = isTimeoutError(error) ? 1 : 0;
       return {
         candidates: [],
-        diagnostic: { provider: task.provider, attempted: 1, succeeded: 0, failed: 1, timedOut, results: 0, errorCode: error instanceof SearchProviderError ? error.code : timedOut ? "timeout" : "unavailable" }
+        diagnostic: {
+          provider: task.provider,
+          attempted: 1,
+          succeeded: 0,
+          failed: 1,
+          timedOut,
+          results: 0,
+          errorCode: error instanceof SearchProviderError ? error.code : timedOut ? "timeout" : "unavailable"
+        }
       };
     }
   });
@@ -413,7 +496,7 @@ async function searchOpenAlex(query: string, maxResults: number): Promise<Search
           .filter(Boolean)
           .join(", ");
         const metadata = [authors, work.publication_year].filter(Boolean).join(", ");
-        const snippetText = abstract ? (metadata ? `${metadata}. ${abstract}` : abstract) : (metadata ? `${metadata}. Наукова стаття OpenAlex.` : title);
+        const snippetText = abstract ? (metadata ? `${metadata}. ${abstract}` : abstract) : metadata ? `${metadata}. Наукова стаття OpenAlex.` : title;
 
         return [
           {
@@ -595,9 +678,12 @@ async function searchGoogleCustom(query: string, maxResults: number): Promise<Se
 
   if (!response.ok) {
     // Never expose Google's raw response: it may contain credential or project details.
-    const payload = await response.json().catch(() => ({})) as { error?: { errors?: Array<{ reason?: string }>; status?: string } };
-    const reasons = (payload.error?.errors ?? []).map(item => item.reason ?? "");
-    const quota = response.status === 429 || payload.error?.status === "RESOURCE_EXHAUSTED" || reasons.some(reason => /^(dailyLimitExceeded|quotaExceeded|rateLimitExceeded|userRateLimitExceeded)$/i.test(reason));
+    const payload = (await response.json().catch(() => ({}))) as { error?: { errors?: Array<{ reason?: string }>; status?: string } };
+    const reasons = (payload.error?.errors ?? []).map((item) => item.reason ?? "");
+    const quota =
+      response.status === 429 ||
+      payload.error?.status === "RESOURCE_EXHAUSTED" ||
+      reasons.some((reason) => /^(dailyLimitExceeded|quotaExceeded|rateLimitExceeded|userRateLimitExceeded)$/i.test(reason));
     throw new SearchProviderError(quota ? "quota" : response.status === 401 || response.status === 403 || response.status === 400 ? "access" : "unavailable");
   }
 

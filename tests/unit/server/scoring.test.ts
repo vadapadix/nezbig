@@ -207,7 +207,7 @@ describe("detectAiSignals", () => {
     `);
 
     expect(result.probability).toBeLessThan(45);
-    expect(result.signals.find(signal => signal.label === "Шаблон академічної генерації")?.category).toBe("safeguard");
+    expect(result.signals.find((signal) => signal.label === "Шаблон академічної генерації")?.category).toBe("safeguard");
   });
 
   it("keeps localized AI-style sections visible inside a long mixed document", () => {
@@ -380,7 +380,9 @@ describe("detectAiSignals", () => {
     const englishFiller = Array.from({ length: 40 }, (_, index) => `The field team visited site number ${index + 1} and wrote down the readings before lunch.`).join(" ");
 
     const mixed = detectAiSignals(`${englishFiller} ${ukrainianPart}`);
-    const pureUkrainian = detectAiSignals(`${ukrainianPart} ${Array.from({ length: 40 }, (_, index) => `Польова група відвідала ділянку номер ${index + 1} і записала показники до обіду.`).join(" ")}`);
+    const pureUkrainian = detectAiSignals(
+      `${ukrainianPart} ${Array.from({ length: 40 }, (_, index) => `Польова група відвідала ділянку номер ${index + 1} і записала показники до обіду.`).join(" ")}`
+    );
 
     expect(mixed.signals.find((signal) => signal.label === "Часті формальні переходи")?.score ?? 0).toBeGreaterThan(0);
     expect(pureUkrainian.probability).toBeGreaterThanOrEqual(mixed.probability - 12);
@@ -410,8 +412,10 @@ describe("detectAiSignals", () => {
   });
 
   it("does not flag bibliography citation lines as AI suspicious segments", () => {
-    const bibText = Array.from({ length: 6 }, (_, index) =>
-      `${index + 1}. Wang Y., Mansurov M. Evaluation of machine-generated text detectors. Proceedings of the Association for Computational Linguistics, 2024. P. 1245–1263. DOI: https://doi.org/10.18653/v1/2024.acl-long.674.`
+    const bibText = Array.from(
+      { length: 6 },
+      (_, index) =>
+        `${index + 1}. Wang Y., Mansurov M. Evaluation of machine-generated text detectors. Proceedings of the Association for Computational Linguistics, 2024. P. 1245–1263. DOI: https://doi.org/10.18653/v1/2024.acl-long.674.`
     ).join("\n");
 
     const result = detectAiSignals(bibText);

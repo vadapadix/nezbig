@@ -1,9 +1,6 @@
 import { useState, useEffect, useCallback, type RefObject, useRef } from "react";
 
-export function useDragDrop(
-  containerRef: RefObject<HTMLElement | null>,
-  onFile: (file: File) => void
-) {
+export function useDragDrop(containerRef: RefObject<HTMLElement | null>, onFile: (file: File) => void) {
   const [isDragging, setIsDragging] = useState(false);
   const dragCounter = useRef(0);
 
@@ -19,13 +16,16 @@ export function useDragDrop(
     if (dragCounter.current === 0) setIsDragging(false);
   }, []);
 
-  const handleDrop = useCallback((e: DragEvent) => {
-    e.preventDefault();
-    dragCounter.current = 0;
-    setIsDragging(false);
-    const file = e.dataTransfer?.files?.[0];
-    if (file) onFile(file);
-  }, [onFile]);
+  const handleDrop = useCallback(
+    (e: DragEvent) => {
+      e.preventDefault();
+      dragCounter.current = 0;
+      setIsDragging(false);
+      const file = e.dataTransfer?.files?.[0];
+      if (file) onFile(file);
+    },
+    [onFile]
+  );
 
   useEffect(() => {
     const el = containerRef.current;

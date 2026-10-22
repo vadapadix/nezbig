@@ -9,7 +9,7 @@ export function calculateConfirmedPlagiarismScore(matches: PlagiarismMatch[]): n
   const confirmed = matches.filter((match) => match.confidence === "page");
   if (confirmed.length === 0) return 0;
 
-  return clampScore(Math.max(...confirmed.map(match => match.score)));
+  return clampScore(Math.max(...confirmed.map((match) => match.score)));
 }
 
 function summarizeAi(aiProbability: number, verdict: AiVerdict): string {

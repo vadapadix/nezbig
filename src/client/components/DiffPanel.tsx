@@ -1,3 +1,4 @@
+import { apiFetch } from "../utils/apiClient";
 import type { DiffPart } from "../types/DiffPanel.types";
 export type { DiffPart } from "../types/DiffPanel.types";
 import { useState } from "react";
@@ -16,21 +17,21 @@ export function DiffPanel() {
       setError(lang === "uk" ? "Вставте обидва тексти для порівняння." : "Paste both texts to compare.");
       return;
     }
-    
+
     setBusy(true);
     setError(null);
     setDiffResult(null);
-    
+
     try {
-      const res = await fetch("/api/diff", {
+      const res = await apiFetch("/api/diff", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ original, modified })
       });
-      
+
       const payload = await res.json();
       if (!res.ok) throw new Error(payload.error || (lang === "uk" ? "Помилка при порівнянні" : "Diff comparison failed"));
-      
+
       setDiffResult(payload);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -70,20 +71,12 @@ export function DiffPanel() {
           />
         </div>
       </div>
-      
+
       <div className="diff-actions">
-        <button 
-          className="primary-button cursor-pointer disabled:cursor-not-allowed" 
-          onClick={handleCompare} 
-          disabled={busy || (!original.trim() || !modified.trim())}
-        >
-          {busy ? (lang === "uk" ? "Аналіз..." : "Comparing...") : (lang === "uk" ? "Порівняти" : "Compare")}
+        <button className="primary-button cursor-pointer disabled:cursor-not-allowed" onClick={handleCompare} disabled={busy || !original.trim() || !modified.trim()}>
+          {busy ? (lang === "uk" ? "Аналіз..." : "Comparing...") : lang === "uk" ? "Порівняти" : "Compare"}
         </button>
-        <button 
-          className="secondary-button cursor-pointer disabled:cursor-not-allowed" 
-          onClick={handleClear} 
-          disabled={busy || (!original && !modified && !diffResult)}
-        >
+        <button className="secondary-button cursor-pointer disabled:cursor-not-allowed" onClick={handleClear} disabled={busy || (!original && !modified && !diffResult)}>
           {lang === "uk" ? "Очистити" : "Clear"}
         </button>
       </div>

@@ -51,9 +51,9 @@ describe("analyzeWithNvidiaNim", () => {
   });
 
   it("parses a successful model response", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      nimPayload('{"probability": 64, "signals": [{"label": "Шаблонні переходи", "score": 70, "detail": "Багато слів-звʼязок.", "evidence": ["however"]}]}')
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(nimPayload('{"probability": 64, "signals": [{"label": "Шаблонні переходи", "score": 70, "detail": "Багато слів-звʼязок.", "evidence": ["however"]}]}'));
     vi.stubGlobal("fetch", fetchMock);
 
     const result = await analyzeWithNvidiaNim("Текст перевірки.", localAi);
@@ -70,10 +70,7 @@ describe("analyzeWithNvidiaNim", () => {
   });
 
   it("falls back to the next model after an HTTP failure and records the note", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(nimError("quota exceeded"))
-      .mockResolvedValueOnce(nimPayload('{"probability": 20, "signals": []}'));
+    const fetchMock = vi.fn().mockResolvedValueOnce(nimError("quota exceeded")).mockResolvedValueOnce(nimPayload('{"probability": 20, "signals": []}'));
     vi.stubGlobal("fetch", fetchMock);
 
     const result = await analyzeWithNvidiaNim("Текст перевірки.", localAi);

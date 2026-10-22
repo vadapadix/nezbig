@@ -1,3 +1,4 @@
+import { apiFetch } from "../utils/apiClient";
 import type { HistoryItem } from "../types/HistoryPage.types";
 export type { HistoryItem } from "../types/HistoryPage.types";
 import { localHistoryKey } from "../utils/localHistory";
@@ -11,7 +12,7 @@ import { parseNezbigReport } from "../utils/nezbigFile";
 import { useAiOpinion } from "../hooks/useAiOpinion";
 import type { ScanReport } from "../../shared/types/index";
 
-const ReportView = lazy(() => import("../components/ReportView").then(m => ({ default: m.ReportView })));
+const ReportView = lazy(() => import("../components/ReportView").then((m) => ({ default: m.ReportView })));
 
 export default function HistoryPage() {
   const { id } = useParams<{ id?: string }>();
@@ -64,14 +65,14 @@ export default function HistoryPage() {
             const token = localStorage.getItem("nezbig_auth_token");
             const headers: Record<string, string> = {};
             if (token) headers["Authorization"] = `Bearer ${token}`;
-            const res = await fetch("/api/history", { headers, credentials: "include" });
+            const res = await apiFetch("/api/history", { headers, credentials: "include" });
             const data = await res.json();
             if (Array.isArray(data)) serverItems = data;
           } catch {
             // ignore server error
           }
         }
-        
+
         let localItems: HistoryItem[] = [];
         try {
           localItems = JSON.parse(localStorage.getItem(localHistoryKey()) || "[]");
@@ -106,37 +107,40 @@ export default function HistoryPage() {
     };
   }, [isLoggedIn]);
 
-  const handleSelectReport = useCallback(async (reportId: string) => {
-    setLoadingReport(true);
-    setReportError(null);
-    try {
-      // 1. Try server fetch
-      const token = localStorage.getItem("nezbig_auth_token");
-      const headers: Record<string, string> = {};
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      const res = await fetch(`/api/history/${reportId}`, { headers, credentials: "include" });
-      if (res.ok) {
-        const report = await res.json();
-        setSelectedReport(report);
-        window.scrollTo({ top: 0, behavior: "smooth" });
-        return;
+  const handleSelectReport = useCallback(
+    async (reportId: string) => {
+      setLoadingReport(true);
+      setReportError(null);
+      try {
+        // 1. Try server fetch
+        const token = localStorage.getItem("nezbig_auth_token");
+        const headers: Record<string, string> = {};
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        const res = await apiFetch(`/api/history/${reportId}`, { headers, credentials: "include" });
+        if (res.ok) {
+          const report = await res.json();
+          setSelectedReport(report);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+          return;
+        }
+
+        // 2. Fallback to localStorage
+        const localItems = JSON.parse(localStorage.getItem(localHistoryKey()) || "[]");
+        const found = localItems.find((i: any) => i.id === reportId);
+        if (found?.fullReport) {
+          setSelectedReport(found.fullReport);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+          return;
+        }
+        throw new Error("Report not found");
+      } catch {
+        setReportError(lang === "uk" ? "Не вдалося завантажити детальний звіт." : "Failed to load scan report.");
+      } finally {
+        setLoadingReport(false);
       }
-      
-      // 2. Fallback to localStorage
-      const localItems = JSON.parse(localStorage.getItem(localHistoryKey()) || "[]");
-      const found = localItems.find((i: any) => i.id === reportId);
-      if (found?.fullReport) {
-        setSelectedReport(found.fullReport);
-        window.scrollTo({ top: 0, behavior: "smooth" });
-        return;
-      }
-      throw new Error("Report not found");
-    } catch {
-      setReportError(lang === "uk" ? "Не вдалося завантажити детальний звіт." : "Failed to load scan report.");
-    } finally {
-      setLoadingReport(false);
-    }
-  }, [lang]);
+    },
+    [lang]
+  );
 
   useEffect(() => {
     if (id) {
@@ -150,9 +154,7 @@ export default function HistoryPage() {
     return (
       <div className="max-w-container-max mx-auto px-gutter py-12 flex flex-col items-center gap-8 relative z-10 fade-in">
         <span className="material-symbols-outlined text-7xl text-on-surface-variant/40">lock</span>
-        <h1 className="font-display-lg text-display-lg font-bold text-white text-center">
-          {lang === "uk" ? "Історія перевірок" : "Scan History"}
-        </h1>
+        <h1 className="font-display-lg text-display-lg font-bold text-white text-center">{lang === "uk" ? "Історія перевірок" : "Scan History"}</h1>
         <p className="text-body-lg text-on-surface-variant text-center max-w-md">
           {lang === "uk"
             ? "Увійдіть в акаунт, щоб бачити історію ваших перевірок. Усі звіти зберігаються автоматично."
@@ -172,9 +174,7 @@ export default function HistoryPage() {
   if (loading) {
     return (
       <div className="max-w-container-max mx-auto px-gutter py-12 flex flex-col items-center gap-6 relative z-10 fade-in">
-        <h1 className="font-display-lg text-display-lg font-bold text-white">
-          {lang === "uk" ? "Історія перевірок" : "Scan History"}
-        </h1>
+        <h1 className="font-display-lg text-display-lg font-bold text-white">{lang === "uk" ? "Історія перевірок" : "Scan History"}</h1>
         <div className="text-on-surface-variant">{lang === "uk" ? "Завантаження..." : "Loading history..."}</div>
       </div>
     );
@@ -194,12 +194,7 @@ export default function HistoryPage() {
           <span>{lang === "uk" ? "Назад до списку перевірок" : "Back to History"}</span>
         </button>
         <Suspense fallback={<div className="text-center py-12 text-on-surface-variant">{lang === "uk" ? "Завантаження звіту..." : "Loading report..."}</div>}>
-          <ReportView
-            report={selectedReport}
-            llmBusy={llmBusy}
-            reportRef={reportRef}
-            onRetryOpinion={selectedReport.sourceText ? handleRetryOpinion : undefined}
-          />
+          <ReportView report={selectedReport} llmBusy={llmBusy} reportRef={reportRef} onRetryOpinion={selectedReport.sourceText ? handleRetryOpinion : undefined} />
         </Suspense>
       </div>
     );
@@ -207,7 +202,7 @@ export default function HistoryPage() {
 
   async function deleteFromServer(id?: string): Promise<void> {
     if (!isLoggedIn) return;
-    const res = await fetch(id ? `/api/history/${encodeURIComponent(id)}` : "/api/history", { method: "DELETE", credentials: "include" });
+    const res = await apiFetch(id ? `/api/history/${encodeURIComponent(id)}` : "/api/history", { method: "DELETE", credentials: "include" });
     if (!res.ok) throw new Error(lang === "uk" ? "Не вдалося видалити серверні дані. Спробуйте ще раз." : "Server deletion failed. Please retry.");
   }
 
@@ -215,11 +210,13 @@ export default function HistoryPage() {
     e.stopPropagation();
     try {
       await deleteFromServer(id);
-      const updated = items.filter(item => item.id !== id);
+      const updated = items.filter((item) => item.id !== id);
       localStorage.setItem(localHistoryKey(), JSON.stringify(updated));
       setItems(updated);
       window.dispatchEvent(new Event("nezbig_history_updated"));
-    } catch (error) { window.alert(error instanceof Error ? error.message : String(error)); }
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : String(error));
+    }
   }
 
   async function handleClearAll() {
@@ -229,20 +226,24 @@ export default function HistoryPage() {
       localStorage.removeItem(localHistoryKey());
       setItems([]);
       window.dispatchEvent(new Event("nezbig_history_updated"));
-    } catch (error) { window.alert(error instanceof Error ? error.message : String(error)); }
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : String(error));
+    }
   }
 
   return (
     <div className="max-w-container-max mx-auto px-gutter py-8 md:py-12 flex flex-col gap-6 relative z-10 fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-headline-lg text-headline-lg font-bold text-white">
-            {lang === "uk" ? "Історія перевірок" : "Scan History"}
-          </h1>
+          <h1 className="font-headline-lg text-headline-lg font-bold text-white">{lang === "uk" ? "Історія перевірок" : "Scan History"}</h1>
           <p className="text-label-sm text-on-surface-variant mt-1">
             {isLoggedIn
-              ? (lang === "uk" ? "Синхронізовано з вашим акаунтом у хмарі" : "Synced with your account in the cloud")
-              : (lang === "uk" ? "Зберігається локально у вашому браузері" : "Saved locally in your browser storage")}
+              ? lang === "uk"
+                ? "Синхронізовано з вашим акаунтом у хмарі"
+                : "Synced with your account in the cloud"
+              : lang === "uk"
+                ? "Зберігається локально у вашому браузері"
+                : "Saved locally in your browser storage"}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
@@ -253,7 +254,7 @@ export default function HistoryPage() {
             title={lang === "uk" ? "Відкрити звіт з Google Диску" : "Open report from Google Drive"}
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" className="text-[#4285F4] shrink-0">
-              <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4 0-2.05 1.53-3.76 3.56-3.97l1.07-.11.5-.95C8.08 7.14 9.94 6 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5 1.53.11c1.56.1 2.78 1.41 2.78 2.96 0 1.65-1.35 3-3 3z"/>
+              <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4 0-2.05 1.53-3.76 3.56-3.97l1.07-.11.5-.95C8.08 7.14 9.94 6 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5 1.53.11c1.56.1 2.78 1.41 2.78 2.96 0 1.65-1.35 3-3 3z" />
             </svg>
             <span>Google Диск</span>
           </button>
@@ -267,16 +268,10 @@ export default function HistoryPage() {
             <span className="material-symbols-outlined text-sm text-emerald-400">file_open</span>
             <span>{lang === "uk" ? "Імпортувати звіт" : "Import Report"}</span>
           </button>
-          <input
-            ref={importFileInputRef}
-            type="file"
-            accept=".nezbig,.json"
-            className="hidden"
-            onChange={handleImportLocalFile}
-          />
+          <input ref={importFileInputRef} type="file" accept=".nezbig,.json" className="hidden" onChange={handleImportLocalFile} />
 
           <span className="text-label-sm text-on-surface-variant hidden sm:inline ml-1">
-            {items.length} {lang === "uk" ? (items.length === 1 ? "перевірка" : items.length < 5 ? "перевірки" : "перевірок") : (items.length === 1 ? "scan" : "scans")}
+            {items.length} {lang === "uk" ? (items.length === 1 ? "перевірка" : items.length < 5 ? "перевірки" : "перевірок") : items.length === 1 ? "scan" : "scans"}
           </span>
           {items.length > 0 && (
             <button
@@ -293,9 +288,7 @@ export default function HistoryPage() {
         <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-glow/10 border border-emerald-glow/30 text-white">
           <span className="material-symbols-outlined text-emerald-glow text-2xl shrink-0">cloud_done</span>
           <div className="flex flex-col min-w-0">
-            <p className="text-sm font-medium text-emerald-glow">
-              {lang === "uk" ? "Хмарне збереження активне" : "Cloud Storage Active"}
-            </p>
+            <p className="text-sm font-medium text-emerald-glow">{lang === "uk" ? "Хмарне збереження активне" : "Cloud Storage Active"}</p>
             <p className="text-xs text-on-surface-variant truncate">
               {lang === "uk"
                 ? `Звіти надійно прив'язані до вашого акаунта (${user?.email}) та доступні з будь-якого пристрою.`
@@ -309,9 +302,7 @@ export default function HistoryPage() {
             <div className="flex items-center gap-3">
               <span className="material-symbols-outlined text-amber-400 text-2xl shrink-0">cloud_off</span>
               <div className="flex flex-col">
-                <p className="text-sm font-medium text-white">
-                  {lang === "uk" ? "Локальне збереження" : "Local Browser Storage"}
-                </p>
+                <p className="text-sm font-medium text-white">{lang === "uk" ? "Локальне збереження" : "Local Browser Storage"}</p>
                 <p className="text-xs text-on-surface-variant">
                   {lang === "uk"
                     ? "Увійдіть в акаунт Google або створіть профіль Незбігу, щоб скани не губилися при очищенні браузера."
@@ -336,11 +327,7 @@ export default function HistoryPage() {
             <span className="material-symbols-outlined text-xl">error</span>
             <span>{reportError}</span>
           </div>
-          <button
-            type="button"
-            onClick={() => setReportError(null)}
-            className="text-error/70 hover:text-error cursor-pointer"
-          >
+          <button type="button" onClick={() => setReportError(null)} className="text-error/70 hover:text-error cursor-pointer">
             <span className="material-symbols-outlined text-lg">close</span>
           </button>
         </div>
@@ -358,9 +345,21 @@ export default function HistoryPage() {
           <span className="material-symbols-outlined text-5xl text-on-surface-variant/40">description</span>
           <p className="text-body-lg text-on-surface-variant text-center">
             {lang === "uk" ? (
-              <>Ви ще не проводили перевірок. Перейдіть на <Link to="/" className="text-emerald-glow hover:underline">головну</Link> і запустіть першу!</>
+              <>
+                Ви ще не проводили перевірок. Перейдіть на{" "}
+                <Link to="/" className="text-emerald-glow hover:underline">
+                  головну
+                </Link>{" "}
+                і запустіть першу!
+              </>
             ) : (
-              <>No scans yet. Go to <Link to="/" className="text-emerald-glow hover:underline">home</Link> to run your first check!</>
+              <>
+                No scans yet. Go to{" "}
+                <Link to="/" className="text-emerald-glow hover:underline">
+                  home
+                </Link>{" "}
+                to run your first check!
+              </>
             )}
           </p>
         </div>
@@ -369,7 +368,7 @@ export default function HistoryPage() {
           {items.map((item) => {
             const date = new Date(item.checkedAt);
             const scoreColor = item.plagiarismScore > 50 ? "text-error" : item.plagiarismScore > 20 ? "text-yellow-400" : "text-emerald-glow";
-            
+
             return (
               <div
                 key={item.id}

@@ -9,7 +9,9 @@ export class AiAssessmentService {
       try {
         const result = await provider.assess(text, localAi);
         if (result) return result;
-      } catch (error) { errors.push(`${provider.label}: ${error instanceof Error ? error.message : String(error)}`); }
+      } catch (error) {
+        errors.push(`${provider.label}: ${error instanceof Error ? error.message : String(error)}`);
+      }
     }
     if (errors.length) throw new Error(errors.join(" | "));
     return null;

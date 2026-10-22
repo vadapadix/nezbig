@@ -4,7 +4,11 @@ import { prepareDocumentText } from "../../../src/server/domain/analysis/documen
 describe("prepareDocumentText", () => {
   it("keeps prose that discusses references or appendices", () => {
     const body = "Цей матеріал описує практичну перевірку документа та способи читання результатів. ".repeat(6);
-    for (const mention of ["Список джерел потрібен для перевірки цитат, але цей абзац продовжує основну думку.", "References are useful when readers want to check a claim.", "Додаток А пояснює приклад застосування методу."]) {
+    for (const mention of [
+      "Список джерел потрібен для перевірки цитат, але цей абзац продовжує основну думку.",
+      "References are useful when readers want to check a claim.",
+      "Додаток А пояснює приклад застосування методу."
+    ]) {
       const result = prepareDocumentText(`${body}\n${mention}\nЗАВЕРШЕННЯ ДОКУМЕНТА`);
       expect(result.text).toContain("ЗАВЕРШЕННЯ ДОКУМЕНТА");
       expect(result.skippedBibliographyWords).toBe(0);

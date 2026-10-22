@@ -1,3 +1,4 @@
+import { apiFetch, SESSION_INVALID_EVENT } from "../utils/apiClient";
 import type { AuthUser, AuthContextType } from "../types/useAuth.types";
 export type { AuthUser, AuthContextType } from "../types/useAuth.types";
 import { clearDriveAccessToken } from "../utils/googleDrive";
@@ -21,6 +22,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const syncInFlight = useRef(false);
 
+  useEffect(() => {
+    const invalidate = () => {
+      setUser(null);
+      localStorage.removeItem("nezbig_auth_user");
+      clearDriveAccessToken();
+    };
+    window.addEventListener(SESSION_INVALID_EVENT, invalidate);
+    return () => window.removeEventListener(SESSION_INVALID_EVENT, invalidate);
+  }, []);
+
   const getAuthHeaders = useCallback((): HeadersInit => {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     return headers;
@@ -29,9 +40,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     try {
       const headers = getAuthHeaders();
-      const res = await fetch("/api/auth/me", {
+      const res = await apiFetch("/api/auth/me", {
         headers,
-        credentials: "include",
+        credentials: "include"
       });
       const data = await res.json();
       if (data.user) {
@@ -65,11 +76,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
 
       if (Array.isArray(localItems) && localItems.length > 0) {
-        const res = await fetch("/api/history/sync", {
+        const res = await apiFetch("/api/history/sync", {
           method: "POST",
           headers,
           credentials: "include",
-          body: JSON.stringify({ items: localItems }),
+          body: JSON.stringify({ items: localItems })
         });
         if (res.ok) {
           if (localHistoryKey() !== storageKey) return;
@@ -81,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
             const updatedLocal = data.items.map((it: any) => ({
               ...it,
-              fullReport: it.fullReport || reportMap.get(it.id) || undefined,
+              fullReport: it.fullReport || reportMap.get(it.id) || undefined
             }));
             localStorage.setItem(localHistoryKey(), JSON.stringify(updatedLocal));
             localStorage.removeItem(GUEST_HISTORY_KEY);
@@ -94,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // ONLY if localItems is completely empty, fetch from account to populate local cache
-      const fetchRes = await fetch("/api/history", { headers, credentials: "include" });
+      const fetchRes = await apiFetch("/api/history", { headers, credentials: "include" });
       if (fetchRes.ok) {
         if (localHistoryKey() !== storageKey) return;
         const serverItems = await fetchRes.json();
@@ -134,56 +145,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, [refresh, syncHistory]);
 
-  const login = useCallback(async (email: string, password: string): Promise<{ error?: string }> => {
-    try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
-      if (!res.ok) return { error: data.error || "Помилка при вході." };
-      localStorage.removeItem("nezbig_auth_token");
-      if (data.user) {
-        setUser(data.user);
-        localStorage.setItem("nezbig_auth_user", JSON.stringify(data.user));
-        void syncHistory();
+  const login = useCallback(
+    async (email: string, password: string): Promise<{ error?: string }> => {
+      try {
+        const res = await apiFetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (!res.ok) return { error: data.error || "Помилка при вході." };
+        localStorage.removeItem("nezbig_auth_token");
+        if (data.user) {
+          setUser(data.user);
+          localStorage.setItem("nezbig_auth_user", JSON.stringify(data.user));
+          void syncHistory();
+        }
+        return {};
+      } catch {
+        return { error: "Помилка мережі." };
       }
-      return {};
-    } catch {
-      return { error: "Помилка мережі." };
-    }
-  }, [syncHistory]);
+    },
+    [syncHistory]
+  );
 
-  const register = useCallback(async (name: string, email: string, password: string): Promise<{ error?: string }> => {
-    try {
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ name, email, password }),
-      });
-      const data = await res.json();
-      if (!res.ok) return { error: data.error || "Помилка при реєстрації." };
-      localStorage.removeItem("nezbig_auth_token");
-      if (data.user) {
-        setUser(data.user);
-        localStorage.setItem("nezbig_auth_user", JSON.stringify(data.user));
-        void syncHistory();
+  const register = useCallback(
+    async (name: string, email: string, password: string): Promise<{ error?: string }> => {
+      try {
+        const res = await apiFetch("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ name, email, password })
+        });
+        const data = await res.json();
+        if (!res.ok) return { error: data.error || "Помилка при реєстрації." };
+        localStorage.removeItem("nezbig_auth_token");
+        if (data.user) {
+          setUser(data.user);
+          localStorage.setItem("nezbig_auth_user", JSON.stringify(data.user));
+          void syncHistory();
+        }
+        return {};
+      } catch {
+        return { error: "Помилка мережі." };
       }
-      return {};
-    } catch {
-      return { error: "Помилка мережі." };
-    }
-  }, [syncHistory]);
+    },
+    [syncHistory]
+  );
 
   const logout = useCallback(async () => {
     clearDriveAccessToken();
     try {
       const headers = getAuthHeaders();
-      await fetch("/api/auth/logout", { method: "POST", headers, credentials: "include" });
-    } catch { /* ignore */ }
+      await apiFetch("/api/auth/logout", { method: "POST", headers, credentials: "include" });
+    } catch {
+      /* ignore */
+    }
     localStorage.removeItem("nezbig_auth_token");
     localStorage.removeItem("nezbig_auth_user");
     setUser(null);
@@ -192,7 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithGoogle = useCallback(async () => {
     try {
-      const res = await fetch(`/api/auth/google/url?origin=${encodeURIComponent(window.location.origin)}`);
+      const res = await apiFetch(`/api/auth/google/url?origin=${encodeURIComponent(window.location.origin)}`);
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
@@ -204,11 +223,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  return (
-    <AuthContext.Provider value={{ user, loading, isLoggedIn: !!user, login, register, logout, loginWithGoogle, refresh, syncHistory }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={{ user, loading, isLoggedIn: !!user, login, register, logout, loginWithGoogle, refresh, syncHistory }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthContextType {

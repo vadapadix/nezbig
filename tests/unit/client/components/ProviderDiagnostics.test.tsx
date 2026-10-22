@@ -4,7 +4,10 @@ import { ProviderDiagnostics } from "../../../../src/client/components/ProviderD
 import { LanguageProvider } from "../../../../src/client/context/LanguageContext";
 import type { SearchProviderDiagnostic } from "../../../../src/shared/types/index";
 
-afterEach(() => { cleanup(); localStorage.clear(); });
+afterEach(() => {
+  cleanup();
+  localStorage.clear();
+});
 it.each([
   [undefined, "пошук недоступний"],
   ["quota", "вичерпано квоту"],
@@ -13,7 +16,11 @@ it.each([
 ] as const)("labels provider failure %s accurately", (errorCode, label) => {
   localStorage.setItem("nezbig_lang", "uk");
   const provider: SearchProviderDiagnostic = { provider: "Google", attempted: 1, succeeded: 0, failed: 1, timedOut: 0, results: 0, errorCode };
-  render(<LanguageProvider><ProviderDiagnostics diagnostics={{ providers: [provider], pages: { attempted: 0, verified: 0, unavailable: 0, cacheHits: 0, negativeCacheHits: 0 } }} /></LanguageProvider>);
+  render(
+    <LanguageProvider>
+      <ProviderDiagnostics diagnostics={{ providers: [provider], pages: { attempted: 0, verified: 0, unavailable: 0, cacheHits: 0, negativeCacheHits: 0 } }} />
+    </LanguageProvider>
+  );
   expect(screen.getByText(new RegExp(label))).toBeVisible();
   if (!errorCode) expect(screen.queryByText(/квот/)).not.toBeInTheDocument();
 });

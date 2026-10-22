@@ -38,7 +38,7 @@ export default function HumanizePage({ showToast }: { showToast: (msg: string, t
       const result = await handleHumanize(editor.text, editor.sourceHtml, editor.selectedFile, mode);
       showToast(lang === "uk" ? `Редагування готове: ${result.changes.length} груп змін.` : `Humanizing complete: ${result.changes.length} groups of changes.`, "success");
     } catch (error) {
-      showToast(error instanceof Error ? error.message : (lang === "uk" ? "Редагування не вдалося." : "Humanization failed."), "error");
+      showToast(error instanceof Error ? error.message : lang === "uk" ? "Редагування не вдалося." : "Humanization failed.", "error");
     }
   }
 
@@ -95,15 +95,13 @@ export default function HumanizePage({ showToast }: { showToast: (msg: string, t
         </button>
       </div>
 
-      <div 
+      <div
         ref={containerRef}
         className="glass-panel rounded-2xl flex flex-col h-full border border-white/10 hover:border-emerald-glow/40 transition-colors duration-300 overflow-hidden relative group min-h-[420px]"
       >
         {isDragging && (
           <div className="absolute inset-0 z-50 bg-emerald-glow/10 backdrop-blur-sm border-2 border-dashed border-emerald-glow rounded-2xl flex items-center justify-center">
-            <p className="text-headline-lg text-emerald-glow font-bold">
-              {lang === "uk" ? "Відпустіть файл для олюднення" : "Drop file to humanize"}
-            </p>
+            <p className="text-headline-lg text-emerald-glow font-bold">{lang === "uk" ? "Відпустіть файл для олюднення" : "Drop file to humanize"}</p>
           </div>
         )}
 
@@ -133,24 +131,42 @@ export default function HumanizePage({ showToast }: { showToast: (msg: string, t
                     </button>
                   )}
                 </span>
+              ) : lang === "uk" ? (
+                "Вставте текст або завантажте файл"
               ) : (
-                lang === "uk" ? "Вставте текст або завантажте файл" : "Paste text or upload file"
+                "Paste text or upload file"
               )}
             </h2>
             <span className="font-label-sm text-label-sm text-on-surface-variant mt-0.5">
               {editor.formattedPreviewBusy
-                ? (lang === "uk" ? "Зчитування документа та витяг тексту…" : "Extracting document text and formatting…")
-                : (editor.selectedFile ? (lang === "uk" ? "Файл завантажено для стильового редагування" : "File loaded for style humanization") : t("fileFormats"))}
+                ? lang === "uk"
+                  ? "Зчитування документа та витяг тексту…"
+                  : "Extracting document text and formatting…"
+                : editor.selectedFile
+                  ? lang === "uk"
+                    ? "Файл завантажено для стильового редагування"
+                    : "File loaded for style humanization"
+                  : t("fileFormats")}
             </span>
           </div>
 
-          <label className={`upload-chip ${editor.formattedPreviewBusy ? "opacity-60 cursor-wait pointer-events-none" : "hover:bg-surface-bright cursor-pointer"} bg-surface-variant/80 text-white px-4 py-2 rounded-full font-label-sm text-label-sm border border-outline-variant hover:border-emerald-glow transition-all flex items-center gap-2 shrink-0`}>
+          <label
+            className={`upload-chip ${editor.formattedPreviewBusy ? "opacity-60 cursor-wait pointer-events-none" : "hover:bg-surface-bright cursor-pointer"} bg-surface-variant/80 text-white px-4 py-2 rounded-full font-label-sm text-label-sm border border-outline-variant hover:border-emerald-glow transition-all flex items-center gap-2 shrink-0`}
+          >
             <span className={`material-symbols-outlined text-[18px] ${editor.formattedPreviewBusy ? "animate-spin text-emerald-glow" : ""}`}>
               {editor.formattedPreviewBusy ? "progress_activity" : "upload_file"}
             </span>
             {editor.formattedPreviewBusy
-              ? (lang === "uk" ? "Обробка…" : "Processing…")
-              : (editor.selectedFile ? (lang === "uk" ? "Замінити файл" : "Replace file") : (lang === "uk" ? "Вибрати файл" : "Choose file"))}
+              ? lang === "uk"
+                ? "Обробка…"
+                : "Processing…"
+              : editor.selectedFile
+                ? lang === "uk"
+                  ? "Замінити файл"
+                  : "Replace file"
+                : lang === "uk"
+                  ? "Вибрати файл"
+                  : "Choose file"}
             <input
               ref={fileInputRef}
               type="file"
@@ -194,9 +210,7 @@ export default function HumanizePage({ showToast }: { showToast: (msg: string, t
                   <span>{lang === "uk" ? "Зчитування документа…" : "Reading document…"}</span>
                 </h3>
                 <p className="text-on-surface-variant text-sm md:text-base leading-relaxed mb-4 text-center">
-                  {lang === "uk"
-                    ? "Витягуємо текст, структуру та готуємо до олюднення"
-                    : "Extracting text, formatting, and preparing for humanization"}
+                  {lang === "uk" ? "Витягуємо текст, структуру та готуємо до олюднення" : "Extracting text, formatting, and preparing for humanization"}
                 </p>
 
                 {editor.selectedFile && (
@@ -204,9 +218,8 @@ export default function HumanizePage({ showToast }: { showToast: (msg: string, t
                     <span className="material-symbols-outlined text-sm text-emerald-glow">description</span>
                     <span className="truncate max-w-[220px] sm:max-w-[300px]">{editor.selectedFile.name}</span>
                     <span className="text-on-surface-variant">
-                      • {editor.selectedFile.size < 1024 * 1024
-                          ? `${Math.round(editor.selectedFile.size / 1024)} KB`
-                          : `${(editor.selectedFile.size / (1024 * 1024)).toFixed(1)} MB`}
+                      •{" "}
+                      {editor.selectedFile.size < 1024 * 1024 ? `${Math.round(editor.selectedFile.size / 1024)} KB` : `${(editor.selectedFile.size / (1024 * 1024)).toFixed(1)} MB`}
                     </span>
                   </div>
                 )}

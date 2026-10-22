@@ -19,9 +19,7 @@ export class ErrorBoundary extends Component<Props, State> {
         this.props.fallback || (
           <div className="error-fallback" style={{ padding: "2rem", textAlign: "center", color: "var(--text)" }}>
             <h2>Щось пішло не так</h2>
-            <p style={{ color: "var(--muted)", marginBottom: "1rem" }}>
-              {this.state.error?.message || "Сталася непередбачена помилка."}
-            </p>
+            <p style={{ color: "var(--muted)", marginBottom: "1rem" }}>{this.state.error?.message || "Сталася непередбачена помилка."}</p>
             <button className="primary-button" onClick={() => window.location.reload()}>
               Оновити сторінку
             </button>

@@ -1,7 +1,7 @@
 import { load, type CheerioAPI } from "cheerio";
 import type { Element } from "domhandler";
 import JSZip from "jszip";
-import { alignParagraphs, distributeRevisedText } from "../../textAlignment.js";
+import { alignParagraphs, distributeRevisedText } from "../../domain/documents/textAlignment.js";
 
 const DOCUMENT_XML_PATH = "word/document.xml";
 

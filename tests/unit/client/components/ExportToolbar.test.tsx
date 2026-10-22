@@ -7,14 +7,26 @@ import type { ScanReport } from "../../../../src/shared/types/index";
 const png = vi.hoisted(() => vi.fn());
 vi.mock("../../../../src/client/utils/reportExport", () => ({ downloadReportPdf: vi.fn(), downloadReportPng: png }));
 vi.mock("../../../../src/client/utils/googleDrive", () => ({ saveReportToGoogleDrive: vi.fn() }));
-afterEach(() => { cleanup(); vi.resetAllMocks(); localStorage.clear(); });
+afterEach(() => {
+  cleanup();
+  vi.resetAllMocks();
+  localStorage.clear();
+});
 
 it("keeps export disabled until PNG generation settles and reports a failure", async () => {
   let rejectExport!: (error: Error) => void;
-  png.mockReturnValue(new Promise<void>((_resolve, reject) => { rejectExport = reject; }));
+  png.mockReturnValue(
+    new Promise<void>((_resolve, reject) => {
+      rejectExport = reject;
+    })
+  );
   const message = vi.fn();
   localStorage.setItem("nezbig_lang", "uk");
-  render(<LanguageProvider><ExportToolbar report={{ id: "test", fileName: "test.txt" } as ScanReport} onMessage={message} /></LanguageProvider>);
+  render(
+    <LanguageProvider>
+      <ExportToolbar report={{ id: "test", fileName: "test.txt" } as ScanReport} onMessage={message} />
+    </LanguageProvider>
+  );
   fireEvent.click(screen.getByRole("button", { name: "PNG" }));
   expect(screen.getByRole("button", { name: "PNG…" })).toBeDisabled();
   expect(screen.getByRole("button", { name: "PDF" })).toBeDisabled();

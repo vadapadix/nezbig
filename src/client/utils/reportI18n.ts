@@ -39,10 +39,7 @@ export function translateSignalDetail(detail: string, lang: Language): string {
   let text = detail;
 
   // File verification detail
-  text = text.replace(
-    /Документ перевірено як файл:\s*(.+?),\s*(\d+(?:\.\d+)?\s*KB),\s*метод читання\s*(\w+)\.?/i,
-    "Document verified as file: $1, $2, read method $3."
-  );
+  text = text.replace(/Документ перевірено як файл:\s*(.+?),\s*(\d+(?:\.\d+)?\s*KB),\s*метод читання\s*(\w+)\.?/i, "Document verified as file: $1, $2, read method $3.");
 
   // Document format detail
   text = text.replace(
@@ -57,25 +54,13 @@ export function translateSignalDetail(detail: string, lang: Language): string {
   );
 
   // Stylometric natural details
-  text = text.replace(
-    /Варіативність довжини речень виглядає природною\.?/i,
-    "Sentence length variation appears natural."
-  );
+  text = text.replace(/Варіативність довжини речень виглядає природною\.?/i, "Sentence length variation appears natural.");
 
-  text = text.replace(
-    /Знайдено (\d+) маркер(?:а|ів)?\. Вони часто зустрічаються у згенерованих текстах\.?/i,
-    "Found $1 markers commonly occurring in generated texts."
-  );
+  text = text.replace(/Знайдено (\d+) маркер(?:а|ів)?\. Вони часто зустрічаються у згенерованих текстах\.?/i, "Found $1 markers commonly occurring in generated texts.");
 
-  text = text.replace(
-    /Перехідні слова у нормі\.?/i,
-    "Transition words within normal range."
-  );
+  text = text.replace(/Перехідні слова у нормі\.?/i, "Transition words within normal range.");
 
-  text = text.replace(
-    /Базовий звіт згенеровано локально\.\s*AI-думка підвантажується після звіту\.?/i,
-    "Base report generated locally. AI opinion loading in background."
-  );
+  text = text.replace(/Базовий звіт згенеровано локально\.\s*AI-думка підвантажується після звіту\.?/i, "Base report generated locally. AI opinion loading in background.");
 
   // Generic phrase replacements
   text = text
@@ -114,14 +99,8 @@ export function translateScanNote(note: string, lang: Language): string {
   let text = note;
 
   // Title page note
-  text = text.replace(
-    /Титульну або службову частину курсової роботи автоматично пропущено\.?/i,
-    "Title page or front matter was automatically skipped."
-  );
-  text = text.replace(
-    /Титулку пропущено:\s*(\d+)\s*слів/i,
-    "Title page skipped: $1 words"
-  );
+  text = text.replace(/Титульну або службову частину курсової роботи автоматично пропущено\.?/i, "Title page or front matter was automatically skipped.");
+  text = text.replace(/Титулку пропущено:\s*(\d+)\s*слів/i, "Title page skipped: $1 words");
 
   // Page verification note
   text = text.replace(
@@ -136,10 +115,7 @@ export function translateScanNote(note: string, lang: Language): string {
   );
 
   // Full coverage note
-  text = text.replace(
-    /Повне покриття:\s*перевірено\s*(\d+)\s*фрагментів,\s*включно з кінцем документа\.?/i,
-    "Full coverage: verified $1 chunks including end of document."
-  );
+  text = text.replace(/Повне покриття:\s*перевірено\s*(\d+)\s*фрагментів,\s*включно з кінцем документа\.?/i, "Full coverage: verified $1 chunks including end of document.");
 
   // Two-phase search note
   text = text.replace(
@@ -165,7 +141,7 @@ export function translateReportSummary(summary: string, lang: Language): string 
 
   let text = summary;
   text = text.replace(/Найсильніший підтверджений збіг:\s*(\d+)% з "([^"]+)"\./, 'Strongest verified match: $1% with "$2".');
-  text = text.replace(/Сила збігів:\s*(\d+)\/100; це не частка запозичень у документі\./, 'Match strength: $1/100; this is not the proportion of borrowed text in the document.');
+  text = text.replace(/Сила збігів:\s*(\d+)\/100; це не частка запозичень у документі\./, "Match strength: $1/100; this is not the proportion of borrowed text in the document.");
 
   // Common summary templates
   text = text.replace(
@@ -193,15 +169,9 @@ export function translateReportSummary(summary: string, lang: Language): string 
     "No strong matches found in open web sources. Local AI analysis indicates high risk of AI generation; risk indicator: $1%."
   );
 
-  text = text.replace(
-    /Знайдено текстові збіги\s*\((\d+)%\)\s*у відкритих джерелах\./i,
-    "Found text matches ($1%) in open sources."
-  );
+  text = text.replace(/Знайдено текстові збіги\s*\((\d+)%\)\s*у відкритих джерелах\./i, "Found text matches ($1%) in open sources.");
 
-  text = text.replace(
-    /AI-думка показана окремо:\s*(\d+)%\.?/i,
-    "AI opinion shown separately: $1%."
-  );
+  text = text.replace(/AI-думка показана окремо:\s*(\d+)%\.?/i, "AI opinion shown separately: $1%.");
 
   return text;
 }
@@ -221,30 +191,18 @@ export function translateReliabilityReason(reason: string, lang: Language): stri
     "Segments vary significantly; document may have mixed origin or different styles."
   );
 
-  text = text.replace(
-    /Обсяг достатній,\s*а сегментні оцінки узгоджені\.?/i,
-    "Sufficient text volume and consistent segment scores."
-  );
+  text = text.replace(/Обсяг достатній,\s*а сегментні оцінки узгоджені\.?/i, "Sufficient text volume and consistent segment scores.");
 
   text = text.replace(
     /Оцінка має помірну доказовість і потребує ручної перевірки сигналів\.?/i,
     "Assessment has moderate evidential weight and requires manual review of signals."
   );
 
-  text = text.replace(
-    /Достатній обсяг тексту та висока узгодженість між сегментами\.?/i,
-    "Sufficient text volume and high consistency across segments."
-  );
+  text = text.replace(/Достатній обсяг тексту та висока узгодженість між сегментами\.?/i, "Sufficient text volume and high consistency across segments.");
 
-  text = text.replace(
-    /Короткий текст;\s*точність оцінки може бути обмеженою\.?/i,
-    "Short text; assessment accuracy may be limited."
-  );
+  text = text.replace(/Короткий текст;\s*точність оцінки може бути обмеженою\.?/i, "Short text; assessment accuracy may be limited.");
 
-  text = text.replace(
-    /Неавторський або технічний вміст вилучено:\s*(\d+)\s*слів\.?/i,
-    "Non-authorial or technical content excluded: $1 words."
-  );
+  text = text.replace(/Неавторський або технічний вміст вилучено:\s*(\d+)\s*слів\.?/i, "Non-authorial or technical content excluded: $1 words.");
 
   return text;
 }

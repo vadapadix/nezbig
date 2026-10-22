@@ -1,7 +1,12 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { clearDriveAccessToken, getSavedDriveAccessToken, saveDriveAccessToken } from "../../../../src/client/utils/googleDrive";
 
-afterEach(() => { clearDriveAccessToken(); localStorage.clear(); sessionStorage.clear(); vi.useRealTimers(); });
+afterEach(() => {
+  clearDriveAccessToken();
+  localStorage.clear();
+  sessionStorage.clear();
+  vi.useRealTimers();
+});
 it("keeps Drive credentials in the browser storage until expiry and removes legacy local credentials", () => {
   localStorage.setItem("nezbig_gdrive_token", "old-token");
   localStorage.setItem("nezbig_gdrive_expires_at", String(Date.now() + 100000));

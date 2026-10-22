@@ -21,14 +21,7 @@ function getCategoryBadge(category?: string, lang?: string) {
   }
 }
 
-export function HumanizePanel({
-  humanized,
-  wordDownloadBusy,
-  selectedFile,
-  onMoveToChecker,
-  onCopyFormatted,
-  onDownloadForWord
-}: HumanizePanelProps) {
+export function HumanizePanel({ humanized, wordDownloadBusy, selectedFile, onMoveToChecker, onCopyFormatted, onDownloadForWord }: HumanizePanelProps) {
   const { lang, t } = useLanguage();
   const [copied, setCopied] = useState(false);
 
@@ -40,13 +33,18 @@ export function HumanizePanel({
 
   const modeLabel =
     lang === "uk"
-      ? humanized.mode === "natural" ? "Природний стиль" : humanized.mode === "concise" ? "Лаконічний стиль" : "Академічний стиль"
-      : humanized.mode === "natural" ? "Natural Style" : humanized.mode === "concise" ? "Concise Style" : "Academic Style";
+      ? humanized.mode === "natural"
+        ? "Природний стиль"
+        : humanized.mode === "concise"
+          ? "Лаконічний стиль"
+          : "Академічний стиль"
+      : humanized.mode === "natural"
+        ? "Natural Style"
+        : humanized.mode === "concise"
+          ? "Concise Style"
+          : "Academic Style";
 
-  const aiDrop =
-    humanized.aiScoreBefore !== undefined && humanized.aiScoreAfter !== undefined
-      ? humanized.aiScoreBefore - humanized.aiScoreAfter
-      : null;
+  const aiDrop = humanized.aiScoreBefore !== undefined && humanized.aiScoreAfter !== undefined ? humanized.aiScoreBefore - humanized.aiScoreAfter : null;
 
   return (
     <section className="glass-panel rounded-2xl p-6 md:p-8 border border-white/10 flex flex-col gap-8 fade-in relative overflow-hidden" aria-labelledby="humanizer-title">
@@ -54,12 +52,8 @@ export function HumanizePanel({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-white/10">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-3">
-            <span className="font-label-sm text-label-sm text-emerald-glow tracking-wider uppercase font-semibold">
-              {lang === "uk" ? "Олюднений текст" : "Humanized Output"}
-            </span>
-            <span className="px-2.5 py-0.5 rounded-full bg-emerald-glow/10 border border-emerald-glow/30 text-emerald-glow text-label-sm font-medium">
-              {modeLabel}
-            </span>
+            <span className="font-label-sm text-label-sm text-emerald-glow tracking-wider uppercase font-semibold">{lang === "uk" ? "Олюднений текст" : "Humanized Output"}</span>
+            <span className="px-2.5 py-0.5 rounded-full bg-emerald-glow/10 border border-emerald-glow/30 text-emerald-glow text-label-sm font-medium">{modeLabel}</span>
           </div>
           <h2 id="humanizer-title" className="font-headline-md text-headline-md text-white font-bold">
             {lang === "uk" ? "Результат стильового редагування" : "Stylistic Humanization Results"}
@@ -84,9 +78,7 @@ export function HumanizePanel({
               <span className="text-headline-sm font-bold text-emerald-glow">{humanized.aiScoreAfter}%</span>
             </div>
             {aiDrop !== null && aiDrop > 0 && (
-              <span className="ml-2 px-2.5 py-1 rounded-md bg-emerald-glow/20 border border-emerald-glow/40 text-emerald-glow text-label-sm font-bold">
-                -{aiDrop}%
-              </span>
+              <span className="ml-2 px-2.5 py-1 rounded-md bg-emerald-glow/20 border border-emerald-glow/40 text-emerald-glow text-label-sm font-bold">-{aiDrop}%</span>
             )}
           </div>
         )}
@@ -94,7 +86,9 @@ export function HumanizePanel({
 
       {/* Output Content */}
       <p className="text-body-sm text-on-surface-variant">
-        {lang === "uk" ? "Автоматичні стильові заміни потребують перевірки змісту. Зміна бала того самого детектора не доводить авторство чи якість і не гарантує проходження інших перевірок." : "Review the meaning after automatic style replacements. A change in the same detector’s score does not prove authorship or quality and does not guarantee passing other checks."}
+        {lang === "uk"
+          ? "Автоматичні стильові заміни потребують перевірки змісту. Зміна бала того самого детектора не доводить авторство чи якість і не гарантує проходження інших перевірок."
+          : "Review the meaning after automatic style replacements. A change in the same detector’s score does not prove authorship or quality and does not guarantee passing other checks."}
       </p>
       <div className="bg-surface-container-low/80 border border-white/5 rounded-xl p-6 md:p-8 text-body-lg text-white leading-relaxed max-h-[500px] overflow-y-auto custom-scrollbar">
         <div
@@ -119,9 +113,7 @@ export function HumanizePanel({
         <button
           type="button"
           className={`border px-5 py-3 rounded-xl text-body-md font-medium transition-all flex items-center gap-2 cursor-pointer ${
-            copied
-              ? "bg-emerald-glow/20 border-emerald-glow text-emerald-glow"
-              : "bg-surface-variant hover:bg-surface-bright text-white border-white/10 hover:border-emerald-glow"
+            copied ? "bg-emerald-glow/20 border-emerald-glow text-emerald-glow" : "bg-surface-variant hover:bg-surface-bright text-white border-white/10 hover:border-emerald-glow"
           }`}
           onClick={handleCopy}
         >
@@ -131,14 +123,14 @@ export function HumanizePanel({
             </svg>
           ) : (
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25"
+              />
             </svg>
           )}
-          <span>
-            {copied
-              ? (lang === "uk" ? "Скопійовано!" : "Copied!")
-              : (lang === "uk" ? "Копіювати текст" : "Copy Output")}
-          </span>
+          <span>{copied ? (lang === "uk" ? "Скопійовано!" : "Copied!") : lang === "uk" ? "Копіювати текст" : "Copy Output"}</span>
         </button>
 
         <button
@@ -152,10 +144,16 @@ export function HumanizePanel({
           </svg>
           <span>
             {wordDownloadBusy
-              ? (lang === "uk" ? "Збираю DOCX…" : "Building DOCX…")
+              ? lang === "uk"
+                ? "Збираю DOCX…"
+                : "Building DOCX…"
               : selectedFile && /\.docx$/i.test(selectedFile.name)
-                ? (lang === "uk" ? "Завантажити DOCX" : "Download DOCX")
-                : (lang === "uk" ? "Завантажити для Word" : "Download for Word")}
+                ? lang === "uk"
+                  ? "Завантажити DOCX"
+                  : "Download DOCX"
+                : lang === "uk"
+                  ? "Завантажити для Word"
+                  : "Download for Word"}
           </span>
         </button>
 
@@ -169,7 +167,11 @@ export function HumanizePanel({
         <div className="flex flex-col gap-3">
           <h3 className="font-headline-sm text-body-lg text-white font-bold flex items-center gap-2">
             <svg className="w-5 h-5 text-emerald-glow" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z"
+              />
             </svg>
             <span>{lang === "uk" ? `Застосовані покращення (${humanized.changes.length})` : `Applied Enhancements (${humanized.changes.length})`}</span>
           </h3>
@@ -182,17 +184,16 @@ export function HumanizePanel({
               {humanized.changes.map((change) => {
                 const badge = getCategoryBadge(change.category, lang);
                 return (
-                  <li key={change.label} className="p-3.5 rounded-xl bg-surface-container-high/60 border border-white/5 flex flex-col gap-1.5 transition-colors hover:border-white/10">
+                  <li
+                    key={change.label}
+                    className="p-3.5 rounded-xl bg-surface-container-high/60 border border-white/5 flex flex-col gap-1.5 transition-colors hover:border-white/10"
+                  >
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-2">
                         <strong className="text-white font-medium text-body-md">{change.label}</strong>
-                        <span className={`px-2 py-0.5 rounded-md border text-[11px] font-medium uppercase tracking-wider ${badge.color}`}>
-                          {badge.label}
-                        </span>
+                        <span className={`px-2 py-0.5 rounded-md border text-[11px] font-medium uppercase tracking-wider ${badge.color}`}>{badge.label}</span>
                       </div>
-                      <span className="px-2 py-0.5 rounded-md bg-emerald-glow/10 text-emerald-glow text-label-sm font-mono font-bold">
-                        {change.count}x
-                      </span>
+                      <span className="px-2 py-0.5 rounded-md bg-emerald-glow/10 text-emerald-glow text-label-sm font-mono font-bold">{change.count}x</span>
                     </div>
                     <span className="text-label-sm text-on-surface-variant leading-normal">{change.detail}</span>
                   </li>
@@ -205,7 +206,11 @@ export function HumanizePanel({
         <div className="flex flex-col gap-3">
           <h3 className="font-headline-sm text-body-lg text-white font-bold flex items-center gap-2">
             <svg className="w-5 h-5 text-emerald-glow" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"
+              />
             </svg>
             <span>{lang === "uk" ? "Примітки та рекомендації" : "Notes & Recommendations"}</span>
           </h3>

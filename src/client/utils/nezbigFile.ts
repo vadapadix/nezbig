@@ -11,7 +11,7 @@ export function serializeNezbigReport(report: ScanReport): string {
     version: 1,
     app: "Nezbig",
     generatedAt: new Date().toISOString(),
-    report,
+    report
   };
   return JSON.stringify(container, null, 2);
 }

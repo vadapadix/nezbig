@@ -36,7 +36,13 @@ function looksLikeCodeLine(line: string): boolean {
 }
 
 export function normalizeProseLayout(text: string): string {
-  return text.replace(/\r\n?/g, "\n").split("\n").map(line => normalizeWhitespace(line)).join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  return text
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .map((line) => normalizeWhitespace(line))
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 function stripInlineCodeResidue(text: string): { text: string; removedWords: number } {

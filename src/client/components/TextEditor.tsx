@@ -1,7 +1,6 @@
 import type { TextEditorProps } from "../types/TextEditor.types";
 export type { TextEditorProps } from "../types/TextEditor.types";
 
-
 export function TextEditor({
   editorRef,
   selectedFile,
@@ -62,7 +61,7 @@ export function TextEditor({
         onInput={onInput}
         onPaste={onPaste}
       />
-      
+
       {sourceHtml.trim().length === 0 && !selectedFile && (
         <div className="editor-empty-state">
           <p>Вставте текст із Word або перетягніть файл сюди</p>
@@ -70,7 +69,8 @@ export function TextEditor({
             type="button"
             className="secondary-button"
             onClick={() => {
-              const sample = "Штучний інтелект (ШІ) — це галузь комп'ютерних наук, яка займається створенням систем, здатних виконувати завдання, що зазвичай потребують людського інтелекту. До таких завдань належать розпізнавання мови, прийняття рішень, візуальне сприйняття та переклад текстів. Сучасні моделі ШІ, зокрема великі мовні моделі, здатні генерувати тексти, які важко відрізнити від написаних людиною...";
+              const sample =
+                "Штучний інтелект (ШІ) — це галузь комп'ютерних наук, яка займається створенням систем, здатних виконувати завдання, що зазвичай потребують людського інтелекту. До таких завдань належать розпізнавання мови, прийняття рішень, візуальне сприйняття та переклад текстів. Сучасні моделі ШІ, зокрема великі мовні моделі, здатні генерувати тексти, які важко відрізнити від написаних людиною...";
               onFileChange(null);
               if (editorRef.current) {
                 editorRef.current.innerText = sample;
@@ -99,11 +99,7 @@ export function TextEditor({
           <button type="button" className="secondary-button" onClick={onCopyFormatted}>
             Копіювати у Word
           </button>
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={onDownloadFormatted}
-          >
+          <button type="button" className="secondary-button" onClick={onDownloadFormatted}>
             {selectedFile ? "Завантажити оригінал" : "Завантажити для Word"}
           </button>
           <span>
@@ -117,11 +113,7 @@ export function TextEditor({
         <div className="file-mode">
           <strong>Файловий режим</strong>
           <span>Preview і редактор зберігають абзаци, заголовки, списки, таблиці та базові стилі Word; перевірка йде оригінальним файлом.</span>
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={onClearFile}
-          >
+          <button type="button" className="secondary-button" onClick={onClearFile}>
             Прибрати файл
           </button>
         </div>

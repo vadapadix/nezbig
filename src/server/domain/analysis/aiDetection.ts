@@ -249,7 +249,10 @@ function analyzeSinglePass(text: string): { probability: number; signals: AiSign
   const contentWords = tokenize(normalized);
   const sentences = splitSentences(normalized);
   const proseSentences = sentences.filter((sentence) => !isSectionHeading(sentence));
-  const paragraphs = text.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
+  const paragraphs = text
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter(Boolean);
   const wordCount = words.length;
 
   if (wordCount < 10) return { probability: 0, signals: [] };
@@ -454,7 +457,7 @@ function analyzeSinglePass(text: string): { probability: number; signals: AiSign
     signal.category = "safeguard";
     signal.detail = "Особливість оформлення або академічного жанру. Не підвищує й не знижує ШІ-оцінку та не доводить авторство.";
   }
-  const scoringSignals = signalDrafts.filter(signal => signal.category !== "safeguard");
+  const scoringSignals = signalDrafts.filter((signal) => signal.category !== "safeguard");
   const evidenceSignals = scoringSignals.filter((signal) => signal.score >= 30);
   const weakEvidenceSignals = scoringSignals.filter((signal) => signal.score >= 12);
   const statisticalChannel = strongestChannelScore(scoringSignals, "statistical");
@@ -468,8 +471,6 @@ function analyzeSinglePass(text: string): { probability: number; signals: AiSign
   rawProbability += Math.max(0, evidenceSignals.length - 1) * 4;
   rawProbability += Math.max(0, weakEvidenceSignals.length - 3) * 1.5;
 
-
-
   // Ordinary refusals and stock transitions are not explicit model self-identification.
   const promptLeak = /(?<![\p{L}\p{N}_])(?:як (?:штучний інтелект|мовна модель)|as an (?:ai|artificial intelligence)|my knowledge cutoff)(?![\p{L}\p{N}_])/iu.test(normalized);
   const strongAverage = evidenceSignals
@@ -477,13 +478,16 @@ function analyzeSinglePass(text: string): { probability: number; signals: AiSign
     .sort((left, right) => right - left)
     .slice(0, 3)
     .reduce((sum, score, _index, scores) => sum + score / Math.max(1, scores.length), 0);
-  const evidenceFloor =
-    promptLeak ? 45 : evidenceSignals.length >= 3 ? Math.max(22, strongAverage * 0.5) : weakEvidenceSignals.length >= 5 ? 8 : weakEvidenceSignals.length >= 2 ? 3 : 0;
-  const probability = clampScore(
-    placeholderText
-      ? Math.min(10, weightedRaw)
-      : Math.max(rawProbability, corroboratedFloor, evidenceFloor)
-  );
+  const evidenceFloor = promptLeak
+    ? 45
+    : evidenceSignals.length >= 3
+      ? Math.max(22, strongAverage * 0.5)
+      : weakEvidenceSignals.length >= 5
+        ? 8
+        : weakEvidenceSignals.length >= 2
+          ? 3
+          : 0;
+  const probability = clampScore(placeholderText ? Math.min(10, weightedRaw) : Math.max(rawProbability, corroboratedFloor, evidenceFloor));
 
   const signals: AiSignal[] = signalDrafts
     .map(({ weight: _weight, ...signal }) => signal)
@@ -661,7 +665,12 @@ export function detectAiSignals(rawText: string): AiDetectionResult {
     upperQuartile * AI_ENSEMBLE_WEIGHTS.upperQuartile +
     topAverage * AI_ENSEMBLE_WEIGHTS.topAverage +
     suspiciousCoverage * 100 * AI_ENSEMBLE_WEIGHTS.suspiciousCoverage;
-  const localizedFloor = strongest >= AI_VERDICT_THRESHOLDS.mixedStrongest ? strongest * AI_ENSEMBLE_WEIGHTS.localizedFloorFactor : topAverage >= 24 ? topAverage * AI_ENSEMBLE_WEIGHTS.localizedTopAverageFactor : 0;
+  const localizedFloor =
+    strongest >= AI_VERDICT_THRESHOLDS.mixedStrongest
+      ? strongest * AI_ENSEMBLE_WEIGHTS.localizedFloorFactor
+      : topAverage >= 24
+        ? topAverage * AI_ENSEMBLE_WEIGHTS.localizedTopAverageFactor
+        : 0;
   const probability = clampScore(Math.max(ensembleScore, localizedFloor));
 
   const segmentSignal: AiSignal = {

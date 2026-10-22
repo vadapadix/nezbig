@@ -143,7 +143,7 @@ export function scoreCandidate(chunkText: string, candidate: SearchCandidate, ch
   const phraseScore = Math.max(twoGramOverlap * 0.45 + threeGramOverlap * 0.55, fourGramOverlap);
   const pageBonus = candidate.sourceText ? 1 : 0.85;
 
-  let baseScore = (overlapPercent * 0.24 + fullTextRank * 0.20 + phraseScore * 0.22 + runScore * 0.20 + hashOverlap * 0.14) * 100 * pageBonus;
+  let baseScore = (overlapPercent * 0.24 + fullTextRank * 0.2 + phraseScore * 0.22 + runScore * 0.2 + hashOverlap * 0.14) * 100 * pageBonus;
 
   // Boilerplate clichés in search snippets or without substantial document overlap should not inflate score
   if (isBoilerplate && (!candidate.sourceText || overlapPercent < 0.35)) {
@@ -167,9 +167,11 @@ export function scoreCandidate(chunkText: string, candidate: SearchCandidate, ch
     fullTextRank: clampScore(fullTextRank * 100),
     longestRun,
     confidence: candidate.sourceText && candidateText === candidate.sourceText.trim() ? "page" : "snippet",
-    matchedWordRanges: candidate.sourceText && candidateText === candidate.sourceText.trim() ? verifiedWordRanges(chunkText, candidateText, chunkStartWord, isAcademicBoilerplate) : [],
+    matchedWordRanges:
+      candidate.sourceText && candidateText === candidate.sourceText.trim() ? verifiedWordRanges(chunkText, candidateText, chunkStartWord, isAcademicBoilerplate) : [],
     excerpt: normalizeWhitespace(chunkText).split(" ").slice(0, 48).join(" "),
     submittedEvidence: longestRun >= 7 && !isBoilerplate ? sourceRunTokens.slice(commonRun.sourceStart, commonRun.sourceStart + longestRun).join(" ") : undefined,
-    sourceEvidence: longestRun >= 7 && !isBoilerplate && candidate.sourceText ? candidateRunTokens.slice(commonRun.candidateStart, commonRun.candidateStart + longestRun).join(" ") : undefined
+    sourceEvidence:
+      longestRun >= 7 && !isBoilerplate && candidate.sourceText ? candidateRunTokens.slice(commonRun.candidateStart, commonRun.candidateStart + longestRun).join(" ") : undefined
   };
 }

@@ -1,10 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import { app } from "../../../src/server/presentation/http/app.js";
-import { resolveJwtSecret } from "../../../src/server/infrastructure/auth/security.js";
+import { resolveJwtSecret } from "../../../src/server/infrastructure/auth/jwtConfig.js";
 import { sessionCookie, tokens } from "../../../src/server/composition/auth.js";
 
-afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+});
 
 describe("authentication hardening", () => {
   it("fails closed for missing, short and placeholder production secrets", () => {
@@ -58,7 +61,16 @@ describe("authentication hardening", () => {
     vi.stubEnv("GOOGLE_CLIENT_ID", "test-client");
     vi.stubEnv("GOOGLE_CLIENT_SECRET", "test-secret");
     vi.stubEnv("GOOGLE_REDIRECT_URI", "http://127.0.0.1:8787/api/auth/google/callback");
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ access_token: "provider-token" }) }).mockResolvedValueOnce({ ok: true, json: async () => ({ id: crypto.randomUUID(), email: `oauth-${crypto.randomUUID()}@example.com`, name: "Google User", verified_email: true }) }));
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ access_token: "provider-token" }) })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ id: crypto.randomUUID(), email: `oauth-${crypto.randomUUID()}@example.com`, name: "Google User", verified_email: true })
+        })
+    );
     const agent = request.agent(app);
     const start = await agent.get("/api/auth/google/url?origin=http://127.0.0.1:5173");
     const state = new URL(start.body.url).searchParams.get("state");

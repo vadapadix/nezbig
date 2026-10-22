@@ -5,7 +5,10 @@ export function authentication(tokens: TokenService, cookies: SessionCookie) {
   return (req: Request, res: Response, next: NextFunction): void => {
     const bearer = req.headers.authorization?.startsWith("Bearer ") ? req.headers.authorization.slice(7).trim() : undefined;
     const credential = bearer ?? req.cookies?.[AUTH_COOKIE_NAME];
-    if (!credential) { next(); return; }
+    if (credential === undefined) {
+      next();
+      return;
+    }
     const payload = tokens.verify(credential);
     if (!payload) {
       cookies.clear(res);

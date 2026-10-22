@@ -6,5 +6,7 @@ export class ProviderRegistry {
     this.providers.set(provider.id, { provider, priority });
     return this;
   }
-  ordered(): AssessmentProvider[] { return [...this.providers.values()].sort((a, b) => a.priority - b.priority).map(item => item.provider); }
+  ordered(): AssessmentProvider[] {
+    return [...this.providers.values()].sort((a, b) => a.priority - b.priority).map((item) => item.provider);
+  }
 }

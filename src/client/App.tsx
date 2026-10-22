@@ -1,3 +1,5 @@
+import LoginPage from "./pages/LoginPage";
+import { SessionRedirect } from "./components/SessionRedirect";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { AuthProvider } from "./hooks/useAuth";
@@ -16,8 +18,10 @@ export default function App() {
   return (
     <LanguageProvider>
       <AuthProvider>
+        <SessionRedirect />
         <Routes>
           <Route path="/" element={<Layout />}>
+            <Route path="login" element={<LoginPage />} />
             <Route index element={<Home showToast={show} />} />
             <Route path="humanize" element={<HumanizePage showToast={show} />} />
             <Route path="about" element={<About />} />

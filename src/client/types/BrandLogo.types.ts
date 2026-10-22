@@ -1,5 +1,3 @@
-
-
 export type BrandLogoProps = {
   spinning?: boolean;
   className?: string;

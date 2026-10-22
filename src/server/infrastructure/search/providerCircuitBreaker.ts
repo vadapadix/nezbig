@@ -1,7 +1,6 @@
 import type { ProviderState } from "../../types/providerCircuitBreaker.types.js";
 export type { ProviderState } from "../../types/providerCircuitBreaker.types.js";
 
-
 export class ProviderCircuitBreaker {
   private readonly states = new Map<string, ProviderState>();
 

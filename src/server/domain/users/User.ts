@@ -7,5 +7,7 @@ export class User {
     if (data.passwordHash !== null && !data.passwordHash.startsWith("$2")) throw new Error("Expected a password hash, not a plaintext password");
     return new User({ ...data, id, createdAt, email: data.email.toLowerCase() });
   }
-  toRecord(): UserRecord { return { ...this.record }; }
+  toRecord(): UserRecord {
+    return { ...this.record };
+  }
 }

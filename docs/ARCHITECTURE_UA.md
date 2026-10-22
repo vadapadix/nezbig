@@ -1,6 +1,8 @@
 # Архітектура «Незбіг»
 
-Документ описує реалізацію станом на 16 жовтня 2026 року. Історичні плани в `docs/superpowers/plans` не є специфікацією поточної поведінки.
+Документ описує реалізацію станом на 22 жовтня 2026 року. Історичні плани в `docs/superpowers/plans` не є специфікацією поточної поведінки.
+
+Детальна структура шарів, класів та контрактів: [Організація коду](CLEAN_ARCHITECTURE_UA.md). Діаграми: [архітектура](diagrams/architecture.md), [послідовності](diagrams/sequences.md).
 
 ## Компоненти
 
@@ -12,8 +14,8 @@
 | Пошук | `webSearch.ts` | запити, провайдери, читання сторінок, діагностика |
 | Зіставлення | `plagiarismScoring.ts`, `matchCoverage.ts`, `reportMatches.ts` | сила збігу, точні інтервали, відбір доказів |
 | ШІ | `aiDetection.ts`, `aiStylometry.ts`, `aiTextPreprocess.ts` | локальні ознаки та оцінка надійності |
-| ШІ-думка | `llmOpinion.ts`, `llmShared.ts`, адаптери NIM/OpenRouter | окрема необов'язкова оцінка |
-| Зберігання | `db.ts`, `auth.ts`, `jobStore.ts`, `searchCache.ts` | власники, історія, завдання, кеші |
+| ШІ-думка | `AiAssessmentService`, `ProviderRegistry`, адаптери NIM/OpenRouter | окрема необов'язкова оцінка |
+| Зберігання | `ReportRepository`, `PersistentUserRepository`, `jobStore.ts`, `searchCache.ts` | власники, історія, завдання, кеші |
 
 ```mermaid
 flowchart TD

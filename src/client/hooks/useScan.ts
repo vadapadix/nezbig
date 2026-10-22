@@ -1,3 +1,4 @@
+import { apiFetch } from "../utils/apiClient";
 import { useState, useCallback, useRef } from "react";
 import type { ScanReport, ScanSettings } from "../../shared/types/index";
 
@@ -22,12 +23,7 @@ export function useScan() {
     setError("Перевірку скасовано користувачем.");
   }, []);
 
-  const scan = useCallback(async (
-    text: string,
-    fileName: string,
-    selectedFile: File | null,
-    settings: ScanSettings
-  ): Promise<ScanReport> => {
+  const scan = useCallback(async (text: string, fileName: string, selectedFile: File | null, settings: ScanSettings): Promise<ScanReport> => {
     setBusy(true);
     setError(null);
     setReport(null);
@@ -46,7 +42,7 @@ export function useScan() {
         const formData = new FormData();
         formData.append("file", selectedFile);
         formData.append("settings", JSON.stringify(settings));
-        response = await fetch("/api/scan-file/jobs", {
+        response = await apiFetch("/api/scan-file/jobs", {
           method: "POST",
           headers: authHeaders,
           body: formData,
@@ -54,7 +50,7 @@ export function useScan() {
           credentials: "include"
         });
       } else {
-        response = await fetch("/api/scan/jobs", {
+        response = await apiFetch("/api/scan/jobs", {
           method: "POST",
           headers: { "content-type": "application/json", ...authHeaders },
           body: JSON.stringify({ text, fileName, settings }),
@@ -80,13 +76,13 @@ export function useScan() {
         const poll = async () => {
           try {
             if (signal.aborted) throw new Error("Перевірку скасовано користувачем.");
-            const statusRes = await fetch(`/api/scan-status/${jobId}`, {
+            const statusRes = await apiFetch(`/api/scan-status/${jobId}`, {
               headers: authHeaders,
               signal,
               credentials: "include"
             });
             const statusPayload = await statusRes.json();
-            
+
             if (!statusRes.ok || statusPayload.error) {
               throw new Error(statusPayload.error || "Job failed.");
             }

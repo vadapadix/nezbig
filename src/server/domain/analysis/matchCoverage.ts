@@ -32,9 +32,11 @@ export function mergeWordRanges(ranges: WordRange[]): WordRange[] {
 }
 
 export function documentMatchCoverage(matches: PlagiarismMatch[], wordCount: number): { matchedWords: number; percent: number } {
-  const ranges = matches.filter(m => m.confidence === "page").flatMap(m => m.matchedWordRanges ?? [])
-    .filter(r => Number.isInteger(r.start) && Number.isInteger(r.end) && r.start >= 0 && r.end > r.start && r.start < wordCount)
-    .map(r => ({ start: r.start, end: Math.min(r.end, wordCount) }));
+  const ranges = matches
+    .filter((m) => m.confidence === "page")
+    .flatMap((m) => m.matchedWordRanges ?? [])
+    .filter((r) => Number.isInteger(r.start) && Number.isInteger(r.end) && r.start >= 0 && r.end > r.start && r.start < wordCount)
+    .map((r) => ({ start: r.start, end: Math.min(r.end, wordCount) }));
   const matchedWords = mergeWordRanges(ranges).reduce((sum, r) => sum + r.end - r.start, 0);
-  return { matchedWords, percent: wordCount > 0 ? Math.round(matchedWords / wordCount * 1000) / 10 : 0 };
+  return { matchedWords, percent: wordCount > 0 ? Math.round((matchedWords / wordCount) * 1000) / 10 : 0 };
 }

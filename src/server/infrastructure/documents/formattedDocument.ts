@@ -1,6 +1,6 @@
 import { load, type CheerioAPI } from "cheerio";
 import type { AnyNode, Element, Text } from "domhandler";
-import { alignParagraphs, distributeRevisedText } from "../../textAlignment.js";
+import { alignParagraphs, distributeRevisedText } from "../../domain/documents/textAlignment.js";
 
 const BLOCK_SELECTOR = "p,h1,h2,h3,h4,h5,h6,li,td,th,blockquote,pre,div";
 

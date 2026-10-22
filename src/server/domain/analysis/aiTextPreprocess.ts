@@ -18,24 +18,27 @@ export function stripInlineCitationMetadata(text: string): string {
 function stripReferenceTail(text: string): { text: string; removedWords: number } {
   // A standalone reference list has no prose to assess. Require structured
   // entries on separate lines; a few URLs inside prose are never sufficient.
-  const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
   const entries = /^(?:список\s+(?:використаних\s+)?джерел|бібліографія|references|bibliography)\s*[:.]?$/iu.test(lines[0] ?? "") ? lines.slice(1) : lines;
-  if (entries.length >= 2 && entries.every(line =>
-    /^\d{1,3}[.)]\s+[\p{L}]/u.test(line) &&
-    /\b(?:19|20)\d{2}\b/u.test(line) &&
-    /\bdoi\b|\bisbn\b|\bpp?\.\s*\d|с\.\s*\d/iu.test(line)
-  )) return { text: "", removedWords: countWords(text) };
+  if (
+    entries.length >= 2 &&
+    entries.every((line) => /^\d{1,3}[.)]\s+[\p{L}]/u.test(line) && /\b(?:19|20)\d{2}\b/u.test(line) && /\bdoi\b|\bisbn\b|\bpp?\.\s*\d|с\.\s*\d/iu.test(line))
+  )
+    return { text: "", removedWords: countWords(text) };
   const splitIdx = findBibliographyStart(text);
   if (splitIdx >= 0) {
-      const tail = text.slice(splitIdx);
-      const tailWords = countWords(tail);
-      const bodyWords = countWords(text.slice(0, splitIdx));
-      if (tailWords >= 8 && bodyWords >= 20) {
-        return {
-          text: text.slice(0, splitIdx),
-          removedWords: tailWords
-        };
-      }
+    const tail = text.slice(splitIdx);
+    const tailWords = countWords(tail);
+    const bodyWords = countWords(text.slice(0, splitIdx));
+    if (tailWords >= 8 && bodyWords >= 20) {
+      return {
+        text: text.slice(0, splitIdx),
+        removedWords: tailWords
+      };
+    }
   }
   return { text, removedWords: 0 };
 }

@@ -10,4 +10,3 @@ export type AuthorshipSignals = {
   signals: AiSignal[];
   verdict?: string;
 };
-

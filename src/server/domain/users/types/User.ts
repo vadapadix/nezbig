@@ -14,4 +14,9 @@ export interface NewUserData {
   googleId?: string;
   avatarUrl?: string;
 }
-export interface AuthPayload { id: string; email: string; name: string; avatarUrl?: string }
+export interface AuthPayload {
+  id: string;
+  email: string;
+  name: string;
+  avatarUrl?: string;
+}

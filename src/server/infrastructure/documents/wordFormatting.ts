@@ -1,7 +1,6 @@
 import type { WordElement, WordHtmlOptions } from "../../types/wordFormatting.types.js";
 export type { WordElement, WordHtmlOptions } from "../../types/wordFormatting.types.js";
 
-
 const ALIGNMENTS = new Set(["left", "right", "center", "both", "justify"]);
 
 function twipsToPoints(value: string | null | undefined): number | null {

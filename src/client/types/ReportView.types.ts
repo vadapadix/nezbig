@@ -10,4 +10,4 @@ export interface ReportViewProps {
   onMessage?: (msg: string, type?: "success" | "error" | "info") => void;
 }
 
-export type ReportTab = typeof tabKeys[number];
+export type ReportTab = (typeof tabKeys)[number];

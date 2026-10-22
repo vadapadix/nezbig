@@ -22,7 +22,10 @@ router.get("/", async (req: Request, res: Response) => {
 // ─── GET /api/history/:id: Get full report by ID ─────────────
 router.get("/:id", async (req: Request, res: Response) => {
   try {
-    if (!req.user) { res.status(401).json({ error: "Необхідна авторизація." }); return; }
+    if (!req.user) {
+      res.status(401).json({ error: "Необхідна авторизація." });
+      return;
+    }
     const rawId = req.params.id;
     const reportId = Array.isArray(rawId) ? rawId[0] : rawId;
     if (!reportId) {

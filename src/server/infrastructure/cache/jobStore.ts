@@ -1,4 +1,4 @@
-import type { ScanJobStatus, ScanJob } from "../../types/jobStore.types.js";
+import type { ScanJob } from "../../types/jobStore.types.js";
 export type { ScanJobStatus, ScanJob } from "../../types/jobStore.types.js";
 import crypto from "node:crypto";
 import { DistributedCache, MemoryTtlCache } from "./searchCache.js";
@@ -13,16 +13,19 @@ export function reportCacheKey(principal: string, input: unknown): string {
 }
 
 export function invalidatePrincipalReports(principal: string): void {
-  reportCache.deleteMatching(key => key.startsWith(`${principal}:`));
+  reportCache.deleteMatching((key) => key.startsWith(`${principal}:`));
   guestJobs.deleteMatching((_key, job) => job.principal === principal);
 }
 
 export const scanJobCache = {
   async get(id: string): Promise<ScanJob | null | undefined> {
-    return guestJobs.get(id) ?? await accountJobs.get(id);
+    return guestJobs.get(id) ?? (await accountJobs.get(id));
   },
   async set(id: string, job: ScanJob, ttl?: number): Promise<void> {
-    if (job.principal.startsWith("guest:")) { guestJobs.set(id, job, ttl); return; }
+    if (job.principal.startsWith("guest:")) {
+      guestJobs.set(id, job, ttl);
+      return;
+    }
     const { result, ...metadata } = job;
     await accountJobs.set(id, { ...metadata, reportId: result?.id ?? metadata.reportId }, ttl);
   }

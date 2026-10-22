@@ -1,5 +1,3 @@
-
-
 export type ProseFilterResult = {
   text: string;
   removedCodeWords: number;

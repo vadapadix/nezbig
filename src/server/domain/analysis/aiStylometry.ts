@@ -195,7 +195,10 @@ export function analyzeTriadicStructures(text: string, wordCount: number): { sco
 export function analyzeAntitheticalBalance(text: string, wordCount: number): { score: number; evidence: string[] } {
   if (wordCount < 50) return { score: 0, evidence: [] };
 
-  const matches = text.match(/(?:з одного боку[\s\S]{10,140}з іншого боку|on the one hand[\s\S]{10,140}on the other hand|попри[\s\S]{5,80}(?:водночас|проте|однак|разом з тим)|хоча[\s\S]{5,80}(?:проте|однак|але й)|незважаючи на[\s\S]{5,80}(?:важливо|залишається|потрібно)|while[\s\S]{5,80}(?:it is crucial|it remains|nonetheless|however))/giu) ?? [];
+  const matches =
+    text.match(
+      /(?:з одного боку[\s\S]{10,140}з іншого боку|on the one hand[\s\S]{10,140}on the other hand|попри[\s\S]{5,80}(?:водночас|проте|однак|разом з тим)|хоча[\s\S]{5,80}(?:проте|однак|але й)|незважаючи на[\s\S]{5,80}(?:важливо|залишається|потрібно)|while[\s\S]{5,80}(?:it is crucial|it remains|nonetheless|however))/giu
+    ) ?? [];
   const density = matches.length / Math.max(1, wordCount / 100);
 
   let score = 0;
@@ -225,14 +228,7 @@ export function performStylometryAnalysis(text: string, proseSentences: string[]
   const triadic = analyzeTriadicStructures(text, words.length);
   const antithesis = analyzeAntitheticalBalance(text, words.length);
 
-  const allEvidence = [
-    ...zipf.evidence,
-    ...punctuation.evidence,
-    ...paragraph.evidence,
-    ...pacing.evidence,
-    ...triadic.evidence,
-    ...antithesis.evidence
-  ];
+  const allEvidence = [...zipf.evidence, ...punctuation.evidence, ...paragraph.evidence, ...pacing.evidence, ...triadic.evidence, ...antithesis.evidence];
 
   return {
     zipfScore: zipf.score,

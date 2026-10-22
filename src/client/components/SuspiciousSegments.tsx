@@ -13,7 +13,9 @@ export function SuspiciousSegments({ segments }: SuspiciousSegmentsProps) {
     <section className="segment-panel" aria-labelledby="segments-title">
       <div className="section-heading-row">
         <h3 id="segments-title">{lang === "uk" ? "Підозрілі фрагменти" : "Suspicious Segments"}</h3>
-        <span>{segments.length} {lang === "uk" ? "для перевірки" : "for review"}</span>
+        <span>
+          {segments.length} {lang === "uk" ? "для перевірки" : "for review"}
+        </span>
       </div>
       <p className="section-note">
         {lang === "uk"

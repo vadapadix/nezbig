@@ -32,9 +32,7 @@ export function useDraft(text: string, html: string, fileName: string, onRestore
       }
       const lang = (localStorage.getItem("nezbig_lang") as "uk" | "en") || "en";
       const dateStr = new Date(draft.savedAt).toLocaleString(lang === "uk" ? "uk-UA" : "en-US");
-      const confirmPrompt = lang === "uk"
-        ? `Відновити чернетку «${draft.fileName}» від ${dateStr}?`
-        : `Restore draft "${draft.fileName}" from ${dateStr}?`;
+      const confirmPrompt = lang === "uk" ? `Відновити чернетку «${draft.fileName}» від ${dateStr}?` : `Restore draft "${draft.fileName}" from ${dateStr}?`;
       if (draft.text.length > 120 && window.confirm(confirmPrompt)) {
         onRestore(draft);
       }

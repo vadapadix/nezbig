@@ -13,7 +13,12 @@ function looksLikeContents(text: string): boolean {
 function schemaTable(text: string): boolean {
   const fields = text.match(/[\p{L}_][\p{L}\p{N}_’'-]*\.(?:ID|Id|id|[\p{L}_][\p{L}\p{N}_’'-]*)/gu) ?? [];
   const relationships = text.match(/\b[1NnМм]\s*[:：]\s*(?:∞|[1NnМм*])/gu) ?? [];
-  return countWords(text) <= 350 && fields.length >= 4 && relationships.length >= 2 && /(?:пов[’']?язана\s+таблиця|тип\s+зв[’']?язку|зміст\s+зв[’']?язку|related\s+table|relationship\s+type)/iu.test(text);
+  return (
+    countWords(text) <= 350 &&
+    fields.length >= 4 &&
+    relationships.length >= 2 &&
+    /(?:пов[’']?язана\s+таблиця|тип\s+зв[’']?язку|зміст\s+зв[’']?язку|related\s+table|relationship\s+type)/iu.test(text)
+  );
 }
 
 export function removeStructuralAiContent(raw: string): { text: string; removedWords: number } {

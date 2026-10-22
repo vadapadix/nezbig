@@ -1,3 +1,4 @@
+import { apiFetch } from "../utils/apiClient";
 import { useState, useCallback } from "react";
 import type { HumanizeMode, HumanizeResult } from "../../shared/types/index";
 
@@ -5,12 +6,7 @@ export function useHumanize() {
   const [humanizerBusy, setHumanizerBusy] = useState(false);
   const [humanized, setHumanized] = useState<HumanizeResult | null>(null);
 
-  const handleHumanize = useCallback(async (
-    text: string,
-    sourceHtml: string,
-    selectedFile: File | null,
-    mode: HumanizeMode = "academic"
-  ): Promise<HumanizeResult> => {
+  const handleHumanize = useCallback(async (text: string, sourceHtml: string, selectedFile: File | null, mode: HumanizeMode = "academic"): Promise<HumanizeResult> => {
     setHumanizerBusy(true);
     setHumanized(null);
     try {
@@ -19,20 +15,20 @@ export function useHumanize() {
         const formData = new FormData();
         formData.append("file", selectedFile);
         formData.append("mode", mode);
-        response = await fetch("/api/humanize-file", { method: "POST", body: formData });
+        response = await apiFetch("/api/humanize-file", { method: "POST", body: formData });
       } else {
-        response = await fetch("/api/humanize", {
+        response = await apiFetch("/api/humanize", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ text, html: sourceHtml, mode })
         });
       }
-      
+
       const payload = await response.json();
       if (!response.ok || payload.error) {
         throw new Error(payload.error || "Редагування не вдалося.");
       }
-      
+
       setHumanized(payload);
       return payload;
     } finally {
